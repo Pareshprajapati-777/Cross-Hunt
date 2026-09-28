@@ -114,14 +114,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
                     {user.username.charAt(0).toUpperCase()}
                   </div>
                   <span className="max-w-[120px] truncate">{user.first_name || user.username}</span>
-                  {user.is_admin && (
+                  {user.is_admin ? (
                     <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
                       Admin
                     </span>
-                  )}
-                  {user.is_operator && !user.is_admin && (
-                    <span className="text-[10px] bg-sky-100 text-sky-800 border border-sky-300 px-1.5 py-0.5 rounded font-bold">
-                      Fleet Operator
+                  ) : user.is_operator ? (
+                    <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded font-bold">
+                      Ship Owner
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-sky-100 text-sky-800 border border-sky-200 px-1.5 py-0.5 rounded font-bold">
+                      Customer
                     </span>
                   )}
                 </button>
@@ -137,41 +140,66 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
                       <p className="text-sm font-bold text-slate-800 truncate">{user.email || user.username}</p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        onNavigate('dashboard');
-                        setUserDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700 hover:text-slate-900 hover:bg-sky-50 flex items-center gap-2 transition cursor-pointer font-medium"
-                    >
-                      <Ship className="w-4 h-4 text-sky-600" />
-                      My Voyages & Tickets
-                    </button>
-
-                    {user.is_operator && (
+                    {/* Role-Specific Dashboard Primary Entry */}
+                    {user.is_admin ? (
                       <button
                         onClick={() => {
-                          onNavigate('operator');
+                          onNavigate('admin-panel');
                           setUserDropdownOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700 hover:text-slate-900 hover:bg-sky-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-700 hover:text-red-900 hover:bg-red-50 flex items-center gap-2 transition cursor-pointer font-bold"
                       >
-                        <Compass className="w-4 h-4 text-sky-600" />
-                        Operator Fleet Suite
+                        <Shield className="w-4 h-4 text-red-600" />
+                        Admin Control Center
+                      </button>
+                    ) : user.is_operator ? (
+                      <button
+                        onClick={() => {
+                          onNavigate('owner');
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-amber-800 hover:text-amber-900 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer font-bold"
+                      >
+                        <Ship className="w-4 h-4 text-amber-600" />
+                        My Fleet & Operations
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          onNavigate('dashboard');
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-sky-800 hover:text-sky-900 hover:bg-sky-50 flex items-center gap-2 transition cursor-pointer font-bold"
+                      >
+                        <Ship className="w-4 h-4 text-sky-600" />
+                        Customer Dashboard
                       </button>
                     )}
 
+                    {/* Additional cross-navigation for Admin */}
                     {user.is_admin && (
-                      <button
-                        onClick={() => {
-                          onNavigate('admin');
-                          setUserDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700 hover:text-slate-900 hover:bg-red-50 flex items-center gap-2 transition cursor-pointer font-medium"
-                      >
-                        <Shield className="w-4 h-4 text-red-500" />
-                        Admin Control Center
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            onNavigate('owner');
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                        >
+                          <Compass className="w-3.5 h-3.5 text-slate-500" />
+                          Fleet Operator View
+                        </button>
+                        <button
+                          onClick={() => {
+                            onNavigate('dashboard');
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition cursor-pointer font-medium"
+                        >
+                          <Ship className="w-3.5 h-3.5 text-slate-500" />
+                          Customer View
+                        </button>
+                      </>
                     )}
 
                     <div className="border-t border-slate-100 my-1"></div>
@@ -271,36 +299,38 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
 
             {user ? (
               <div className="border-t border-slate-100 pt-2 space-y-2">
-                <button
-                  onClick={() => {
-                    onNavigate('dashboard');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sky-700 hover:bg-sky-50 flex items-center gap-2 font-semibold"
-                >
-                  <Ship className="w-4 h-4" />
-                  My Voyages & Tickets
-                </button>
-                {user.is_operator && (
+                {user.is_admin ? (
                   <button
                     onClick={() => {
-                      onNavigate('operator');
+                      onNavigate('admin-panel');
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-slate-700 hover:bg-sky-50 flex items-center gap-2 font-medium"
+                    className="w-full text-left px-3 py-2 rounded-lg text-red-700 bg-red-50 flex items-center gap-2 font-bold"
                   >
-                    Operator Fleet Suite
-                  </button>
-                )}
-                {user.is_admin && (
-                  <button
-                    onClick={() => {
-                      onNavigate('admin');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
-                  >
+                    <Shield className="w-4 h-4 text-red-600" />
                     Admin Control Center
+                  </button>
+                ) : user.is_operator ? (
+                  <button
+                    onClick={() => {
+                      onNavigate('owner');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-amber-800 bg-amber-50 flex items-center gap-2 font-bold"
+                  >
+                    <Ship className="w-4 h-4 text-amber-600" />
+                    My Fleet & Operations
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      onNavigate('dashboard');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sky-700 bg-sky-50 flex items-center gap-2 font-bold"
+                  >
+                    <Ship className="w-4 h-4 text-sky-600" />
+                    Customer Dashboard
                   </button>
                 )}
                 <button

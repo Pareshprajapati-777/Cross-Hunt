@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   phone?: string;
   phone_number?: string;
+  address?: string;
   is_operator: boolean;
   is_owner?: boolean;
   is_admin: boolean;
@@ -71,6 +72,7 @@ export interface Cruise {
   cabin_count?: number;
   image: string;
   image_url?: string;
+  display_image_url?: string;
   is_available: boolean;
   is_active?: boolean;
   is_approved?: boolean;

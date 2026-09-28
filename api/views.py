@@ -17,18 +17,24 @@ User = get_user_model()
 def get_user_dict(user):
     if not user.is_authenticated:
         return None
+    is_admin = bool(user.role == 'ADMIN' or user.is_superuser or user.is_staff)
+    is_operator = bool(getattr(user, 'is_owner', False) or user.role in ['OWNER', 'CROSS_OWNER'])
     return {
         'id': user.id,
         'username': user.username,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'email': user.email,
-        'phone': user.phone or '',
+        'first_name': user.first_name or '',
+        'last_name': user.last_name or '',
+        'full_name': user.get_full_name() or user.username,
+        'email': user.email or '',
+        'phone': getattr(user, 'phone', '') or '',
+        'address': getattr(user, 'address', '') or '',
         'role': user.role,
         'is_staff': user.is_staff,
         'is_superuser': user.is_superuser,
-        'is_owner': getattr(user, 'is_owner', user.role in ['OWNER', 'CROSS_OWNER']),
-        'is_approved_owner': user.is_approved_owner,
+        'is_owner': is_operator,
+        'is_operator': is_operator,
+        'is_admin': is_admin,
+        'is_approved_owner': getattr(user, 'is_approved_owner', True),
     }
 
 
@@ -299,6 +305,55 @@ def api_register(request):
 def api_logout(request):
     logout(request)
     return JsonResponse({'success': True, 'message': 'Logged out successfully.'})
+
+
+@csrf_exempt
+def api_profile(request):
+    """GET current user profile or PUT to update name, phone, address, password."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required.'}, status=401)
+
+    if request.method == 'GET':
+        return JsonResponse({'user': get_user_dict(request.user)})
+
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+
+        u = request.user
+        if 'first_name' in data:
+            u.first_name = data['first_name'].strip()
+        if 'last_name' in data:
+            u.last_name = data['last_name'].strip()
+        if 'email' in data and data['email'].strip():
+            new_email = data['email'].strip().lower()
+            if User.objects.filter(email__iexact=new_email).exclude(id=u.id).exists():
+                return JsonResponse({'error': 'Email is already taken by another account.'}, status=400)
+            u.email = new_email
+        if 'phone' in data:
+            u.phone = data['phone'].strip()
+        if 'address' in data:
+            u.address = data['address'].strip()
+
+        if 'password' in data and data['password'].strip():
+            pwd = data['password'].strip()
+            if len(pwd) < 6:
+                return JsonResponse({'error': 'Password must be at least 6 characters.'}, status=400)
+            u.set_password(pwd)
+            u.save()
+            login(request, u)  # Maintain session after password change
+        else:
+            u.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Profile updated successfully.',
+            'user': get_user_dict(u)
+        })
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 # =====================================================================
@@ -1468,3 +1523,486 @@ def api_admin_offers(request):
         )
 
         return JsonResponse({'success': True, 'offer': serialize_offer(offer)})
+
+
+@csrf_exempt
+def api_operator_extras(request):
+    """List or create ship extras for operator's fleet."""
+    if not request.user.is_authenticated or (not getattr(request.user, 'is_owner', False) and not request.user.is_superuser):
+        return JsonResponse({'error': 'Operator access required.'}, status=403)
+
+    if request.method == 'GET':
+        ship_id = request.GET.get('ship_id')
+        extras = ShipExtra.objects.filter(ship__owner=request.user)
+        if ship_id:
+            extras = extras.filter(ship_id=ship_id)
+        return JsonResponse({'extras': [serialize_extra(e) for e in extras]})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+
+        ship_id = data.get('ship_id')
+        try:
+            ship = Cross.objects.get(id=ship_id, owner=request.user)
+        except Cross.DoesNotExist:
+            return JsonResponse({'error': 'Ship not found or not owned by you.'}, status=404)
+
+        extra = ShipExtra.objects.create(
+            ship=ship,
+            name=data.get('name', 'Premium Extra').strip(),
+            description=data.get('description', ''),
+            price=Decimal(str(data.get('price', 5000))),
+            pricing_mode=data.get('pricing_mode', 'FLAT'),
+            is_available=bool(data.get('is_available', True))
+        )
+        return JsonResponse({'success': True, 'extra': serialize_extra(extra)})
+
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        extra_id = data.get('id')
+        try:
+            extra = ShipExtra.objects.get(id=extra_id, ship__owner=request.user)
+        except ShipExtra.DoesNotExist:
+            return JsonResponse({'error': 'Extra not found.'}, status=404)
+
+        if 'price' in data:
+            extra.price = Decimal(str(data['price']))
+        if 'name' in data:
+            extra.name = data['name'].strip()
+        if 'description' in data:
+            extra.description = data['description'].strip()
+        if 'pricing_mode' in data:
+            extra.pricing_mode = data['pricing_mode']
+        if 'is_available' in data:
+            extra.is_available = bool(data['is_available'])
+        extra.save()
+        return JsonResponse({'success': True, 'extra': serialize_extra(extra)})
+
+    elif request.method == 'DELETE':
+        extra_id = request.GET.get('id')
+        try:
+            extra = ShipExtra.objects.get(id=extra_id, ship__owner=request.user)
+            extra.delete()
+            return JsonResponse({'success': True, 'message': 'Extra deleted.'})
+        except ShipExtra.DoesNotExist:
+            return JsonResponse({'error': 'Extra not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+def api_operator_availability(request, ship_id):
+    """Return 30-day availability timeline for a specific ship."""
+    if not request.user.is_authenticated or (not getattr(request.user, 'is_owner', False) and not request.user.is_superuser):
+        return JsonResponse({'error': 'Operator access required.'}, status=403)
+
+    try:
+        ship = Cross.objects.get(id=ship_id, owner=request.user)
+    except Cross.DoesNotExist:
+        return JsonResponse({'error': 'Ship not found.'}, status=404)
+
+    start_date = date.today()
+    days = []
+    # Collect bookings and tours for the next 30 days
+    bookings = Booking.objects.filter(
+        cross=ship,
+        booking_date__gte=start_date,
+        booking_date__lte=start_date + timedelta(days=30),
+        status__in=['CONFIRMED', 'PENDING']
+    )
+    booked_dates = {b.booking_date.strftime('%Y-%m-%d'): b for b in bookings}
+
+    tours = PublicTour.objects.filter(
+        ship=ship,
+        departure_date__lte=start_date + timedelta(days=30),
+        return_date__gte=start_date,
+        is_published=True
+    )
+
+    for i in range(30):
+        current_day = start_date + timedelta(days=i)
+        day_str = current_day.strftime('%Y-%m-%d')
+        status = 'Available'
+        booking_info = None
+
+        if day_str in booked_dates:
+            b = booked_dates[day_str]
+            status = 'Private Booking' if b.booking_type == 'EVENT' else 'Tour Booking'
+            booking_info = {'id': b.booking_id, 'customer': b.user.get_full_name() or b.user.username}
+        else:
+            for t in tours:
+                if t.departure_date <= current_day <= t.return_date:
+                    status = 'Public Tour'
+                    booking_info = {'tour': t.tour_title, 'departure': t.departure_date.strftime('%Y-%m-%d')}
+                    break
+
+        days.append({
+            'date': day_str,
+            'day_name': current_day.strftime('%a'),
+            'status': status,
+            'details': booking_info
+        })
+
+    return JsonResponse({'ship_id': ship.id, 'ship_name': ship.name, 'timeline': days})
+
+
+def api_operator_tour_passengers(request, tour_id):
+    """Return passenger manifest for a specific public tour."""
+    if not request.user.is_authenticated or (not getattr(request.user, 'is_owner', False) and not request.user.is_superuser):
+        return JsonResponse({'error': 'Operator access required.'}, status=403)
+
+    try:
+        tour = PublicTour.objects.get(id=tour_id, ship__owner=request.user)
+    except PublicTour.DoesNotExist:
+        return JsonResponse({'error': 'Tour not found.'}, status=404)
+
+    bookings = Booking.objects.filter(public_tour=tour).select_related('user').order_by('-created_at')
+    passengers = []
+    for b in bookings:
+        passengers.append({
+            'booking_id': b.booking_id,
+            'passenger_name': b.user.get_full_name() or b.user.username,
+            'email': b.user.email,
+            'phone': b.user.phone or '',
+            'adults_count': b.adults_count,
+            'children_count': b.children_count,
+            'passengers_count': b.number_of_people,
+            'cabin_type': b.cabin_type or 'Standard',
+            'status': b.status,
+            'tracking_status': b.tracking_status or b.status,
+            'total_price': float(b.total_price),
+            'booking_date': b.booking_date.strftime('%Y-%m-%d')
+        })
+
+    return JsonResponse({
+        'tour_id': tour.id,
+        'tour_title': tour.tour_title,
+        'ship_name': tour.ship.name,
+        'departure_date': tour.departure_date.strftime('%Y-%m-%d'),
+        'total_capacity': tour.total_capacity,
+        'booked_capacity': tour.booked_capacity,
+        'remaining_capacity': tour.remaining_capacity,
+        'passengers': passengers
+    })
+
+
+def api_operator_revenue(request):
+    """Return detailed revenue breakdown by ship, by month, private vs public tour."""
+    if not request.user.is_authenticated or (not getattr(request.user, 'is_owner', False) and not request.user.is_superuser):
+        return JsonResponse({'error': 'Operator access required.'}, status=403)
+
+    bookings = Booking.objects.filter(cross__owner=request.user, status__in=['CONFIRMED', 'COMPLETED']).select_related('cross')
+    total_rev = bookings.aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+    private_rev = bookings.filter(booking_type='EVENT').aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+    tour_rev = bookings.filter(booking_type='TOUR').aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+    # By ship
+    by_ship = []
+    for ship in Cross.objects.filter(owner=request.user):
+        ship_rev = bookings.filter(cross=ship).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+        by_ship.append({
+            'ship_id': ship.id,
+            'ship_name': ship.name,
+            'revenue': float(ship_rev),
+            'bookings_count': bookings.filter(cross=ship).count()
+        })
+
+    return JsonResponse({
+        'total_revenue': float(total_rev),
+        'private_revenue': float(private_rev),
+        'tour_revenue': float(tour_rev),
+        'by_ship': by_ship
+    })
+
+
+# ---------------------------------------------------------------------
+# ADMIN EXPANDED ENDPOINTS
+# ---------------------------------------------------------------------
+
+@csrf_exempt
+def api_admin_users(request):
+    """Admin endpoint to list, search, filter, and toggle active status of users."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        q = request.GET.get('q', '').strip()
+        role = request.GET.get('role', '').strip()
+        queryset = User.objects.all().order_by('-date_joined')
+
+        if q:
+            queryset = queryset.filter(Q(username__icontains=q) | Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+        if role:
+            queryset = queryset.filter(role=role)
+
+        users_list = []
+        for u in queryset[:50]:
+            users_list.append({
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'full_name': u.get_full_name() or u.username,
+                'role': u.role,
+                'is_active': u.is_active,
+                'date_joined': u.date_joined.strftime('%Y-%m-%d'),
+                'bookings_count': u.bookings.count() if hasattr(u, 'bookings') else 0
+            })
+        return JsonResponse({'users': users_list})
+
+    elif request.method == 'POST':
+        # Toggle user active status
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        user_id = data.get('user_id')
+        try:
+            target_user = User.objects.get(id=user_id)
+            if target_user.is_superuser:
+                return JsonResponse({'error': 'Cannot deactivate superuser.'}, status=400)
+            target_user.is_active = not target_user.is_active
+            target_user.save()
+            return JsonResponse({'success': True, 'is_active': target_user.is_active, 'message': f'User {target_user.username} active status updated.'})
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def api_admin_owners(request):
+    """Admin endpoint to list, approve, suspend, or activate ship owners."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        owners = User.objects.filter(role__in=['OWNER', 'CROSS_OWNER']).order_by('-date_joined')
+        owners_list = []
+        for o in owners:
+            ships = Cross.objects.filter(owner=o)
+            ships_count = ships.count()
+            rev = Booking.objects.filter(cross__owner=o, status__in=['CONFIRMED', 'COMPLETED']).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+            owners_list.append({
+                'id': o.id,
+                'username': o.username,
+                'email': o.email,
+                'full_name': o.get_full_name() or o.username,
+                'phone': o.phone or '',
+                'is_approved_owner': o.is_approved_owner,
+                'is_active': o.is_active,
+                'ships_count': ships_count,
+                'total_revenue': float(rev),
+                'date_joined': o.date_joined.strftime('%Y-%m-%d')
+            })
+        return JsonResponse({'owners': owners_list})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        owner_id = data.get('owner_id')
+        action = data.get('action')  # 'approve', 'reject', 'toggle_active'
+        try:
+            owner = User.objects.get(id=owner_id, role__in=['OWNER', 'CROSS_OWNER'])
+            if action == 'approve':
+                owner.is_approved_owner = True
+            elif action == 'reject':
+                owner.is_approved_owner = False
+            elif action == 'toggle_active':
+                owner.is_active = not owner.is_active
+            owner.save()
+            return JsonResponse({'success': True, 'message': f'Owner {owner.username} updated.'})
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Owner not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def api_admin_ships(request):
+    """Admin endpoint to list all platform ships, approve, toggle active, or delete."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        ships = Cross.objects.all().select_related('owner').order_by('-created_at')
+        ships_list = []
+        for s in ships:
+            ships_list.append({
+                'id': s.id,
+                'name': s.name,
+                'slug': s.slug,
+                'owner_name': s.owner.get_full_name() or s.owner.username,
+                'category': s.category,
+                'location': s.location,
+                'price': float(s.price),
+                'capacity': s.capacity,
+                'is_active': s.is_active,
+                'is_approved': s.is_approved,
+                'image_url': s.display_image_url
+            })
+        return JsonResponse({'ships': ships_list})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        ship_id = data.get('ship_id')
+        action = data.get('action')  # 'approve', 'toggle_active', 'delete'
+        try:
+            ship = Cross.objects.get(id=ship_id)
+            if action == 'approve':
+                ship.is_approved = True
+                ship.save()
+            elif action == 'toggle_active':
+                ship.is_active = not ship.is_active
+                ship.save()
+            elif action == 'delete':
+                ship.delete()
+                return JsonResponse({'success': True, 'message': 'Ship deleted.'})
+            return JsonResponse({'success': True, 'message': f'Ship {ship.name} updated.'})
+        except Cross.DoesNotExist:
+            return JsonResponse({'error': 'Ship not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def api_admin_bookings(request):
+    """Admin endpoint to list and manage all platform bookings."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        b_type = request.GET.get('type')
+        status = request.GET.get('status')
+        queryset = Booking.objects.all().select_related('cross', 'user', 'public_tour', 'cross__owner').order_by('-created_at')
+
+        if b_type:
+            queryset = queryset.filter(booking_type=b_type)
+        if status:
+            queryset = queryset.filter(status=status)
+
+        return JsonResponse({'bookings': [serialize_booking(b) for b in queryset[:100]]})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        booking_id = data.get('booking_id')
+        new_status = data.get('status')
+        try:
+            b = Booking.objects.get(booking_id=booking_id)
+            if new_status in ['CONFIRMED', 'CANCELLED', 'COMPLETED', 'PENDING']:
+                b.status = new_status
+                b.tracking_status = new_status
+                b.save()
+                return JsonResponse({'success': True, 'booking': serialize_booking(b)})
+            return JsonResponse({'error': 'Invalid status.'}, status=400)
+        except Booking.DoesNotExist:
+            return JsonResponse({'error': 'Booking not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def api_admin_tours(request):
+    """Admin endpoint to list, publish/unpublish, or cancel public tours."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        tours = PublicTour.objects.all().select_related('ship', 'ship__owner').order_by('-departure_date')
+        return JsonResponse({'tours': [serialize_tour(t) for t in tours]})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        tour_id = data.get('tour_id')
+        action = data.get('action')
+        try:
+            t = PublicTour.objects.get(id=tour_id)
+            if action == 'toggle_publish':
+                t.is_published = not t.is_published
+            elif action == 'cancel':
+                t.status = 'CANCELLED'
+                t.is_published = False
+            t.save()
+            return JsonResponse({'success': True, 'tour': serialize_tour(t)})
+        except PublicTour.DoesNotExist:
+            return JsonResponse({'error': 'Tour not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def api_admin_reviews(request):
+    """Admin endpoint to view and moderate reviews."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    if request.method == 'GET':
+        reviews = CrossReview.objects.all().select_related('cross', 'user').order_by('-created_at')
+        rev_list = []
+        for r in reviews[:50]:
+            rev_list.append({
+                'id': r.id,
+                'ship_name': r.cross.name,
+                'author': r.user.get_full_name() or r.user.username,
+                'rating': r.rating,
+                'comment': r.comment,
+                'created_at': r.created_at.strftime('%Y-%m-%d')
+            })
+        return JsonResponse({'reviews': rev_list})
+
+    elif request.method == 'DELETE':
+        review_id = request.GET.get('id')
+        try:
+            r = CrossReview.objects.get(id=review_id)
+            r.delete()
+            return JsonResponse({'success': True, 'message': 'Review removed.'})
+        except CrossReview.DoesNotExist:
+            return JsonResponse({'error': 'Review not found.'}, status=404)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+def api_admin_reports(request):
+    """Admin endpoint for platform analytics reports."""
+    if not request.user.is_authenticated or (request.user.role != 'ADMIN' and not request.user.is_superuser and not request.user.is_staff):
+        return JsonResponse({'error': 'Admin privileges required.'}, status=403)
+
+    # Top popular ships
+    popular_ships = []
+    for s in Cross.objects.annotate(booking_num=Count('bookings')).order_by('-booking_num')[:5]:
+        popular_ships.append({
+            'name': s.name,
+            'bookings_count': s.booking_num,
+            'location': s.location
+        })
+
+    # Destination demand
+    dest_counts = {}
+    for b in Booking.objects.select_related('cross'):
+        dest = b.cross.destination or b.cross.location or 'Arabian Sea'
+        dest_counts[dest] = dest_counts.get(dest, 0) + 1
+
+    popular_destinations = [{'destination': k, 'count': v} for k, v in sorted(dest_counts.items(), key=lambda x: x[1], reverse=True)[:5]]
+
+    return JsonResponse({
+        'popular_ships': popular_ships,
+        'popular_destinations': popular_destinations,
+        'total_revenue': float(Booking.objects.filter(status__in=['CONFIRMED', 'COMPLETED']).aggregate(Sum('total_price'))['total_price__sum'] or 0),
+        'cancellation_rate': round((Booking.objects.filter(status='CANCELLED').count() / max(1, Booking.objects.count())) * 100, 1)
+    })
+

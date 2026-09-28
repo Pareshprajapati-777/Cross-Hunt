@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
@@ -16,12 +16,35 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AuthPage } from './pages/AuthPages';
 import { Cruise, Booking, PublicTour } from './api/types';
 
+function getTabFromPath(): string {
+  const path = window.location.pathname.toLowerCase().replace(/^\/|\/$/g, '');
+  if (path === 'dashboard') return 'dashboard';
+  if (path === 'owner' || path === 'operator') return 'owner';
+  if (path === 'admin-panel' || path === 'admin') return 'admin-panel';
+  if (path === 'explore') return 'explore';
+  if (path === 'tours') return 'tours';
+  if (path === 'events') return 'events';
+  if (path === 'login') return 'login';
+  if (path === 'register') return 'register';
+  return 'home';
+}
+
 const MainApp: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const { user, loading } = useAuth();
+  const [currentTab, setCurrentTab] = useState<string>(getTabFromPath());
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [selectedCruise, setSelectedCruise] = useState<Cruise | null>(null);
   const [selectedTour, setSelectedTour] = useState<PublicTour | null>(null);
   const [preselectedCabin, setPreselectedCabin] = useState<string>('OCEANVIEW');
+
+  // Listen to browser forward/backward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentTab(getTabFromPath());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Scroll to top on page change
   useEffect(() => {
@@ -33,7 +56,42 @@ const MainApp: React.FC = () => {
     if (param) {
       setFilterQuery(param);
     }
+
+    const pathToUrlMap: Record<string, string> = {
+      'home': '/',
+      'dashboard': '/dashboard',
+      'owner': '/owner',
+      'admin-panel': '/admin-panel',
+      'explore': '/explore',
+      'tours': '/tours',
+      'events': '/events',
+      'login': '/login',
+      'register': '/register',
+    };
+
+    if (pathToUrlMap[tab]) {
+      window.history.pushState({}, '', pathToUrlMap[tab]);
+    }
   };
+
+  // Role-based route enforcement
+  useEffect(() => {
+    if (!loading && user) {
+      if (currentTab === 'owner' && !user.is_operator && !user.is_admin) {
+        handleNavigate('dashboard');
+      } else if (currentTab === 'admin-panel' && !user.is_admin) {
+        if (user.is_operator) {
+          handleNavigate('owner');
+        } else {
+          handleNavigate('dashboard');
+        }
+      }
+    } else if (!loading && !user) {
+      if (currentTab === 'dashboard' || currentTab === 'owner' || currentTab === 'admin-panel') {
+        handleNavigate('login');
+      }
+    }
+  }, [currentTab, user, loading]);
 
   const handleSelectCruise = (cruise: Cruise) => {
     setSelectedCruise(cruise);
@@ -57,7 +115,22 @@ const MainApp: React.FC = () => {
   };
 
   const handleBookingSuccess = (_booking: Booking) => {
-    setCurrentTab('dashboard');
+    handleNavigate('dashboard');
+  };
+
+  // Specific role redirection upon successful login / registration
+  const handleAuthSuccess = (loggedUser: any) => {
+    if (loggedUser?.is_admin || loggedUser?.role === 'ADMIN') {
+      handleNavigate('admin-panel');
+    } else if (
+      loggedUser?.is_operator ||
+      loggedUser?.role === 'OWNER' ||
+      loggedUser?.role === 'CROSS_OWNER'
+    ) {
+      handleNavigate('owner');
+    } else {
+      handleNavigate('dashboard');
+    }
   };
 
   return (
@@ -95,7 +168,7 @@ const MainApp: React.FC = () => {
         {currentTab === 'tour-detail' && selectedTour && (
           <TourDetailPage
             tour={selectedTour}
-            onBack={() => setCurrentTab('tours')}
+            onBack={() => handleNavigate('tours')}
             onBookTourTicket={(t) => handleBookPublicTour(t)}
           />
         )}
@@ -104,17 +177,17 @@ const MainApp: React.FC = () => {
           <BookPublicTourTicketPage
             tour={selectedTour}
             onSuccess={handleBookingSuccess}
-            onCancel={() => setCurrentTab('tour-detail')}
-            onNeedLogin={() => setCurrentTab('login')}
+            onCancel={() => handleNavigate('tour-detail')}
+            onNeedLogin={() => handleNavigate('login')}
           />
         )}
 
         {currentTab === 'cruise-detail' && selectedCruise && (
           <CruiseDetailPage
             cruise={selectedCruise}
-            onBack={() => setCurrentTab('explore')}
+            onBack={() => handleNavigate('explore')}
             onBookTour={(c, cabin) => handleBookCruise(c, cabin)}
-            onBookEvent={() => setCurrentTab('events')}
+            onBookEvent={() => handleNavigate('events')}
           />
         )}
 
@@ -123,39 +196,49 @@ const MainApp: React.FC = () => {
             cruise={selectedCruise}
             initialCabin={preselectedCabin}
             onSuccess={handleBookingSuccess}
-            onCancel={() => setCurrentTab('cruise-detail')}
-            onNeedLogin={() => setCurrentTab('login')}
+            onCancel={() => handleNavigate('cruise-detail')}
+            onNeedLogin={() => handleNavigate('login')}
           />
         )}
 
         {currentTab === 'events' && (
           <PrivateEventsPage
             onSuccess={handleBookingSuccess}
-            onNeedLogin={() => setCurrentTab('login')}
+            onNeedLogin={() => handleNavigate('login')}
           />
         )}
 
         {currentTab === 'dashboard' && (
-          <UserDashboardPage onExplore={() => setCurrentTab('explore')} />
+          <UserDashboardPage
+            onExplore={() => handleNavigate('explore')}
+            onSelectCruise={handleSelectCruise}
+            onBookCruise={handleBookCruise}
+            onSelectTour={handleSelectTour}
+            onBookTour={handleBookPublicTour}
+          />
         )}
 
-        {currentTab === 'operator' && <OperatorDashboardPage />}
+        {(currentTab === 'owner' || currentTab === 'operator') && (
+          <OperatorDashboardPage />
+        )}
 
-        {currentTab === 'admin' && <AdminDashboardPage />}
+        {(currentTab === 'admin-panel' || currentTab === 'admin') && (
+          <AdminDashboardPage />
+        )}
 
         {currentTab === 'login' && (
           <AuthPage
             initialMode="login"
-            onSuccess={() => setCurrentTab('home')}
-            onSwitchMode={(mode) => setCurrentTab(mode)}
+            onSuccess={handleAuthSuccess}
+            onSwitchMode={(mode) => handleNavigate(mode)}
           />
         )}
 
         {currentTab === 'register' && (
           <AuthPage
             initialMode="register"
-            onSuccess={() => setCurrentTab('home')}
-            onSwitchMode={(mode) => setCurrentTab(mode)}
+            onSuccess={handleAuthSuccess}
+            onSwitchMode={(mode) => handleNavigate(mode)}
           />
         )}
       </div>

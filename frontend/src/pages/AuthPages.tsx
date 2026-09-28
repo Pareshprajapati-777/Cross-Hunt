@@ -4,7 +4,7 @@ import { Anchor, AlertCircle, ArrowRight } from 'lucide-react';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
-  onSuccess: () => void;
+  onSuccess: (user: any) => void;
   onSwitchMode: (mode: 'login' | 'register') => void;
 }
 
@@ -32,13 +32,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setError(null);
 
     try {
+      let loggedUser: any;
       if (mode === 'login') {
-        await login(username, password);
+        loggedUser = await login(username, password);
       } else {
         const parts = fullName.trim().split(' ');
         const first_name = parts[0] || '';
         const last_name = parts.slice(1).join(' ') || '';
-        await register({
+        loggedUser = await register({
           username,
           password,
           email,
@@ -47,7 +48,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           role,
         });
       }
-      onSuccess();
+      onSuccess(loggedUser);
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
     } finally {

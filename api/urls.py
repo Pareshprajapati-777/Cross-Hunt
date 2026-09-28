@@ -7,6 +7,7 @@ urlpatterns = [
     path('auth/login/', views.api_login, name='api_login'),
     path('auth/register/', views.api_register, name='api_register'),
     path('auth/logout/', views.api_logout, name='api_logout'),
+    path('auth/profile/', views.api_profile, name='api_profile'),
 
     # Cruise Ships & Matching Engine
     path('cruises/', views.api_cruise_list, name='api_cruise_list'),
@@ -36,10 +37,21 @@ urlpatterns = [
     path('operator/dashboard/', views.api_operator_dashboard, name='api_operator_dashboard'),
     path('operator/ships/', views.api_operator_ships, name='api_operator_ships'),
     path('operator/ships/<int:ship_id>/', views.api_operator_ship_detail, name='api_operator_ship_detail'),
+    path('operator/ships/<int:ship_id>/availability/', views.api_operator_availability, name='api_operator_availability'),
+    path('operator/extras/', views.api_operator_extras, name='api_operator_extras'),
     path('operator/tours/', views.api_operator_tours, name='api_operator_tours'),
+    path('operator/tours/<int:tour_id>/passengers/', views.api_operator_tour_passengers, name='api_operator_tour_passengers'),
+    path('operator/revenue/', views.api_operator_revenue, name='api_operator_revenue'),
     path('operator/bookings/<str:booking_id>/<str:action>/', views.api_operator_action, name='api_operator_action'),
 
     # Admin Management
     path('admin/dashboard/', views.api_admin_dashboard, name='api_admin_dashboard'),
     path('admin/offers/', views.api_admin_offers, name='api_admin_offers'),
+    path('admin/users/', views.api_admin_users, name='api_admin_users'),
+    path('admin/owners/', views.api_admin_owners, name='api_admin_owners'),
+    path('admin/ships/', views.api_admin_ships, name='api_admin_ships'),
+    path('admin/bookings/', views.api_admin_bookings, name='api_admin_bookings'),
+    path('admin/tours/', views.api_admin_tours, name='api_admin_tours'),
+    path('admin/reviews/', views.api_admin_reviews, name='api_admin_reviews'),
+    path('admin/reports/', views.api_admin_reports, name='api_admin_reports'),
 ]

@@ -42,3 +42,17 @@ export async function logoutUser(): Promise<void> {
     method: 'POST',
   });
 }
+
+export async function updateUserProfile(payload: {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  password?: string;
+}): Promise<{ success: boolean; user: User; message: string }> {
+  return apiRequest('/api/auth/profile/', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
