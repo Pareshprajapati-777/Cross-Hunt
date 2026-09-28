@@ -33,7 +33,7 @@ class BookingsTests(TestCase):
         self.cross = Cross.objects.create(
             owner=self.owner,
             name='Alpha Cross Center',
-            category='Community Hall',
+            category='Luxury Ocean Cruise',
             location='Civic Square',
             address='12 Civic Avenue',
             price=Decimal('60.00'),

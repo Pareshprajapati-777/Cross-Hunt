@@ -4,9 +4,10 @@ from django.db import models
 
 class User(AbstractUser):
     ROLE_CHOICES = (
-        ('USER', 'Regular User / Customer'),
-        ('CROSS_OWNER', 'Cross Property Owner'),
-        ('ADMIN', 'System Administrator'),
+        ('USER', 'Guest / Customer'),
+        ('OWNER', 'Ship Operator / Owner'),
+        ('CROSS_OWNER', 'Ship Operator / Owner (Legacy)'),
+        ('ADMIN', 'Platform Administrator'),
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USER')
@@ -19,8 +20,12 @@ class User(AbstractUser):
         return f"{self.username} ({self.get_role_display()})"
 
     @property
+    def is_owner(self):
+        return self.role in ['OWNER', 'CROSS_OWNER'] or self.is_superuser
+
+    @property
     def is_cross_owner(self):
-        return self.role == 'CROSS_OWNER' or self.is_superuser
+        return self.is_owner
 
     @property
     def is_regular_user(self):
@@ -29,3 +34,4 @@ class User(AbstractUser):
     @property
     def is_admin_user(self):
         return self.role == 'ADMIN' or self.is_superuser or self.is_staff
+

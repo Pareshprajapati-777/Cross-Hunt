@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Users, MapPin, Anchor, ArrowRight } from 'lucide-react';
 import { Cruise } from '../../api/types';
+import { formatINR } from '../../utils/currency';
 
 interface CruiseCardProps {
   cruise: Cruise;
@@ -111,10 +112,10 @@ export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBook
           <div>
             <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">From</span>
             <div className="flex items-baseline gap-1">
-              <span className="font-display text-2xl font-black text-amber-600">
-                ${Number(cruise.price_per_day).toLocaleString()}
+              <span className="font-display text-2xl font-black text-sky-700">
+                {formatINR(cruise.price_per_day || cruise.price)}
               </span>
-              <span className="text-xs text-slate-500">/ day</span>
+              <span className="text-xs text-slate-500">/ charter rate</span>
             </div>
           </div>
 

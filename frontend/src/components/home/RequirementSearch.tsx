@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Compass, Calendar, Users, DollarSign, Clock, ArrowRight, Sparkles } from 'lucide-react';
+import { Compass, Calendar, Users, Clock, ArrowRight, Sparkles } from 'lucide-react';
 
 interface RequirementSearchProps {
   onSearch: (filters: {
@@ -13,31 +13,30 @@ interface RequirementSearchProps {
 }
 
 const PURPOSES = [
-  { id: 'LUXURY_CRUISE', label: 'Luxury Cruise', icon: '🚢', desc: 'Ocean voyages & scenic island routes' },
-  { id: 'WEDDING', label: 'Wedding at Sea', icon: '💍', desc: 'Oceanfront ceremonies & champagne gala' },
-  { id: 'PARTY', label: 'Private Yacht Party', icon: '🎉', desc: 'Sunset deck, music rigs & open sea bar' },
-  { id: 'BIRTHDAY', label: 'Milestone Birthday', icon: '🎂', desc: 'Observation salon & chef dining' },
+  { id: 'LUXURY_CRUISE', label: 'Luxury Cruise', icon: '🚢', desc: 'Ocean voyages & coastal routes' },
+  { id: 'WEDDING', label: 'Wedding at Sea', icon: '💍', desc: 'Royal deck ceremonies & mandap' },
+  { id: 'PARTY', label: 'Private Yacht Party', icon: '🎉', desc: 'DJ rigs, sunset deck & open sea bar' },
+  { id: 'BIRTHDAY', label: 'Milestone Birthday', icon: '🎂', desc: 'VIP saloon, custom cake & chef dining' },
   { id: 'CORPORATE', label: 'Corporate Summit', icon: '💼', desc: 'Keynote theatres & executive lounge' },
-  { id: 'MEETING', label: 'Business Meeting', icon: '📊', desc: 'High-speed satellite AV & private boardroom' },
-  { id: 'CONFERENCE', label: 'Maritime Conference', icon: '🎙️', desc: 'Multi-deck delegates & catering' },
-  { id: 'DINNER', label: 'Celebration Dinner', icon: '🥂', desc: 'Starlight seating & five-course pairing' },
+  { id: 'CONFERENCE', label: 'Maritime Conference', icon: '🎙️', desc: 'Multi-deck delegates & satellite AV' },
+  { id: 'DINNER', label: 'Gala Dinner at Sea', icon: '🥂', desc: 'Starlight seating & five-course pairing' },
+  { id: 'PUBLIC_TOUR', label: 'Public Tour Ticket', icon: '🎫', desc: 'Individual seats & scheduled departures' },
 ];
 
 const DESTINATIONS = [
-  'All Global Destinations',
-  'Caribbean Paradise',
-  'Greek Isles & Mediterranean',
-  'Norwegian Fjords & Arctic',
-  'French Riviera & Monaco',
-  'South Pacific & Tahiti',
-  'Alaska Glacier Bay',
+  'All Indian Coastal Destinations',
+  'Mumbai & Arabian Sea',
+  'Goa Coastal & Mormugao',
+  'Lakshadweep Archipelago',
+  'Kochi & Malabar Coast',
+  'Andaman & Nicobar Islands',
 ];
 
 export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }) => {
   const [selectedPurpose, setSelectedPurpose] = useState('LUXURY_CRUISE');
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState('');
-  const [guests, setGuests] = useState<number>(2);
+  const [guests, setGuests] = useState<number>(20);
   const [budget, setBudget] = useState('ANY');
   const [duration, setDuration] = useState('ANY');
 
@@ -45,7 +44,7 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
     e.preventDefault();
     onSearch({
       purpose: selectedPurpose,
-      destination: destination === 'All Global Destinations' ? '' : destination,
+      destination: destination === 'All Indian Coastal Destinations' ? '' : destination,
       departureDate,
       guests,
       budget,
@@ -64,14 +63,14 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-300 text-sky-800 text-xs font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-            Signature Requirement Matcher
+            Vessel Requirement Matching Engine
           </div>
-          <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
             What are you planning at sea?
           </h2>
         </div>
-        <p className="text-slate-500 text-sm max-w-xs md:text-right">
-          Match your maritime voyage or event to the optimal luxury vessel and deck tier.
+        <p className="text-slate-500 text-xs sm:text-sm max-w-xs md:text-right">
+          Match your maritime voyage, public cruise tour, or private event to verified vessels in our Indian fleet.
         </p>
       </div>
 
@@ -123,7 +122,7 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
               onChange={(e) => setDestination(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-400 transition"
             >
-              <option value="">Any Destination</option>
+              <option value="">Any Port / Destination</option>
               {DESTINATIONS.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -155,18 +154,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
             <input
               type="number"
               min="1"
-              max="2500"
+              max="500"
               value={guests}
               onChange={(e) => setGuests(parseInt(e.target.value) || 1)}
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-400 transition"
             />
           </div>
 
-          {/* Budget */}
+          {/* Budget in INR (₹) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-sky-600" />
-              Budget?
+              <span className="font-bold text-sky-600">₹</span>
+              Budget (INR)?
             </label>
             <select
               value={budget}
@@ -174,9 +173,9 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-400 transition"
             >
               <option value="ANY">Any Budget</option>
-              <option value="VALUE">Under $250 / day</option>
-              <option value="PREMIUM">$250 - $450 / day</option>
-              <option value="ULTRA">Ultra Luxury ($450+ / day)</option>
+              <option value="VALUE">Under ₹50,000</option>
+              <option value="PREMIUM">₹50,000 - ₹1,00,000</option>
+              <option value="ULTRA">Ultra Luxury (₹1,00,000+)</option>
             </select>
           </div>
 
@@ -191,10 +190,10 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
               onChange={(e) => setDuration(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-400 transition"
             >
-              <option value="ANY">Any Length</option>
+              <option value="ANY">Any Duration</option>
               <option value="SHORT">1 - 3 Days (Weekend / Event)</option>
-              <option value="MEDIUM">4 - 7 Days (Island Voyage)</option>
-              <option value="LONG">8+ Days (Grand Oceanic)</option>
+              <option value="MEDIUM">4 - 5 Days (Coastal Voyage)</option>
+              <option value="LONG">6+ Days (Island Hopper)</option>
             </select>
           </div>
         </div>

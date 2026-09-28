@@ -4,6 +4,7 @@ import { createBooking } from '../api/bookings';
 import { useAuth } from '../context/AuthContext';
 import { Booking } from '../api/types';
 import confetti from 'canvas-confetti';
+import { formatINR } from '../utils/currency';
 import {
   Sparkles,
   Anchor,
@@ -58,10 +59,10 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
   const selectedPackage = data?.packages.find((p) => p.id === selectedPackageId);
   const selectedShip = data?.charter_ships.find((s) => s.id === selectedShipId);
 
-  const shipRate = selectedShip ? parseFloat(selectedShip.price) : 300;
-  const packageBase = selectedPackage ? selectedPackage.base_fee : 3500;
-  const perGuest = selectedPackage ? selectedPackage.per_guest_fee : 120;
-  const estimatedTotal = Math.round(packageBase + perGuest * guestCount + shipRate * 1.5);
+  const shipRate = selectedShip ? parseFloat(selectedShip.price) : 65000;
+  const packageBase = selectedPackage ? selectedPackage.base_fee : 28000;
+  const perGuest = selectedPackage ? selectedPackage.per_guest_fee : 950;
+  const estimatedTotal = Math.round(packageBase + perGuest * guestCount + shipRate);
 
   const handleBookEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,13 +160,13 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
 
                 <div className="my-5 pt-4 border-t border-slate-100">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-display font-black text-slate-900">
-                      ${pkg.base_fee.toLocaleString()}
+                    <span className="text-3xl font-display font-black text-slate-900 font-serif">
+                      {formatINR(pkg.base_fee)}
                     </span>
                     <span className="text-xs text-slate-500 font-medium">base charter</span>
                   </div>
                   <span className="text-xs text-slate-500 block mt-0.5 font-medium">
-                    + ${pkg.per_guest_fee} / attendee
+                    + {formatINR(pkg.per_guest_fee)} / guest
                   </span>
                 </div>
 
@@ -336,8 +337,8 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
               <span className="text-xs text-slate-500 block uppercase font-bold tracking-wider">
                 Total Charter Estimate
               </span>
-              <span className="text-3xl font-display font-black text-amber-600">
-                ${estimatedTotal.toLocaleString()}
+              <span className="text-3xl font-display font-black text-amber-600 font-serif">
+                {formatINR(estimatedTotal)}
               </span>
             </div>
 

@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
 import { ExplorePage } from './pages/ExplorePage';
 import { CruiseDetailPage } from './pages/CruiseDetailPage';
 import { BookTourPage } from './pages/BookTourPage';
+import { ToursPage } from './pages/ToursPage';
+import { TourDetailPage } from './pages/TourDetailPage';
+import { BookPublicTourTicketPage } from './pages/BookPublicTourTicketPage';
 import { PrivateEventsPage } from './pages/PrivateEventsPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { OperatorDashboardPage } from './pages/OperatorDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AuthPage } from './pages/AuthPages';
-import { Cruise, Booking } from './api/types';
+import { Cruise, Booking, PublicTour } from './api/types';
 
 const MainApp: React.FC = () => {
-  const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('home');
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [selectedCruise, setSelectedCruise] = useState<Cruise | null>(null);
+  const [selectedTour, setSelectedTour] = useState<PublicTour | null>(null);
   const [preselectedCabin, setPreselectedCabin] = useState<string>('OCEANVIEW');
-  const [lastCreatedBooking, setLastCreatedBooking] = useState<Booking | null>(null);
 
   // Scroll to top on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentTab, selectedCruise]);
+  }, [currentTab, selectedCruise, selectedTour]);
 
   const handleNavigate = (tab: string, param?: string) => {
     setCurrentTab(tab);
@@ -44,8 +46,17 @@ const MainApp: React.FC = () => {
     setCurrentTab('book-tour');
   };
 
-  const handleBookingSuccess = (booking: Booking) => {
-    setLastCreatedBooking(booking);
+  const handleSelectTour = (tour: PublicTour) => {
+    setSelectedTour(tour);
+    setCurrentTab('tour-detail');
+  };
+
+  const handleBookPublicTour = (tour: PublicTour) => {
+    setSelectedTour(tour);
+    setCurrentTab('book-public-tour');
+  };
+
+  const handleBookingSuccess = (_booking: Booking) => {
     setCurrentTab('dashboard');
   };
 
@@ -61,6 +72,8 @@ const MainApp: React.FC = () => {
             onNavigate={handleNavigate}
             onSelectCruise={handleSelectCruise}
             onBookCruise={handleBookCruise}
+            onSelectTour={handleSelectTour}
+            onBookTour={handleBookPublicTour}
           />
         )}
 
@@ -69,6 +82,30 @@ const MainApp: React.FC = () => {
             initialFilterQuery={filterQuery}
             onSelectCruise={handleSelectCruise}
             onBookCruise={handleBookCruise}
+          />
+        )}
+
+        {currentTab === 'tours' && (
+          <ToursPage
+            onSelectTour={handleSelectTour}
+            onBookTour={handleBookPublicTour}
+          />
+        )}
+
+        {currentTab === 'tour-detail' && selectedTour && (
+          <TourDetailPage
+            tour={selectedTour}
+            onBack={() => setCurrentTab('tours')}
+            onBookTourTicket={(t) => handleBookPublicTour(t)}
+          />
+        )}
+
+        {currentTab === 'book-public-tour' && selectedTour && (
+          <BookPublicTourTicketPage
+            tour={selectedTour}
+            onSuccess={handleBookingSuccess}
+            onCancel={() => setCurrentTab('tour-detail')}
+            onNeedLogin={() => setCurrentTab('login')}
           />
         )}
 

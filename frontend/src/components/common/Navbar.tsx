@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship } from 'lucide-react';
+import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
@@ -77,6 +77,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
             >
               <Compass className="w-4 h-4 text-sky-600" />
               Explore Ships
+            </button>
+            <button
+              onClick={() => onNavigate('tours')}
+              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                currentTab === 'tours'
+                  ? 'text-sky-700 bg-sky-50 border border-sky-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Waves className="w-4 h-4 text-sky-600" />
+              Public Tours
             </button>
             <button
               onClick={() => onNavigate('events')}
@@ -236,6 +247,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
             >
               <Compass className="w-4 h-4 text-sky-600" />
               Explore Ships
+            </button>
+            <button
+              onClick={() => {
+                onNavigate('tours');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-lg text-slate-700 hover:bg-sky-50 flex items-center gap-2 font-medium"
+            >
+              <Waves className="w-4 h-4 text-sky-600" />
+              Public Tours
             </button>
             <button
               onClick={() => {

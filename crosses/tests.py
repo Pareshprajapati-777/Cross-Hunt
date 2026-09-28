@@ -31,7 +31,7 @@ class CrossesTests(TestCase):
         self.cross = Cross.objects.create(
             owner=self.owner,
             name='Test Cross Arena',
-            category='Sports Cross Arena',
+            category='Luxury Ocean Cruise',
             location='Metro Central',
             address='100 Metro Way',
             price=Decimal('50.00'),
@@ -46,7 +46,7 @@ class CrossesTests(TestCase):
         self.client.login(username='crossowner', password='OwnerPassword@123')
         response = self.client.post(reverse('cross_create'), {
             'name': 'New Sunset Hall',
-            'category': 'Community Hall',
+            'category': 'Scenic Coastal Cruise',
             'location': 'Westside',
             'address': '450 Sunset Blvd',
             'price': '65.00',
@@ -64,7 +64,7 @@ class CrossesTests(TestCase):
         self.client.login(username='crossowner', password='OwnerPassword@123')
         response = self.client.post(reverse('cross_update', kwargs={'pk': self.cross.pk}), {
             'name': 'Updated Cross Arena Name',
-            'category': 'Sports Cross Arena',
+            'category': 'Luxury Ocean Cruise',
             'location': 'Metro Central',
             'address': '100 Metro Way',
             'price': '80.00',
@@ -84,7 +84,7 @@ class CrossesTests(TestCase):
         self.client.login(username='otherowner', password='OwnerPassword@123')
         response = self.client.post(reverse('cross_update', kwargs={'pk': self.cross.pk}), {
             'name': 'Hacked Cross Name',
-            'category': 'Sports Cross Arena',
+            'category': 'Luxury Ocean Cruise',
             'location': 'Metro Central',
             'address': '100 Metro Way',
             'price': '1.00',
