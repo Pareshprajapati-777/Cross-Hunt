@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Book {{ cross.name }} - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row g-4">
+        <!-- Left Column: Booking Form -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                <div class="mb-4">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 fw-semibold mb-2">Reservation Form</span>
+                    <h3 class="fw-bold mb-1">Book {{ cross.name }}</h3>
+                    <p class="text-muted small">Select your preferred date and time slot. Backend validates against double bookings.</p>
+                </div>
+
+                <form method="post" novalidate id="booking-creation-form">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger shadow-sm mb-4">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Booking Date <span class="text-danger">*</span></label>
+                        {{ form.booking_date }}
+                        {% if form.booking_date.errors %}
+                            <div class="text-danger small mt-1">{{ form.booking_date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label small fw-semibold">Start Time <span class="text-danger">*</span></label>
+                            {{ form.start_time }}
+                            {% if form.start_time.errors %}
+                                <div class="text-danger small mt-1">{{ form.start_time.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label small fw-semibold">End Time <span class="text-danger">*</span></label>
+                            {{ form.end_time }}
+                            {% if form.end_time.errors %}
+                                <div class="text-danger small mt-1">{{ form.end_time.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Number of Attendees / Guests <span class="text-danger">*</span></label>
+                        {{ form.number_of_people }}
+                        <div class="form-text small">Maximum venue capacity is <strong>{{ cross.capacity }}</strong> people.</div>
+                        {% if form.number_of_people.errors %}
+                            <div class="text-danger small mt-1">{{ form.number_of_people.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Special Requests (Optional)</label>
+                        {{ form.special_request }}
+                        <div class="form-text small">Note any seating configuration, audio equipment, or check-in requirements.</div>
+                    </div>
+
+                    <!-- Live Calculation Card -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Base Rate:</span>
+                            <span class="fw-semibold text-dark" id="cross-base-price" data-price="{{ cross.price }}">${{ cross.price }} / hour</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Estimated Duration:</span>
+                            <span class="fw-semibold text-dark" id="calc-estimated-hours">--</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-5 fw-bold text-primary border-top pt-2 mt-2">
+                            <span>Estimated Total:</span>
+                            <span id="calc-estimated-total">$0.00</span>
+                        </div>
+                        <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                            *Final price is calculated strictly on the backend upon submission.
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg py-3 fw-semibold">
+                            <i class="bi bi-calendar-check me-2"></i> Confirm & Request Booking
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Cross Summary & Slot Notice -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <img src="{{ cross.display_image_url }}" class="rounded-3" style="width: 70px; height: 70px; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ cross.name }}</h5>
+                        <p class="text-muted small mb-0"><i class="bi bi-geo-alt text-danger me-1"></i>{{ cross.location }}</p>
+                    </div>
+                </div>
+
+                <div class="small border-top pt-3 space-y-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Max Capacity:</span>
+                        <strong>{{ cross.capacity }} Attendees</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Category:</span>
+                        <strong>{{ cross.category }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Owner:</span>
+                        <strong>{{ cross.owner.get_full_name|default:cross.owner.username }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Cancellation:</span>
+                        <strong class="text-success">Refundable &bull; Flexible</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Bookings / Reserved Slots Notice -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h6 class="fw-bold mb-2"><i class="bi bi-clock-history text-warning me-1"></i> Upcoming Reserved Slots</h6>
+                <p class="text-muted small mb-3">The following times are already booked and cannot be double-booked:</p>
+
+                {% if booked_slots %}
+                    <ul class="list-group list-group-flush small">
+                        {% for b in booked_slots %}
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-calendar3 me-1 text-primary"></i> {{ b.booking_date|date:"M d, Y" }}</span>
+                                <span class="badge bg-secondary bg-opacity-25 text-dark">
+                                    {{ b.start_time|time:"H:i" }} &ndash; {{ b.end_time|time:"H:i" }}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small mb-0"><i class="bi bi-check-circle text-success me-1"></i> All upcoming slots currently open for reservations.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

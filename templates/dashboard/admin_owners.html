@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Owners - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Manage Cross Owners</h2>
+            <p class="text-muted small mb-0">Approve, inspect, and verify Cross Property Owner accounts.</p>
+        </div>
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Search owners by username, email, name...">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                {% if q %}
+                    <a href="{% url 'admin_owners' %}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Owners Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 table-hover small">
+                <thead class="table-light text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">Owner Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Listed Crosses</th>
+                        <th>Joined</th>
+                        <th>Approval Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in owners %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ o.username }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ o.get_full_name }}</div>
+                            </td>
+                            <td>{{ o.email }}</td>
+                            <td>{{ o.phone|default:"N/A" }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ o.cross_count }} Crosses</span></td>
+                            <td>{{ o.date_joined|date:"M d, Y" }}</td>
+                            <td>
+                                {% if o.is_approved_owner %}
+                                    <span class="badge bg-success bg-opacity-15 text-success">Approved</span>
+                                {% else %}
+                                    <span class="badge bg-warning bg-opacity-15 text-warning">Pending Approval</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'admin_owner_toggle_approval' o.id %}" class="btn btn-sm {% if o.is_approved_owner %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                                    {% if o.is_approved_owner %}Revoke Approval{% else %}Approve Owner{% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No owners found matching query.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

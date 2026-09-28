@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Users - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Manage Regular Users (Customers)</h2>
+            <p class="text-muted small mb-0">Search, inspect, and toggle active status for registered customer accounts.</p>
+        </div>
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search bar -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Search by username, email, or name...">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                {% if q %}
+                    <a href="{% url 'admin_users' %}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 table-hover small">
+                <thead class="table-light text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">User</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Joined</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ u.username }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ u.get_full_name }}</div>
+                            </td>
+                            <td>{{ u.email }}</td>
+                            <td>{{ u.phone|default:"N/A" }}</td>
+                            <td>{{ u.date_joined|date:"M d, Y" }}</td>
+                            <td>
+                                {% if u.is_active %}
+                                    <span class="badge bg-success bg-opacity-15 text-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger bg-opacity-15 text-danger">Deactivated</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'admin_user_toggle' u.id %}" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" title="Toggle Active">
+                                    {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No users found matching query.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

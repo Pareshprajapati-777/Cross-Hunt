@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Support - Cross Booking Management System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 fw-semibold mb-2">Get In Touch</span>
+                <h2 class="fw-bold">Contact Our Support Team</h2>
+                <p class="text-muted">Have inquiries regarding Cross venues, owner verification, or booking policies? Reach out to us.</p>
+            </div>
+
+            <div class="card p-4 p-md-5 border-0 shadow-sm rounded-4 bg-white">
+                <form onsubmit="event.preventDefault(); alert('Thank you for reaching out! In this demo environment, your message has been received by support.'); this.reset();">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Full Name</label>
+                            <input type="text" class="form-control" placeholder="John Doe" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Email Address</label>
+                            <input type="email" class="form-control" placeholder="john@example.com" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Subject</label>
+                            <input type="text" class="form-control" placeholder="Inquiry about Cross Venue Booking" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Message</label>
+                            <textarea class="form-control" rows="5" placeholder="Write your message here..." required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary px-4 py-2">
+                                <i class="bi bi-send me-1"></i> Send Message
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

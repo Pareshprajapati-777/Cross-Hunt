@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Crosses - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Manage All Cross Properties</h2>
+            <p class="text-muted small mb-0">Platform-wide overview of listings, active states, and moderation controls.</p>
+        </div>
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Search by cross name, location, or owner username...">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                {% if q %}
+                    <a href="{% url 'admin_crosses' %}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Crosses Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 table-hover small">
+                <thead class="table-light text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">Cross Property</th>
+                        <th>Owner</th>
+                        <th>Location</th>
+                        <th>Rate</th>
+                        <th>Capacity</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Admin Moderation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in crosses %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ c.display_image_url }}" class="rounded-2" style="width: 44px; height: 44px; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                                    <div>
+                                        <a href="{% url 'cross_detail' c.slug %}" class="fw-bold text-dark text-decoration-none">
+                                            {{ c.name }}
+                                        </a>
+                                        <div class="text-muted" style="font-size: 0.75rem;">{{ c.category }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ c.owner.username }}</td>
+                            <td>{{ c.location }}</td>
+                            <td class="fw-bold text-primary">${{ c.price }}/hr</td>
+                            <td>{{ c.capacity }} pax</td>
+                            <td>
+                                {% if c.is_active %}
+                                    <span class="badge bg-success bg-opacity-15 text-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-15 text-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="d-inline-flex gap-1">
+                                    <a href="{% url 'admin_cross_toggle' c.id %}" class="btn btn-sm {% if c.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="Toggle active status">
+                                        <i class="bi bi-power"></i>
+                                    </a>
+                                    <a href="{% url 'cross_update' c.pk %}" class="btn btn-sm btn-outline-primary" title="Edit listing">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" action="{% url 'admin_cross_delete' c.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently delete this Cross property?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete listing">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No cross listings found matching query.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Leave a Review - {{ booking.cross.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                <div class="text-center mb-4">
+                    <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 px-3 py-1 rounded-pill mb-2">
+                        <i class="bi bi-star-fill me-1"></i> Verified Experience
+                    </span>
+                    <h3 class="fw-bold mb-1">Review Your Experience</h3>
+                    <p class="text-muted small">Share your thoughts on your booking at <strong>{{ booking.cross.name }}</strong></p>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 mb-4 small border">
+                    <div><strong>Booking ID:</strong> {{ booking.booking_id }}</div>
+                    <div><strong>Completed On:</strong> {{ booking.booking_date|date:"F d, Y" }}</div>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Rating (1 to 5 Stars) <span class="text-danger">*</span></label>
+                        {{ form.rating }}
+                        {% if form.rating.errors %}
+                            <div class="text-danger small mt-1">{{ form.rating.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Review Comments <span class="text-danger">*</span></label>
+                        {{ form.comment }}
+                        {% if form.comment.errors %}
+                            <div class="text-danger small mt-1">{{ form.comment.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                            <i class="bi bi-send me-1"></i> Submit Review
+                        </button>
+                        <a href="{% url 'booking_detail' booking.booking_id %}" class="btn btn-outline-secondary px-3 py-2">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

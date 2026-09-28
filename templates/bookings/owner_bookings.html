@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Incoming Reservations - Cross Owner Portal{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Incoming Cross Bookings</h2>
+            <p class="text-muted small mb-0">Accept, reject, or mark completion for customer reservations across your Crosses.</p>
+        </div>
+        <div>
+            <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-speedometer2 me-1"></i> Owner Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="mb-4">
+        <ul class="nav nav-pills small">
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == 'all' %}active{% endif %}" href="?status=all">All (Incoming)</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == 'pending' %}active{% endif %}" href="?status=pending">Pending Review</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == 'confirmed' %}active{% endif %}" href="?status=confirmed">Confirmed</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == 'completed' %}active{% endif %}" href="?status=completed">Completed</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == 'cancelled' %}active{% endif %}" href="?status=cancelled">Cancelled</a>
+            </li>
+        </ul>
+    </div>
+
+    {% if bookings %}
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 table-hover">
+                    <thead class="table-light small text-uppercase text-muted">
+                        <tr>
+                            <th scope="col" class="ps-4">Booking Ref</th>
+                            <th scope="col">Cross Venue</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col">Date & Time</th>
+                            <th scope="col">Attendees</th>
+                            <th scope="col">Earnings</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-end pe-4">Owner Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bookings %}
+                            <tr>
+                                <td class="ps-4">
+                                    <a href="{% url 'booking_detail' b.booking_id %}" class="fw-bold text-decoration-none">
+                                        {{ b.booking_id }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold text-dark small d-block">{{ b.cross.name }}</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">${{ b.base_price }}/hr</span>
+                                </td>
+                                <td>
+                                    <div class="small fw-semibold">{{ b.user.get_full_name|default:b.user.username }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">{{ b.user.email }}</div>
+                                </td>
+                                <td>
+                                    <div class="small fw-semibold">{{ b.booking_date|date:"M d, Y" }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">{{ b.start_time|time:"H:i" }} &ndash; {{ b.end_time|time:"H:i" }}</div>
+                                </td>
+                                <td class="small">{{ b.number_of_people }} pax</td>
+                                <td class="fw-bold text-success">${{ b.total_price }}</td>
+                                <td>
+                                    <span class="badge badge-status-{{ b.status }}">
+                                        {{ b.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-inline-flex gap-1">
+                                        <a href="{% url 'booking_detail' b.booking_id %}" class="btn btn-sm btn-outline-primary" title="View details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        {% if b.status == 'PENDING' %}
+                                            <form method="post" action="{% url 'owner_booking_action' b.booking_id 'confirm' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-success" title="Accept Booking">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{% url 'owner_booking_action' b.booking_id 'reject' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject Booking">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </form>
+                                        {% elif b.status == 'CONFIRMED' %}
+                                            <form method="post" action="{% url 'owner_booking_action' b.booking_id 'complete' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-info text-white" title="Mark as Completed">
+                                                    <i class="bi bi-check2-all"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5 bg-white rounded-4 border">
+            <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+            <h5>No Bookings in this Category</h5>
+            <p class="text-muted small">New bookings will appear here as soon as customers reserve your Cross spaces.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

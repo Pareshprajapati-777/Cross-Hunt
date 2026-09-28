@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}About Us - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row align-items-center mb-5">
+        <div class="col-lg-7">
+            <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 fw-semibold">About The Project</span>
+            <h1 class="fw-bold display-6 mb-3">About Cross Hunt Platform</h1>
+            <p class="lead text-muted">
+                A robust, college-final-year and production-ready web application engineered to solve real-world scheduling, double-booking conflicts, and facility management for Cross multi-purpose venues.
+            </p>
+            <p class="text-secondary">
+                Whether you manage sports cross-arenas, community centers, conference halls, or studio spaces, our platform bridges customers and verified owners with strict database integrity and automated time-slot verification.
+            </p>
+        </div>
+        <div class="col-lg-5 text-center">
+            <div class="p-4 bg-white rounded-4 border shadow-sm">
+                <i class="bi bi-shield-check text-primary display-3 mb-3"></i>
+                <h5 class="fw-bold">Conflict-Free Guarantees</h5>
+                <p class="small text-muted mb-0">Engineered with atomic database queries and strict slot overlap algorithms.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card h-100 p-4 border rounded-3 shadow-sm bg-white">
+                <i class="bi bi-person-badge text-primary fs-2 mb-2"></i>
+                <h5 class="fw-bold">Role-Based Architecture</h5>
+                <p class="small text-muted">Separate secure dashboards for Customers, Cross Owners, and System Administrators.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 p-4 border rounded-3 shadow-sm bg-white">
+                <i class="bi bi-currency-dollar text-success fs-2 mb-2"></i>
+                <h5 class="fw-bold">Server-Calculated Billing</h5>
+                <p class="small text-muted">Hourly pricing and duration calculations are carried out purely on backend logic.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 p-4 border rounded-3 shadow-sm bg-white">
+                <i class="bi bi-images text-info fs-2 mb-2"></i>
+                <h5 class="fw-bold">Dual Image Provisioning</h5>
+                <p class="small text-muted">Supports local high-resolution uploads and external image links with graceful fallback.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

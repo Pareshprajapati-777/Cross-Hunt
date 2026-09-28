@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Explore Cross Properties - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Breadcrumb & Title -->
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Explore Cross Properties</h2>
+        <p class="text-muted small">Find and reserve the ideal space for events, sports, community gatherings, and workshops.</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Sidebar Filter Form -->
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white sticky-top" style="top: 85px; z-index: 10;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-funnel me-1 text-primary"></i> Filters</h5>
+                    <a href="{% url 'cross_list' %}" class="small text-decoration-none text-muted">Reset All</a>
+                </div>
+
+                <form method="get" action="{% url 'cross_list' %}">
+                    <!-- Search keyword -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Keywords / Name</label>
+                        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="e.g. Arena, Bay Hall">
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select name="category" class="form-select form-select-sm">
+                            <option value="">All Categories</option>
+                            {% for cat_val, cat_label in categories %}
+                                <option value="{{ cat_val }}" {% if category == cat_val %}selected{% endif %}>{{ cat_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Location / Area</label>
+                        <input type="text" name="location" value="{{ location }}" class="form-control form-control-sm" placeholder="e.g. Downtown, Uptown">
+                    </div>
+
+                    <!-- Price Range -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Price Range ($/hr)</label>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <input type="number" name="min_price" value="{{ min_price }}" class="form-control form-control-sm" placeholder="Min">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" name="max_price" value="{{ max_price }}" class="form-control form-control-sm" placeholder="Max">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Min Capacity (People)</label>
+                        <input type="number" name="capacity" value="{{ capacity }}" class="form-control form-control-sm" placeholder="e.g. 50">
+                    </div>
+
+                    <!-- Sorting -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Sort By</label>
+                        <select name="sort_by" class="form-select form-select-sm">
+                            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                            <option value="price_low" {% if sort_by == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                            <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                            <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Highest Rated</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm w-100 py-2 fw-semibold">
+                        <i class="bi bi-filter me-1"></i> Apply Filters
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Crosses Grid -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="small text-muted">Showing <strong>{{ total_results }}</strong> Cross properties</span>
+            </div>
+
+            {% if crosses %}
+                <div class="row g-4">
+                    {% for cross in crosses %}
+                        <div class="col-md-6 col-xl-4">
+                            <div class="cross-card">
+                                <div class="cross-img-wrap">
+                                    <img src="{{ cross.display_image_url }}" alt="{{ cross.name }}" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                                    <span class="cross-category-badge">{{ cross.category }}</span>
+                                    <span class="cross-price-tag">${{ cross.price }}<small class="fw-normal">/hr</small></span>
+                                </div>
+                                <div class="cross-card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="small text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ cross.location }}</span>
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small">
+                                            Available
+                                        </span>
+                                    </div>
+                                    <h5 class="fw-bold mb-2">
+                                        <a href="{% url 'cross_detail' cross.slug %}" class="text-decoration-none text-dark">{{ cross.name }}</a>
+                                    </h5>
+                                    <p class="text-muted small mb-3 flex-grow-1">
+                                        {{ cross.description|truncatewords:15 }}
+                                    </p>
+
+                                    <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2 mb-3">
+                                        <span><i class="bi bi-people-fill me-1"></i> Max {{ cross.capacity }}</span>
+                                        <span>
+                                            <i class="bi bi-star-fill text-warning me-1"></i> 
+                                            <strong>{{ cross.average_rating }}</strong> 
+                                            <span class="text-muted">({{ cross.review_count }})</span>
+                                        </span>
+                                    </div>
+
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <a href="{% url 'cross_detail' cross.slug %}" class="btn btn-outline-secondary w-100 btn-sm">
+                                                Details
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{% url 'booking_create' cross.slug %}" class="btn btn-primary w-100 btn-sm">
+                                                Book
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav class="mt-5" aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&location={{ location }}&category={{ category }}&min_price={{ min_price }}&max_price={{ max_price }}&capacity={{ capacity }}&sort_by={{ sort_by }}">Previous</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}&q={{ q }}&location={{ location }}&category={{ category }}&min_price={{ min_price }}&max_price={{ max_price }}&capacity={{ capacity }}&sort_by={{ sort_by }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&location={{ location }}&category={{ category }}&min_price={{ min_price }}&max_price={{ max_price }}&capacity={{ capacity }}&sort_by={{ sort_by }}">Next</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="text-center py-5 bg-white rounded-4 border">
+                    <i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>
+                    <h5>No Cross Properties Matched Your Criteria</h5>
+                    <p class="text-muted small">Try broadening your search term or adjusting filters.</p>
+                    <a href="{% url 'cross_list' %}" class="btn btn-outline-primary btn-sm mt-2">Clear All Filters</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-1 rounded-pill mb-2">
+                <i class="bi bi-shield-lock-fill me-1"></i> System Administration
+            </span>
+            <h2 class="fw-bold mb-1">Platform Admin Dashboard</h2>
+            <p class="text-muted small mb-0">Full administrative visibility and governance across users, owners, crosses, and bookings.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'admin_users' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-people me-1"></i> Users
+            </a>
+            <a href="{% url 'admin_owners' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-person-badge me-1"></i> Owners
+            </a>
+            <a href="{% url 'admin_crosses' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-building me-1"></i> Crosses
+            </a>
+            <a href="{% url 'admin_bookings' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-calendar-check me-1"></i> Bookings
+            </a>
+            <a href="/admin/" target="_blank" class="btn btn-dark btn-sm">
+                <i class="bi bi-gear-fill me-1"></i> Django Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Platform Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-primary">{{ total_users }}</div>
+                    <div class="stat-label">Customers</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-info">{{ total_owners }}</div>
+                    <div class="stat-label">Cross Owners</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-dark">{{ total_crosses }} <small class="fs-6 text-muted">({{ active_crosses }})</small></div>
+                    <div class="stat-label">Total (Active)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-warning">{{ pending_bookings }}</div>
+                    <div class="stat-label">Pending Req</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-success">{{ confirmed_bookings }}</div>
+                    <div class="stat-label">Confirmed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="stat-widget">
+                <div>
+                    <div class="stat-val text-success">${{ total_revenue }}</div>
+                    <div class="stat-label">Gross Revenue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Recent Bookings Table -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i> Latest Platform Bookings</h5>
+                    <a href="{% url 'admin_bookings' %}" class="small text-decoration-none">Manage All Bookings</a>
+                </div>
+
+                {% if recent_bookings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small mb-0">
+                            <thead class="table-light text-muted">
+                                <tr>
+                                    <th>Ref</th>
+                                    <th>User</th>
+                                    <th>Cross Property</th>
+                                    <th>Date</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in recent_bookings %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'booking_detail' b.booking_id %}" class="fw-bold text-decoration-none">
+                                                {{ b.booking_id }}
+                                            </a>
+                                        </td>
+                                        <td>{{ b.user.username }}</td>
+                                        <td>{{ b.cross.name }}</td>
+                                        <td>{{ b.booking_date|date:"M d, Y" }}</td>
+                                        <td class="fw-bold text-dark">${{ b.total_price }}</td>
+                                        <td>
+                                            <span class="badge badge-status-{{ b.status }}">
+                                                {{ b.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted small py-4 text-center mb-0">No bookings recorded in database yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Registered Accounts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i> Recent Users</h5>
+                    <a href="{% url 'admin_users' %}" class="small text-decoration-none">View All</a>
+                </div>
+
+                {% if recent_users %}
+                    <div class="space-y-3">
+                        {% for u in recent_users %}
+                            <div class="d-flex align-items-center justify-content-between p-2 border rounded-3 mb-2 bg-light">
+                                <div>
+                                    <div class="fw-bold small text-dark">{{ u.username }}</div>
+                                    <span class="text-muted" style="font-size: 0.75rem;">{{ u.email }}</span>
+                                </div>
+                                <span class="badge bg-secondary small">
+                                    {{ u.get_role_display }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small py-4 text-center mb-0">No users found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

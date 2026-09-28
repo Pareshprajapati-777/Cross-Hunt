@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Booking Successful - {{ booking.booking_id }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-lg rounded-4 p-4 p-md-5 bg-white text-center">
+                <!-- Success icon -->
+                <div class="rounded-circle bg-success bg-opacity-10 text-success mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-check2-circle display-4"></i>
+                </div>
+
+                <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-3 py-1 rounded-pill mb-2">
+                    Reservation Received
+                </span>
+                <h2 class="fw-bold mb-1">Booking Successful!</h2>
+                <p class="text-muted small mb-4">Your Cross booking has been created and registered in the system database.</p>
+
+                <!-- Booking Summary Card -->
+                <div class="card bg-light border p-4 rounded-3 text-start mb-4">
+                    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+                        <div>
+                            <span class="text-muted small text-uppercase">Booking Reference</span>
+                            <h5 class="fw-bold text-primary mb-0">{{ booking.booking_id }}</h5>
+                        </div>
+                        <span class="badge badge-status-{{ booking.status }} px-3 py-2 fs-6">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="row g-3 small">
+                        <div class="col-6">
+                            <span class="text-muted d-block">Cross Venue:</span>
+                            <strong class="fs-6 text-dark">{{ booking.cross.name }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Customer Name:</span>
+                            <strong class="fs-6 text-dark">{{ booking.user.get_full_name|default:booking.user.username }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Booking Date:</span>
+                            <strong>{{ booking.booking_date|date:"l, F d, Y" }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Slot Time:</span>
+                            <strong>{{ booking.start_time|time:"H:i" }} &ndash; {{ booking.end_time|time:"H:i" }} ({{ booking.duration_hours }} hrs)</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Attendees:</span>
+                            <strong>{{ booking.number_of_people }} People</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Total Calculated Price:</span>
+                            <strong class="text-primary fs-5">${{ booking.total_price }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a href="{% url 'booking_printable' booking.booking_id %}" class="btn btn-outline-primary px-4" target="_blank">
+                        <i class="bi bi-printer me-1"></i> Print Confirmation Ticket
+                    </a>
+                    <a href="{% url 'booking_detail' booking.booking_id %}" class="btn btn-secondary px-4">
+                        <i class="bi bi-eye me-1"></i> View Booking Details
+                    </a>
+                    <a href="{% url 'my_bookings' %}" class="btn btn-primary px-4">
+                        <i class="bi bi-calendar-check me-1"></i> Go to My Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

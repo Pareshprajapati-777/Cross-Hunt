@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Account Login - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-0 shadow-lg rounded-4 p-4 p-md-4 bg-white">
+                <div class="text-center mb-4">
+                    <img src="{% static 'images/logo_icon.png' %}" alt="Cross Hunt Logo" class="rounded-circle shadow-sm mb-3" style="width: 70px; height: 70px; object-fit: cover; border: 3px solid #e2e8f0;">
+                    <h3 class="fw-bold">Welcome to Cross Hunt</h3>
+                    <p class="text-muted small">Enter your credentials to access your dashboard</p>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Username or Email</label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Password</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            {{ form.remember_me }}
+                            <label class="form-check-label small text-muted" for="{{ form.remember_me.id_for_label }}">
+                                Remember me
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Log In
+                    </button>
+                </form>
+
+                <div class="text-center mt-4 pt-3 border-top">
+                    <p class="text-muted small mb-0">
+                        Don't have an account yet? 
+                        <a href="{% url 'register' %}" class="text-primary fw-semibold text-decoration-none">Create Account</a>
+                    </p>
+                </div>
+
+                <!-- Demo Credentials helper box -->
+                <div class="mt-4 p-3 bg-light rounded-3 border small">
+                    <div class="fw-bold text-dark mb-1"><i class="bi bi-info-circle me-1 text-primary"></i> Quick Demo Logins:</div>
+                    <ul class="list-unstyled mb-0 text-muted" style="font-size: 0.82rem;">
+                        <li><strong>Admin:</strong> admin / Admin@12345</li>
+                        <li><strong>Cross Owner:</strong> owner1 / Owner@12345</li>
+                        <li><strong>User:</strong> user1 / User@12345</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

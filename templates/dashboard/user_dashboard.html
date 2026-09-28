@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}User Dashboard - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Welcome, {{ user.first_name|default:user.username }}!</h2>
+            <p class="text-muted small mb-0">Here is a summary of your Cross bookings and upcoming reservations.</p>
+        </div>
+        <div>
+            <a href="{% url 'cross_list' %}" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i> Discover New Cross
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Metrics Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-widget">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-bookmark-check"></i>
+                </div>
+                <div>
+                    <div class="stat-val">{{ total_bookings }}</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-widget">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <div class="stat-val">{{ upcoming_count }}</div>
+                    <div class="stat-label">Upcoming Slots</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-widget">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-val">{{ completed_count }}</div>
+                    <div class="stat-label">Completed Bookings</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-widget">
+                <div class="stat-icon bg-secondary bg-opacity-10 text-secondary">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-val">{{ cancelled_count }}</div>
+                    <div class="stat-label">Cancelled Bookings</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Upcoming Bookings Card -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2 text-primary"></i> Next Upcoming Slot</h5>
+                    <a href="{% url 'my_bookings' %}" class="small text-decoration-none">View All</a>
+                </div>
+
+                {% if upcoming_bookings %}
+                    {% for b in upcoming_bookings %}
+                        <div class="border rounded-3 p-3 mb-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">{{ b.cross.name }}</h6>
+                                    <span class="text-muted small"><i class="bi bi-geo-alt text-danger me-1"></i>{{ b.cross.location }}</span>
+                                </div>
+                                <span class="badge badge-status-{{ b.status }} small">
+                                    {{ b.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-calendar3 me-1"></i> {{ b.booking_date|date:"l, M d, Y" }} &bull; {{ b.start_time|time:"H:i" }} &ndash; {{ b.end_time|time:"H:i" }}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="fw-bold text-primary">${{ b.total_price }}</span>
+                                <a href="{% url 'booking_detail' b.booking_id %}" class="btn btn-outline-primary btn-sm py-1 px-3">
+                                    Manage
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-calendar2-minus fs-1 d-block mb-2"></i>
+                        <p class="small mb-2">No upcoming bookings scheduled.</p>
+                        <a href="{% url 'cross_list' %}" class="btn btn-outline-primary btn-sm">Explore Available Crosses</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Reservations Table -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i> Recent Reservations</h5>
+                    <a href="{% url 'my_bookings' %}" class="small text-decoration-none">Full History</a>
+                </div>
+
+                {% if recent_bookings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small mb-0">
+                            <thead class="table-light text-muted">
+                                <tr>
+                                    <th>Ref</th>
+                                    <th>Cross</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in recent_bookings %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'booking_detail' b.booking_id %}" class="fw-bold text-decoration-none">
+                                                {{ b.booking_id }}
+                                            </a>
+                                        </td>
+                                        <td>{{ b.cross.name }}</td>
+                                        <td>{{ b.booking_date|date:"M d, Y" }}</td>
+                                        <td class="fw-bold text-primary">${{ b.total_price }}</td>
+                                        <td>
+                                            <span class="badge badge-status-{{ b.status }}">
+                                                {{ b.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <p class="small mb-0">No booking history recorded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

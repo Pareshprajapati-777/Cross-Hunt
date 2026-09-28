@@ -1,0 +1,289 @@
+/* ========================================================
+   CROSS BOOKING MANAGEMENT SYSTEM - STYLESHEET
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --primary-color: #0284c7;
+    --primary-hover: #0369a1;
+    --primary-light: #e0f2fe;
+    --secondary-color: #0f172a;
+    --accent-color: #38bdf8;
+    --bg-surface: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 3px rgba(2, 132, 199, 0.05);
+    --shadow-md: 0 4px 12px rgba(2, 132, 199, 0.08);
+    --shadow-lg: 0 10px 25px -5px rgba(2, 132, 199, 0.1);
+    --radius-lg: 1rem;
+    --radius-md: 0.65rem;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-main);
+    background-color: var(--bg-surface);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar */
+.navbar-custom {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    padding: 0.85rem 0;
+}
+
+.navbar-brand {
+    font-weight: 800;
+    font-size: 1.35rem;
+    color: var(--secondary-color) !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navbar-brand .brand-badge {
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+    color: #fff;
+    font-size: 0.95rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    font-weight: 800;
+}
+
+.nav-link {
+    font-weight: 500;
+    color: var(--text-muted) !important;
+    transition: color 0.2s ease;
+    padding: 0.5rem 0.9rem !important;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--primary-color) !important;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1.3rem;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    font-weight: 600;
+    border-radius: var(--radius-md);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+    color: #ffffff;
+    padding: 5rem 0 4.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+    pointer-events: none;
+}
+
+.search-banner-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Cross Cards */
+.cross-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.cross-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: #cbd5e1;
+}
+
+.cross-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.cross-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.cross-card:hover .cross-img-wrap img {
+    transform: scale(1.04);
+}
+
+.cross-price-tag {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    padding: 0.35rem 0.75rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.cross-category-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #1e293b;
+    padding: 0.25rem 0.65rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.cross-card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* Status Badges */
+.badge-status-PENDING {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 600;
+}
+
+.badge-status-CONFIRMED {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    font-weight: 600;
+}
+
+.badge-status-COMPLETED {
+    background-color: #e0f2fe;
+    color: #075985;
+    border: 1px solid #bae6fd;
+    font-weight: 600;
+}
+
+.badge-status-CANCELLED {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
+}
+
+.badge-status-REJECTED {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    font-weight: 600;
+}
+
+/* Dashboard metric cards */
+.stat-widget {
+    background: #ffffff;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-widget .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.stat-widget .stat-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--secondary-color);
+}
+
+.stat-widget .stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Booking confirmation printable receipt */
+@media print {
+    body {
+        background: #ffffff !important;
+    }
+    .no-print, header, footer, .navbar {
+        display: none !important;
+    }
+    .print-only {
+        display: block !important;
+    }
+    .printable-ticket-card {
+        border: 2px solid #000 !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+    }
+}

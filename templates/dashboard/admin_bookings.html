@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Bookings - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">Manage Platform Bookings</h2>
+            <p class="text-muted small mb-0">System-wide reservation monitor, date/status filtering, and administrative cancellations.</p>
+        </div>
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Status Filter</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Date Filter</label>
+                <input type="date" name="date" value="{{ date_filter }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-filter me-1"></i> Apply Filter
+                </button>
+                {% if status_filter != 'all' or date_filter %}
+                    <a href="{% url 'admin_bookings' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Bookings Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 table-hover small">
+                <thead class="table-light text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">Booking Ref</th>
+                        <th>User</th>
+                        <th>Cross Property</th>
+                        <th>Date & Time</th>
+                        <th>Guests</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bookings %}
+                        <tr>
+                            <td class="ps-4">
+                                <a href="{% url 'booking_detail' b.booking_id %}" class="fw-bold text-decoration-none">
+                                    {{ b.booking_id }}
+                                </a>
+                            </td>
+                            <td>
+                                <div>{{ b.user.username }}</div>
+                                <span class="text-muted" style="font-size: 0.75rem;">{{ b.user.email }}</span>
+                            </td>
+                            <td>{{ b.cross.name }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ b.booking_date|date:"M d, Y" }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ b.start_time|time:"H:i" }} &ndash; {{ b.end_time|time:"H:i" }}</div>
+                            </td>
+                            <td>{{ b.number_of_people }} pax</td>
+                            <td class="fw-bold text-primary">${{ b.total_price }}</td>
+                            <td>
+                                <span class="badge badge-status-{{ b.status }}">
+                                    {{ b.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="d-inline-flex gap-1">
+                                    <a href="{% url 'booking_detail' b.booking_id %}" class="btn btn-sm btn-outline-primary" title="View details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if b.status != 'CANCELLED' and b.status != 'COMPLETED' %}
+                                        <form method="post" action="{% url 'admin_booking_cancel' b.booking_id %}" class="d-inline" onsubmit="return confirm('Cancel this booking as administrator?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Admin Cancel">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">No bookings match the selected filters.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

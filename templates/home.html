@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cross Hunt - Book Verified Cross Spaces{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container position-relative">
+        <div class="row align-items-center mb-4">
+            <div class="col-lg-8 mx-auto text-center">
+                <span class="badge bg-primary bg-opacity-25 text-white border border-primary border-opacity-50 px-3 py-2 rounded-pill mb-3 d-inline-flex align-items-center gap-2">
+                    <img src="{% static 'images/logo_icon.png' %}" alt="Cross Hunt" class="rounded-circle" style="width: 22px; height: 22px; object-fit: cover;">
+                    <span>Official Cross Hunt Booking Platform</span>
+                </span>
+                <h1 class="display-5 fw-bold text-white mb-3">
+                    Hunt & Book Multi-Purpose <span class="text-info">Cross Spaces</span>
+                </h1>
+                <p class="lead text-light text-opacity-75 mb-4">
+                    Discover and reserve verified community halls, sports arenas, workshop suites, and crossover facilities in seconds with real-time slot conflict prevention.
+                </p>
+            </div>
+        </div>
+
+        <!-- Search Bar Card -->
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="search-banner-card text-dark">
+                    <form action="{% url 'cross_list' %}" method="get" class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-search me-1"></i> Search Cross / Venue</label>
+                            <input type="text" name="q" class="form-control form-control-lg fs-6" placeholder="e.g. Apex Hall, Arena, Studio">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-geo-alt me-1"></i> Location</label>
+                            <input type="text" name="location" class="form-control form-control-lg fs-6" placeholder="City or District">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-tag me-1"></i> Max Price ($/hr)</label>
+                            <input type="number" name="max_price" class="form-control form-control-lg fs-6" placeholder="e.g. 150">
+                        </div>
+                        <div class="col-md-2 d-grid align-self-end">
+                            <button type="submit" class="btn btn-primary btn-lg fs-6 py-2">
+                                <i class="bi bi-search me-1"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Real Database Statistics Bar -->
+<section class="py-4 bg-white border-bottom shadow-sm">
+    <div class="container">
+        <div class="row text-center g-3">
+            <div class="col-6 col-md-3">
+                <div class="p-2">
+                    <h3 class="fw-bold text-primary mb-0">{{ total_crosses_count }}</h3>
+                    <p class="text-muted small mb-0 fw-medium">Active Cross Properties</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 border-start-md">
+                    <h3 class="fw-bold text-success mb-0">{{ total_bookings_count }}</h3>
+                    <p class="text-muted small mb-0 fw-medium">Total Bookings Recorded</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 border-start-md">
+                    <h3 class="fw-bold text-info mb-0">{{ locations_count }}</h3>
+                    <p class="text-muted small mb-0 fw-medium">Prime Locations Covered</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 border-start-md">
+                    <h3 class="fw-bold text-dark mb-0">{{ happy_users_count }}</h3>
+                    <p class="text-muted small mb-0 fw-medium">Completed Reservations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Crosses Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <span class="text-primary fw-bold text-uppercase small">Available Listings</span>
+                <h2 class="fw-bold text-dark mb-0">Featured Cross Properties</h2>
+            </div>
+            <a href="{% url 'cross_list' %}" class="btn btn-outline-primary btn-sm">
+                View All Crosses <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        {% if featured_crosses %}
+            <div class="row g-4">
+                {% for cross in featured_crosses %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="cross-card">
+                            <div class="cross-img-wrap">
+                                <img src="{{ cross.display_image_url }}" alt="{{ cross.name }}" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                                <span class="cross-category-badge">{{ cross.category }}</span>
+                                <span class="cross-price-tag">${{ cross.price }}<small class="fw-normal">/hr</small></span>
+                            </div>
+                            <div class="cross-card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ cross.location }}</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small">
+                                        <i class="bi bi-check-circle me-1"></i> Available
+                                    </span>
+                                </div>
+                                <h5 class="fw-bold mb-2">
+                                    <a href="{% url 'cross_detail' cross.slug %}" class="text-decoration-none text-dark">{{ cross.name }}</a>
+                                </h5>
+                                <p class="text-muted small mb-3 flex-grow-1">
+                                    {{ cross.description|truncatewords:18 }}
+                                </p>
+                                
+                                <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2 mb-3">
+                                    <span><i class="bi bi-people-fill me-1"></i> Capacity: <strong>{{ cross.capacity }}</strong></span>
+                                    <span>
+                                        <i class="bi bi-star-fill text-warning me-1"></i> 
+                                        <strong>{{ cross.average_rating }}</strong> 
+                                        <span class="text-muted">({{ cross.review_count }})</span>
+                                    </span>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <a href="{% url 'cross_detail' cross.slug %}" class="btn btn-outline-secondary w-100 btn-sm">
+                                            View Details
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <a href="{% url 'booking_create' cross.slug %}" class="btn btn-primary w-100 btn-sm">
+                                            Book Now
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5 bg-white rounded border">
+                <i class="bi bi-building-exclamation fs-1 text-muted mb-3 d-block"></i>
+                <h5>No Cross Properties Found</h5>
+                <p class="text-muted">Be the first to list a Cross property or seed the system with demo venues.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="py-5 bg-light border-top border-bottom">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="text-primary fw-bold text-uppercase small">Simple & Seamless</span>
+            <h2 class="fw-bold">How Cross Hunt Works</h2>
+            <p class="text-muted">Book your desired cross space in three easy steps with real-time verification.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4 text-center rounded-4">
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                        <i class="bi bi-search fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">1. Discover Cross Venue</h5>
+                    <p class="text-muted small">
+                        Browse verified Cross halls, arenas, and studios by location, amenities, capacity, and hourly rates.
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4 text-center rounded-4">
+                    <div class="rounded-circle bg-success bg-opacity-10 text-success mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                        <i class="bi bi-calendar2-check fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">2. Select Slot & Reserve</h5>
+                    <p class="text-muted small">
+                        Pick your preferred date and start/end time. Our engine automatically checks against existing reservations to prevent double-booking.
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4 text-center rounded-4">
+                    <div class="rounded-circle bg-info bg-opacity-10 text-info mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                        <i class="bi bi-qr-code fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">3. Instant Confirmation</h5>
+                    <p class="text-muted small">
+                        Receive your booking ID pass, print your reservation ticket, and coordinate smoothly with the verified Cross property owner.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features / System Strengths -->
+<section class="py-5">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="text-primary fw-bold text-uppercase small">Why Choose Cross Hunt</span>
+                <h2 class="fw-bold mb-4">Built for Reliability, Transparency, and Security</h2>
+                
+                <div class="d-flex gap-3 mb-3">
+                    <div class="text-primary fs-3"><i class="bi bi-shield-lock-fill"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Guaranteed Conflict-Free Booking Engine</h6>
+                        <p class="text-muted small">Strict database transactions prevent two users from booking overlapping time slots at the same Cross.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 mb-3">
+                    <div class="text-primary fs-3"><i class="bi bi-person-check-fill"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Dedicated Multi-Role Dashboards</h6>
+                        <p class="text-muted small">Tailored dashboards for regular customers, Cross property owners, and overall system administrators.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 mb-3">
+                    <div class="text-primary fs-3"><i class="bi bi-cash-stack"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Transparent Backend Price Calculation</h6>
+                        <p class="text-muted small">Hourly rates and exact duration calculated securely on the server with zero client-side tampering.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="bg-dark text-white p-4 p-md-5 rounded-4 shadow-lg position-relative">
+                    <h4 class="fw-bold text-info mb-3">Are You a Cross Property Owner?</h4>
+                    <p class="text-light text-opacity-75 mb-4">
+                        Monetize your community halls, sports crossover arenas, and creative event spaces. Manage bookings, incoming requests, and revenues all from one clean dashboard.
+                    </p>
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg">
+                        List Your Cross Venue Today <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Reviews / Testimonials -->
+{% if recent_reviews %}
+<section class="py-5 bg-white border-top">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="text-primary fw-bold text-uppercase small">Verified Feedback</span>
+            <h2 class="fw-bold">What Our Community Says</h2>
+        </div>
+        <div class="row g-4">
+            {% for review in recent_reviews %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100 border p-3 rounded-3 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-warning">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="bi bi-star-fill"></i>
+                                    {% else %}
+                                        <i class="bi bi-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </span>
+                            <span class="small text-muted">{{ review.created_at|date:"M d, Y" }}</span>
+                        </div>
+                        <p class="small text-muted mb-3 flex-grow-1">"{{ review.comment|truncatewords:20 }}"</p>
+                        <div class="border-top pt-2">
+                            <strong class="d-block small text-dark">{{ review.user.first_name|default:review.user.username }}</strong>
+                            <span class="text-muted" style="font-size: 0.75rem;">Booked: {{ review.cross.name }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Booking Details - {{ booking.booking_id }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-2">
+                    <div>
+                        <span class="text-muted small text-uppercase">Booking Reference</span>
+                        <h3 class="fw-bold mb-0 text-primary">{{ booking.booking_id }}</h3>
+                    </div>
+                    <div>
+                        <span class="badge badge-status-{{ booking.status }} px-3 py-2 fs-6">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Cross Quick Details Header -->
+                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-4">
+                    <img src="{{ booking.cross.display_image_url }}" alt="{{ booking.cross.name }}" class="rounded-3" style="width: 70px; height: 70px; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                    <div>
+                        <h5 class="fw-bold mb-1">
+                            <a href="{% url 'cross_detail' booking.cross.slug %}" class="text-decoration-none text-dark">
+                                {{ booking.cross.name }}
+                            </a>
+                        </h5>
+                        <p class="text-muted small mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ booking.cross.address }}</p>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-calendar-event me-1 text-primary"></i> Reservation Schedule</h6>
+                        <ul class="list-unstyled small space-y-2 mb-0">
+                            <li class="mb-2"><strong>Date:</strong> <span class="text-muted">{{ booking.booking_date|date:"l, F d, Y" }}</span></li>
+                            <li class="mb-2"><strong>Time Slot:</strong> <span class="text-muted">{{ booking.start_time|time:"H:i" }} &ndash; {{ booking.end_time|time:"H:i" }}</span></li>
+                            <li class="mb-2"><strong>Duration:</strong> <span class="text-muted">{{ booking.duration_hours }} hours</span></li>
+                            <li class="mb-2"><strong>Attendees:</strong> <span class="text-muted">{{ booking.number_of_people }} Guests</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="col-md-6 border-start-md">
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-currency-dollar me-1 text-success"></i> Financial Calculation</h6>
+                        <ul class="list-unstyled small space-y-2 mb-0">
+                            <li class="mb-2"><strong>Base Rate:</strong> <span class="text-muted">${{ booking.base_price }}/hr</span></li>
+                            <li class="mb-2"><strong>Duration:</strong> <span class="text-muted">&times; {{ booking.duration_hours }} hrs</span></li>
+                            <li class="mb-2"><strong>Total Amount:</strong> <span class="fs-5 fw-bold text-primary">${{ booking.total_price }}</span></li>
+                            <li class="mb-2"><strong>Payment Method:</strong> <span class="text-muted">Pay at Venue / Confirmed Online</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Customer & Special Requests -->
+                <div class="border-top pt-3 mb-4">
+                    <div class="row g-3 small">
+                        <div class="col-md-6">
+                            <strong>Customer Name:</strong> {{ booking.user.get_full_name|default:booking.user.username }}<br>
+                            <strong>Customer Email:</strong> {{ booking.user.email }}<br>
+                            <strong>Phone:</strong> {{ booking.user.phone|default:"Not specified" }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Special Requests:</strong>
+                            <p class="text-muted mb-0">{{ booking.special_request|default:"None specified." }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if booking.status == 'CANCELLED' and booking.cancellation_reason %}
+                    <div class="alert alert-secondary small mb-4">
+                        <i class="bi bi-info-circle me-1"></i> <strong>Cancellation Reason:</strong> {{ booking.cancellation_reason }}
+                    </div>
+                {% endif %}
+
+                <!-- Actions Row -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-top pt-4">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'booking_printable' booking.booking_id %}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-printer me-1"></i> Print Ticket
+                        </a>
+                        {% if booking.can_be_reviewed and booking.user == user %}
+                            <a href="{% url 'add_review' booking.booking_id %}" class="btn btn-warning btn-sm text-dark">
+                                <i class="bi bi-star me-1"></i> Leave a Review
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <!-- Owner Actions -->
+                        {% if booking.cross.owner == user or user.is_superuser %}
+                            {% if booking.status == 'PENDING' %}
+                                <form method="post" action="{% url 'owner_booking_action' booking.booking_id 'confirm' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="bi bi-check-lg me-1"></i> Accept Booking
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'owner_booking_action' booking.booking_id 'reject' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-x-lg me-1"></i> Reject
+                                    </button>
+                                </form>
+                            {% elif booking.status == 'CONFIRMED' %}
+                                <form method="post" action="{% url 'owner_booking_action' booking.booking_id 'complete' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-info btn-sm text-white">
+                                        <i class="bi bi-check2-all me-1"></i> Mark as Completed
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- Customer Cancellation Button -->
+                        {% if booking.is_cancellable and booking.user == user %}
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                <i class="bi bi-x-circle me-1"></i> Cancel Booking
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Booking Modal -->
+{% if booking.is_cancellable %}
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="cancelModalLabel">Cancel Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'booking_cancel' booking.booking_id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="small text-muted">
+                        Are you sure you want to cancel booking <strong>{{ booking.booking_id }}</strong>? Your reserved slot will be released back to the schedule.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Reason for Cancellation (Optional)</label>
+                        {{ cancel_form.reason }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Keep Booking</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Confirm Cancellation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

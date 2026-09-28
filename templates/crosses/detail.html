@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cross.name }} - Cross Hunt{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'cross_list' %}" class="text-decoration-none">Explore Crosses</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ cross.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <!-- Main Details Column -->
+        <div class="col-lg-8">
+            <!-- Large Image with Fallback -->
+            <div class="rounded-4 overflow-hidden shadow-sm mb-4 bg-dark position-relative" style="max-height: 480px;">
+                <img src="{{ cross.display_image_url }}" alt="{{ cross.name }}" class="w-100" style="object-fit: cover; max-height: 480px;" onerror="this.onerror=null; this.src='/static/images/placeholder.png';">
+                <span class="badge bg-primary position-absolute top-0 start-0 m-3 px-3 py-2 fs-6">
+                    {{ cross.category }}
+                </span>
+            </div>
+
+            <!-- Title & Basic Metadata -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <h2 class="fw-bold mb-1">{{ cross.name }}</h2>
+                        <div class="text-muted small">
+                            <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ cross.location }} &bull; {{ cross.address }}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="fs-3 fw-bold text-primary">${{ cross.price }}</span>
+                        <span class="text-muted small">/ hour</span>
+                    </div>
+                </div>
+
+                <!-- Rating and Key Stats -->
+                <div class="d-flex flex-wrap gap-3 py-3 border-top border-bottom my-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-warning bg-opacity-10 text-warning px-2 py-1 rounded">
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-6">{{ cross.average_rating }} / 5.0</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ cross.review_count }} verified reviews</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 border-start ps-3">
+                        <div class="bg-info bg-opacity-10 text-info px-2 py-1 rounded">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-6">{{ cross.capacity }} People</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Max Guest Capacity</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 border-start ps-3">
+                        <div class="bg-success bg-opacity-10 text-success px-2 py-1 rounded">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-6">Verified Owner</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ cross.owner.get_full_name|default:cross.owner.username }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <h5 class="fw-bold mb-2">About This Cross Space</h5>
+                <p class="text-secondary" style="line-height: 1.7;">
+                    {{ cross.description|linebreaks }}
+                </p>
+            </div>
+
+            <!-- Facilities & Amenities -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <h5 class="fw-bold mb-3"><i class="bi bi-stars text-warning me-2"></i> Facilities & Amenities</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for facility in facilities_list %}
+                        <span class="badge bg-light text-dark border px-3 py-2 fs-6 fw-medium">
+                            <i class="bi bi-check2 text-success me-1"></i> {{ facility }}
+                        </span>
+                    {% empty %}
+                        <p class="text-muted small mb-0">Standard cross venue facilities available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Rules & Cancellation Policy -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-journal-text me-1 text-primary"></i> Venue Rules</h6>
+                        <p class="text-muted small mb-0">{{ cross.rules|linebreaks }}</p>
+                    </div>
+                    <div class="col-md-6 border-start-md">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-arrow-repeat me-1 text-primary"></i> Cancellation Policy</h6>
+                        <p class="text-muted small mb-0">{{ cross.cancellation_policy|linebreaks }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Customer Ratings & Reviews ({{ reviews.count }})</h5>
+                    <div class="text-warning">
+                        <i class="bi bi-star-fill"></i> <strong>{{ cross.average_rating }}</strong> / 5.0
+                    </div>
+                </div>
+
+                {% if reviews %}
+                    <div class="space-y-3">
+                        {% for review in reviews %}
+                            <div class="border rounded-3 p-3 mb-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <strong>{{ review.user.first_name|default:review.user.username }}</strong>
+                                        <span class="text-warning ms-2">
+                                            {% for i in "12345"|make_list %}
+                                                {% if forloop.counter <= review.rating %}
+                                                    <i class="bi bi-star-fill"></i>
+                                                {% else %}
+                                                    <i class="bi bi-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                    <span class="small text-muted">{{ review.created_at|date:"M d, Y" }}</span>
+                                </div>
+                                <p class="text-secondary small mb-0">{{ review.comment }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-chat-square-text fs-2 mb-2 d-block"></i>
+                        <p class="small mb-0">No reviews submitted yet. Book this Cross to leave the first review!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Sticky Booking CTA Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-lg rounded-4 p-4 bg-white sticky-top" style="top: 85px;">
+                <div class="d-flex justify-content-between align-items-baseline mb-3">
+                    <div>
+                        <span class="fs-3 fw-bold text-dark">${{ cross.price }}</span>
+                        <span class="text-muted small">/ hour</span>
+                    </div>
+                    <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2 py-1">
+                        Active & Bookable
+                    </span>
+                </div>
+
+                <div class="alert alert-light border small text-muted mb-4">
+                    <i class="bi bi-shield-lock-fill text-primary me-1"></i>
+                    Double bookings are strictly prohibited. Your chosen slot is guaranteed once confirmed.
+                </div>
+
+                <!-- Quick Booking Button -->
+                {% if user.is_authenticated %}
+                    {% if cross.owner == user %}
+                        <div class="alert alert-warning small mb-3">
+                            <i class="bi bi-info-circle me-1"></i> You are the owner of this Cross listing.
+                        </div>
+                        <a href="{% url 'cross_update' cross.pk %}" class="btn btn-outline-primary w-100 py-2">
+                            <i class="bi bi-pencil-square me-1"></i> Edit This Cross
+                        </a>
+                    {% else %}
+                        <a href="{% url 'booking_create' cross.slug %}" class="btn btn-primary btn-lg w-100 py-3 fw-semibold">
+                            <i class="bi bi-calendar-plus me-1"></i> Proceed to Book Cross
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'login' %}?next={% url 'booking_create' cross.slug %}" class="btn btn-primary btn-lg w-100 py-3 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Book
+                    </a>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">New user? <a href="{% url 'register' %}" class="text-decoration-none">Create free account</a></small>
+                    </div>
+                {% endif %}
+
+                <!-- Owner Summary Box -->
+                <div class="border-top mt-4 pt-3">
+                    <h6 class="fw-bold small mb-2">Hosted by:</h6>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; font-weight: bold;">
+                            {{ cross.owner.username|make_list|first|upper }}
+                        </div>
+                        <div>
+                            <div class="fw-bold small">{{ cross.owner.get_full_name|default:cross.owner.username }}</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Cross Property Partner</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
