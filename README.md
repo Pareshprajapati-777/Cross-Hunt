@@ -1,100 +1,191 @@
-# Cross Hunt — Luxury Cruise Ship & Private Maritime Event Platform
+# 🚢 Cross Hunt — Luxury Cruise & Maritime Event Booking Platform
 
-A high-end, cinematic **Cruise Ship Tour + Travel Ticket + Private Maritime Event Booking Platform** built with a preserved **Python / Django / SQLite** backend and a modern **React + TypeScript + Vite + Three.js** frontend.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-Django-092E20?logo=django&logoColor=white" alt="Python and Django">
+  <img src="https://img.shields.io/badge/React-TypeScript-3178C6?logo=typescript&logoColor=white" alt="React and TypeScript">
+  <img src="https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Three.js-3D%20Experience-black?logo=threedotjs&logoColor=white" alt="Three.js">
+  <img src="https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite&logoColor=white" alt="SQLite">
+</p>
 
----
-
-## 1. Product Definition
-
-**Cross Hunt** is a dedicated maritime vessel reservation platform engineered for two primary booking products:
-
-### A. Cruise Tour / Travel Tickets
-- **Discover Flagship Ships**: Explore liners, expedition vessels, and island hoppers with rich specs (length, decks, passenger capacities).
-- **Global Destinations**: Caribbean Seas, Greek Isles, Norwegian Arctic Fjords, French Riviera, South Pacific, Alaska Glacier Bay.
-- **Day-by-Day Itineraries**: Interactive visual timeline with ports of call and dining/entertainment highlights.
-- **Stateroom & Cabin Tiers**: Select between Presidential Sea Suite (with private veranda & butler), Royal Ocean Balcony, Premium Oceanview, or Deluxe Interior Haven.
-- **Server-Side Financial Accuracy**: Server recalculates rates dynamically based on stateroom tier multipliers, passenger count, and voyage duration.
-- **Digital Maritime Boarding Pass**: Printable ticket pass equipped with tamper-evident cryptographic QR verification hash and terminal security barcode.
-
-### B. Private Maritime Charters & Events
-- **Host Your Moment at Sea**: Private ocean celebrations including Weddings, Milestone Birthdays, Corporate Summits, Board Meetings, Conferences, and Black-Tie Dinner Galas.
-- **Three Curated Packages**:
-  1. *Diamond Horizon (Ultra-Luxury)*: Top-deck charter, 5-course plated dinner, open bar, drone videography, butler team.
-  2. *Emerald Wave (Executive Class)*: Panorama salon, gourmet buffet, live acoustic duo, ambient uplighting.
-  3. *Sapphire Anchor (Signature)*: Sunset terrace, welcome punch bar, charcuterie stations, voyage coordinator.
-- **Vessel Matching**: Capacity-aware charter selection from 10 to 2,400 attendees.
+> 🌊 A cinematic cruise discovery and reservation experience for voyages, premium cabins, private charters, and maritime events.
 
 ---
 
-## 2. Technology Architecture
+## 📌 Overview
 
-### Backend (Preserved Source of Truth)
-- **Framework**: Python 3.10+ / Django 6.0 / Django ORM
-- **Database**: SQLite3 (`db.sqlite3`) with zero external service dependencies
-- **Concurrency & Security**: `select_for_update()` and `transaction.atomic()` anti-double booking locks
-- **CORS & Credentials**: `django-cors-headers` configured for seamless Vite development with session cookies
-- **RESTful API**: Centralized endpoints at `/api/` (Auth, Cruises, Events, Bookings, Dashboards)
+**Cross Hunt** is a full-stack maritime booking platform that combines a Django REST-style backend with a modern React interface. Travelers can explore cruise options and cabin tiers, review itineraries, and manage booking journeys. Event organizers can explore private charter packages for celebrations and corporate gatherings.
 
-### Frontend (Cinematic Luxury React App)
-- **Core**: React 19, TypeScript, Vite 8, Tailwind CSS v4
-- **3D Oceanic Graphics**: Three.js WebGL canvas (`OceanHeroScene.tsx`) featuring real-time undulating ocean waves, stylized floating multi-tier cruise liner geometry, and smooth mouse parallax. Graceful 2D/low-power fallback for mobile.
-- **Aesthetic Surfaces**: Selective liquid glass docks, blurred navigational panels, and high-contrast typography following `DESIGN.md`.
-- **Iconography**: Lucide React
-- **Celebrations**: Canvas Confetti on reservation confirmation
+The frontend emphasizes a premium ocean-inspired visual experience, including a Three.js hero scene, responsive layouts, and motion effects.
 
----
+## ✨ Key Features
 
-## 3. Design System & Product Truth
+### 🚢 Cruise Discovery & Reservations
+- 🌍 Explore destinations including the Caribbean, Greek Isles, Norwegian fjords, the French Riviera, the South Pacific, and Alaska.
+- 🗺️ Review day-by-day voyage itineraries and ports of call.
+- 🛏️ Compare cabin tiers, from interior rooms to premium suites.
+- 💵 Calculate booking prices on the server using the configured cabin, passenger, and voyage-duration rules.
+- 🎫 Generate a printable digital boarding pass with QR-style verification data and a security barcode.
 
-- Detailed design tokens, Emil Kowalski animation timings, typography pairings ('Outfit' + 'Plus Jakarta Sans'), and accessibility guidelines are documented in [`DESIGN.md`](./DESIGN.md).
-- User personas, conversion journeys, anti-double booking rules, and database schema mappings are documented in [`PRODUCT.md`](./PRODUCT.md).
+### 🥂 Private Charters & Events
+- 💍 Explore private events such as weddings, birthdays, corporate meetings, conferences, and gala dinners.
+- 💎 Compare three curated event packages: Diamond Horizon, Emerald Wave, and Sapphire Anchor.
+- 👥 Match charter options to the configured guest-capacity range.
 
----
+### 🧑‍💼 Role-Based Workflows
+- 🧳 Traveler booking journeys
+- ⚓ Cruise operator vessel and reservation management
+- 🛡️ Administrator management and oversight
+- 📊 Dashboard views for operational information
 
-## 4. Default Seed & Test Accounts
+### 🎨 Visual Experience
+- 🌊 Three.js ocean scene with animated waves and a stylized cruise ship
+- 🪟 Selective glass-style panels and polished navigation
+- 📱 Responsive layout with a reduced-complexity fallback for lower-powered devices
+- 🎉 Confetti feedback on reservation confirmation
 
-| Role | Username | Password | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Guest Traveler** | `user1` | `User@12345` | Stateroom bookings, event requests, digital boarding passes |
-| **Cruise Operator** | `owner1` | `Owner@12345` | Fleet liner management, guest reservation approvals |
-| **Cruise Operator** | `owner2` | `Owner@12345` | Additional vessel charters |
-| **Platform Administrator**| `admin` | `Admin@12345` | Complete platform governance, vessel approvals, GMV ledger |
+## 🧱 Technology Stack
 
----
+| Layer | Technologies | Responsibility |
+| --- | --- | --- |
+| 🐍 Backend | Python, Django, Django ORM | Business logic, models, and server-side workflows |
+| 🔌 API | Django endpoints under `/api/` | Authentication, cruises, events, bookings, and dashboards |
+| ⚛️ Frontend | React, TypeScript, Vite | Interactive client interface |
+| 🎨 Styling | Tailwind CSS | Layout and design system |
+| 🌊 3D Graphics | Three.js / WebGL | Ocean-themed hero animation |
+| 🗃️ Database | SQLite | Local development data storage |
+| 🔐 Integration | CORS and session-cookie configuration | Local frontend/backend communication |
 
-## 5. How to Run Locally
+## 🏗️ Architecture
 
-### 1. Run Django Backend
+The application is split into two main parts:
+
+- **Backend:** Django project at the repository root, with `manage.py`, application modules, and API routes.
+- **Frontend:** React/Vite application in the `frontend/` directory.
+
+The frontend communicates with the backend API. Booking totals and reservation rules should be validated server-side rather than trusted from browser input.
+
+## 📂 Project Structure
+
+```text
+Cross-Hunt/
+├── manage.py
+├── requirements.txt
+├── accounts/
+├── api/
+├── bookings/
+├── cross_booking/
+├── crosses/
+├── dashboard/
+├── frontend/
+├── static/
+├── templates/
+├── test_e2e.py
+├── test_role_routing.py
+├── DESIGN.md
+├── PRODUCT.md
+└── README.md
+```
+
+- 🎨 [DESIGN.md](./DESIGN.md) — visual design tokens, typography, motion, and accessibility guidance.
+- 🧭 [PRODUCT.md](./PRODUCT.md) — product workflows, personas, booking rules, and data-model notes.
+
+## 🚀 Run Locally
+
+### Prerequisites
+
+Install **Python 3.10+** and a compatible Node.js/npm version. Use the versions supported by the project's dependency files.
+
+### 1️⃣ Clone the repository
+
+```bash
+git clone https://github.com/Pareshprajapati-777/Cross-Hunt.git
+cd Cross-Hunt
+```
+
+### 2️⃣ Set up the Django backend
+
+Create and activate a virtual environment:
+
+**Windows PowerShell**
 ```powershell
-# In project root
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install Python dependencies and prepare the database:
+
+```bash
+python -m pip install -r requirements.txt
+python manage.py migrate
 python manage.py runserver 127.0.0.1:8000
 ```
 
-### 2. Run React Frontend
-```powershell
+Keep the backend terminal running.
+
+### 3️⃣ Set up the React frontend
+
+Open a second terminal:
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open **`http://127.0.0.1:5173/`** in your browser.
+
+Open the local frontend URL printed by Vite, commonly `http://127.0.0.1:5173/`.
+
+### 🔧 Configuration Notes
+
+- Check the frontend's environment/configuration files to confirm the API base URL points to your local Django server.
+- If requests fail, verify Django is running and the frontend origin is allowed by the CORS settings.
+- Use local development settings for local testing; do not expose development credentials or debug settings in a public deployment.
+
+## 🧪 Tests
+
+The repository includes integration and role-routing test scripts:
+
+```bash
+python test_e2e.py
+python test_role_routing.py
+```
+
+Run the tests in a configured local environment with the backend dependencies installed. Test outcomes can vary with database state, seeded records, and environment configuration; review each script's output rather than assuming a previous result guarantees a current pass.
+
+## 🔐 Security & Deployment Checklist
+
+- 🔑 **Do not publish real credentials.** Use environment variables or a local-only seed process for development accounts. If any credentials in an earlier README or commit were real or reused, rotate them.
+- 🗃️ **Do not commit a production database.** The repository currently includes a SQLite database file; ensure it contains no real user data, session information, or sensitive records before sharing publicly.
+- 🛡️ Use strong secret keys, disable debug mode, configure allowed hosts, and enforce HTTPS in production.
+- 👤 Apply appropriate authentication, authorization, and access controls to traveler, operator, and administrator workflows.
+- 💳 Do not treat demo booking flows as real payment processing unless a verified payment provider is integrated.
+- 🧾 Confirm QR verification is validated server-side before treating a boarding pass as authentic.
+
+## 🔮 Potential Improvements
+
+- ☁️ Add a production database with reliable backups and deployment persistence.
+- 💳 Integrate a secure payment provider and booking cancellation/refund flows.
+- 📧 Add transactional email for booking confirmation and event requests.
+- 🧪 Run automated tests in CI for every change.
+- ♿ Audit keyboard navigation, contrast, reduced-motion preferences, and screen-reader support.
+- 📈 Add observability, structured logging, and health checks for production operations.
+- 📸 Add verified screenshots or a short demo video to showcase the interface.
+
+## 👨‍💻 Author
+
+**Paresh Prajapati**
+
+- 🐙 [GitHub Profile](https://github.com/Pareshprajapati-777)
+- 📦 [Cross Hunt Repository](https://github.com/Pareshprajapati-777/Cross-Hunt)
 
 ---
 
-## 6. End-to-End Test Suite
-
-Run the automated end-to-end integration script to verify authentication, cruise discovery, atomic reservation, operator approval, and admin governance:
-```powershell
-python test_e2e.py
-```
-Expected output:
-```text
-Login Status: 200 True
-Me Status: 200 user1
-Selected Cruise: Sovereign of the Aegean (ID: 10)
-Booking Response Body: {'success': True, 'message': 'Booking created successfully!', ...}
-User Bookings Count: 7
-Operator Total Ships: 7
-Operator Approval Response: 200 {'success': True, 'message': 'Booking status updated to CONFIRMED.'}
-Admin Total Bookings: 15 Total GMV: $ 15720.0
-=== CRITICAL USER JOURNEY TEST PASSED 100% ===
-```
+<p align="center">
+  🌊 <b>Discover the voyage. Reserve the experience. Celebrate at sea.</b> 🚢
+</p>
