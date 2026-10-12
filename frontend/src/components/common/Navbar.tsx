@@ -1,17 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
-  currentTab: string;
-  onNavigate: (tab: string, param?: string) => void;
+  currentTab?: string;
+  onNavigate?: (tab: string, param?: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNavigate: propOnNavigate }) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  // Derive active tab from URL path
+  const currentTab = propCurrentTab || (() => {
+    const p = location.pathname.toLowerCase();
+    if (p === '/' || p === '') return 'home';
+    if (p.startsWith('/explore') || p.startsWith('/cruises') || p.startsWith('/ships')) return 'explore';
+    if (p.startsWith('/tours') || p.startsWith('/book-tour')) return 'tours';
+    if (p.startsWith('/events')) return 'events';
+    if (p.startsWith('/dashboard')) return 'dashboard';
+    if (p.startsWith('/owner') || p.startsWith('/operator')) return 'owner';
+    if (p.startsWith('/admin')) return 'admin-panel';
+    if (p.startsWith('/login')) return 'login';
+    if (p.startsWith('/register')) return 'register';
+    if (p.startsWith('/about')) return 'about';
+    if (p.startsWith('/contact')) return 'contact';
+    return 'home';
+  })();
+
+  const onNavigate = (tab: string, param?: string) => {
+    if (propOnNavigate) {
+      propOnNavigate(tab, param);
+      return;
+    }
+    const routeMap: Record<string, string> = {
+      home: '/',
+      explore: param ? `/explore?query=${encodeURIComponent(param)}` : '/explore',
+      destinations: '/tours',
+      about: '/about',
+      contact: '/contact',
+      tours: '/tours',
+      events: '/events',
+      dashboard: '/dashboard',
+      owner: '/owner',
+      'admin-panel': '/admin-panel',
+      login: '/login',
+      register: '/register',
+    };
+    if (routeMap[tab]) {
+      navigate(routeMap[tab]);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,83 +68,68 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'py-2.5' : 'py-4'
+        scrolled ? 'py-2' : 'py-3.5'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl px-5 py-3 flex items-center justify-between border border-sky-200/80 shadow-lg shadow-sky-900/5">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl px-5 sm:px-6 py-2.5 flex items-center justify-between border border-sky-100/90 shadow-lg shadow-sky-950/5">
           {/* Logo & Brand */}
           <button
             onClick={() => onNavigate('home')}
             className="flex items-center space-x-3 text-left group cursor-pointer"
           >
-            <div className="w-11 h-11 rounded-full bg-white border-2 border-sky-400 flex items-center justify-center p-1.5 shadow-sm group-hover:border-sky-500 overflow-hidden transition-all duration-300">
-              <img
-                src="/static/images/logo_icon.png"
-                alt="Cross Hunt Emblem"
-                className="w-full h-full object-contain rounded-full filter group-hover:rotate-45 transition-transform duration-700 ease-out"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-              <Anchor className="w-5 h-5 text-sky-600 hidden group-hover:inline-block" />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 via-blue-500 to-indigo-600 p-[2px] shadow-sm flex items-center justify-center">
+              <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+                <Ship className="w-5 h-5 text-sky-300" />
+              </div>
             </div>
             <div>
-              <span className="font-display font-extrabold text-xl tracking-wider text-slate-900 flex items-center gap-1">
+              <span className="font-display font-black text-lg tracking-wider text-slate-900 flex items-center gap-1 leading-none">
                 CROSS <span className="text-sky-600">HUNT</span>
               </span>
-              <span className="block text-[10px] uppercase tracking-widest text-slate-500 font-semibold -mt-1">
-                Luxury Maritime Voyages
+              <span className="block text-[9px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
+                Luxury Ship & Boat Trips
               </span>
             </div>
           </button>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          {/* Desktop Nav Links (Matching user screenshot) */}
+          <div className="hidden lg:flex items-center space-x-1 xl:space-x-2">
             <button
               onClick={() => onNavigate('home')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`relative px-3.5 py-1.5 text-sm font-semibold transition-all cursor-pointer ${
                 currentTab === 'home'
-                  ? 'text-sky-700 bg-sky-50 border border-sky-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'text-sky-700 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Home
+              {currentTab === 'home' && (
+                <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-sky-600 rounded-full" />
+              )}
             </button>
             <button
               onClick={() => onNavigate('explore')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 text-sm font-semibold transition-all cursor-pointer ${
                 currentTab === 'explore'
-                  ? 'text-sky-700 bg-sky-50 border border-sky-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'text-sky-700 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Compass className="w-4 h-4 text-sky-600" />
               Explore Ships
             </button>
             <button
               onClick={() => onNavigate('tours')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 text-sm font-semibold transition-all cursor-pointer ${
                 currentTab === 'tours'
-                  ? 'text-sky-700 bg-sky-50 border border-sky-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'text-sky-700 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Waves className="w-4 h-4 text-sky-600" />
               Public Tours
             </button>
-            <button
-              onClick={() => onNavigate('events')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                currentTab === 'events'
-                  ? 'text-sky-700 bg-sky-50 border border-sky-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Calendar className="w-4 h-4 text-amber-600" />
-              Private Events
-            </button>
           </div>
+
 
           {/* User Controls & CTA */}
           <div className="hidden md:flex items-center space-x-3">
@@ -219,29 +248,45 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => onNavigate('explore')}
+                  className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  title="Search Ships"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onNavigate('dashboard')}
+                  className="p-2 text-slate-500 hover:text-rose-500 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  title="Wishlist"
+                >
+                  <Heart className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => onNavigate('login')}
-                  className="px-4 py-1.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => onNavigate('register')}
-                  className="px-4 py-1.5 rounded-xl text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-400/20 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20 transition cursor-pointer active:scale-95"
                 >
-                  Join Voyage
+                  Sign Up
                 </button>
               </div>
             )}
 
             <button
               onClick={() => onNavigate('explore')}
-              className="px-4 py-1.5 rounded-xl text-sm font-bold bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+              className="px-5 py-2.5 rounded-2xl text-sm font-bold bg-gradient-to-r from-sky-900 to-blue-950 hover:from-sky-800 hover:to-blue-900 text-white flex items-center gap-1.5 transition-all shadow-md shadow-sky-950/20 active:scale-95 cursor-pointer ml-1"
             >
-              Book Ship
+              <span>Book Ship</span>
+              <ArrowRight className="w-4 h-4 ml-0.5" />
             </button>
           </div>
+
 
           {/* Mobile hamburger */}
           <div className="md:hidden flex items-center space-x-2">
@@ -363,7 +408,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onNavigate }) => {
                   }}
                   className="w-full py-2 rounded-xl bg-sky-500 text-white font-bold"
                 >
-                  Join Voyage
+                  Sign Up
                 </button>
               </div>
             )}

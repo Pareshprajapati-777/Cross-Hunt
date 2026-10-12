@@ -12,8 +12,8 @@ class UserRegistrationForm(forms.ModelForm):
     phone = forms.CharField(max_length=20, required=False, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+1 234 567 8900'}))
     role = forms.ChoiceField(
         choices=[
-            ('USER', 'Regular User / Customer (Book Cross Venues)'),
-            ('CROSS_OWNER', 'Cross Property Owner (List & Manage Crosses)')
+            ('USER', 'Guest Traveler / Customer (Book Cruise Tours & Events)'),
+            ('OWNER', 'Cruise Ship Owner / Operator (Manage Fleet & Tours)')
         ],
         required=True,
         widget=forms.Select(attrs={'class': 'form-select'})
@@ -43,9 +43,9 @@ class UserRegistrationForm(forms.ModelForm):
 
     def clean_role(self):
         role = self.cleaned_data.get('role')
-        if role not in ['USER', 'CROSS_OWNER']:
+        if role not in ['USER', 'OWNER', 'CROSS_OWNER']:
             raise ValidationError("Unauthorized role selected.")
-        return role
+        return 'OWNER' if role in ['OWNER', 'CROSS_OWNER'] else 'USER'
 
     def clean(self):
         cleaned_data = super().clean()

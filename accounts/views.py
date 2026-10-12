@@ -69,7 +69,7 @@ def login_view(request):
                     return redirect(next_url)
                 if user.is_superuser or user.role == 'ADMIN':
                     return redirect('admin_dashboard')
-                elif user.role == 'CROSS_OWNER':
+                elif user.role in ['OWNER', 'CROSS_OWNER'] or getattr(user, 'is_owner', False):
                     return redirect('owner_dashboard')
                 else:
                     return redirect('user_dashboard')
@@ -92,7 +92,7 @@ def dashboard_redirect(request):
     user = request.user
     if user.is_superuser or user.role == 'ADMIN':
         return redirect('admin_dashboard')
-    elif user.role == 'CROSS_OWNER':
+    elif user.role in ['OWNER', 'CROSS_OWNER'] or getattr(user, 'is_owner', False):
         return redirect('owner_dashboard')
     else:
         return redirect('user_dashboard')

@@ -4,30 +4,119 @@ from django.utils.text import slugify
 from django.db.models import Avg
 
 
-class Cross(models.Model):
-    CATEGORY_CHOICES = (
-        ('Luxury Ocean Cruise', 'Luxury Ocean Cruise'),
-        ('Mega Cruise Liner', 'Mega Cruise Liner'),
-        ('Expedition Cruise Vessel', 'Expedition Cruise Vessel'),
-        ('Island Hopper Cruise', 'Island Hopper Cruise'),
-        ('Scenic Coastal Cruise', 'Scenic Coastal Cruise'),
-        ('Private Charter Yacht', 'Private Charter Yacht'),
-        ('Luxury Catamaran Cruiser', 'Luxury Catamaran Cruiser'),
+class Operator(models.Model):
+    name = models.CharField(max_length=150, unique=True, help_text="Operator / Company Name")
+    description = models.TextField(blank=True, default='', help_text="Operator profile & background")
+    location = models.CharField(max_length=150, help_text="Base Port / Region (e.g. Goa, Andaman, Kochi, Mumbai)")
+    phone = models.CharField(max_length=100, blank=True, default='', help_text="Direct phone or WhatsApp")
+    whatsapp_number = models.CharField(max_length=100, blank=True, default='', help_text="Verified WhatsApp number")
+    email = models.CharField(max_length=120, blank=True, default='', help_text="Contact email")
+    website = models.URLField(max_length=300, blank=True, default='', help_text="Official website")
+    booking_url = models.URLField(max_length=500, blank=True, default='', help_text="Official booking / enquiry URL")
+    office_address = models.CharField(max_length=255, blank=True, default='', help_text="Physical office / jetty address")
+    verified = models.BooleanField(default=True, help_text="Whether operator has been source-verified")
+    source_checked = models.CharField(max_length=80, default='01 Oct 2026', help_text="Audit / verification date")
+    operator_type = models.CharField(
+        max_length=50,
+        default='PUBLIC_EXTERNAL',
+        choices=[
+            ('PUBLIC_EXTERNAL', 'Public / External Operator (Catalogue)'),
+            ('PLATFORM_OWNER', 'Registered Platform Owner')
+        ],
+        help_text="Operator account type"
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='crosses')
+    class Meta:
+        verbose_name = "Operator"
+        verbose_name_plural = "Operators"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.location})"
+
+
+VESSEL_CATEGORY_CHOICES = (
+    ('YACHT', 'Private Yacht'),
+    ('BOAT', 'Private Boat'),
+    ('PARTY_BOAT', 'Party Boat'),
+    ('RIVER_CRUISE', 'River Cruise'),
+    ('SEA_CRUISE', 'Sea Cruise Vessel'),
+    ('PASSENGER_CRUISE_SHIP', 'Ocean Passenger Cruise Ship'),
+    ('FERRY', 'Inter-Island Passenger Ferry'),
+    # Legacy compatibility choices
+    ('Luxury Ocean Cruise', 'Luxury Ocean Cruise'),
+    ('Mega Cruise Liner', 'Mega Cruise Liner'),
+    ('Expedition Cruise Vessel', 'Expedition Cruise Vessel'),
+    ('Island Hopper Cruise', 'Island Hopper Cruise'),
+    ('Scenic Coastal Cruise', 'Scenic Coastal Cruise'),
+    ('Private Charter Yacht', 'Private Charter Yacht'),
+    ('Luxury Catamaran Cruiser', 'Luxury Catamaran Cruiser'),
+)
+
+LISTING_TYPE_CHOICES = (
+    ('PRIVATE_CHARTER', 'Private Charter (Whole Vessel)'),
+    ('PUBLIC_CRUISE', 'Public / Shared Tour (Per Passenger)'),
+    ('BOTH', 'Both Private Charter & Public Cruise'),
+)
+
+PRICE_UNIT_CHOICES = (
+    ('PER_PERSON', 'Per Person'),
+    ('PER_CABIN', 'Per Cabin'),
+    ('PER_BOAT', 'Per Boat / Whole Vessel'),
+    ('PER_HOUR', 'Per Hour'),
+    ('PER_DAY', 'Per Day'),
+    ('QUOTE', 'Price on Request'),
+)
+
+AVAILABILITY_CHOICES = (
+    ('AVAILABLE', 'Available'),
+    ('REQUEST_QUOTE', 'Request Quote'),
+    ('SOLD_OUT', 'Sold Out'),
+    ('WEATHER_HOLD', 'Weather Hold'),
+    ('NOT_SCHEDULED', 'Not Scheduled'),
+)
+
+
+class Cross(models.Model):
+    CATEGORY_CHOICES = VESSEL_CATEGORY_CHOICES
+
+    # Operator (Source of Truth research operator) & Owner (Platform user account)
+    operator = models.ForeignKey(Operator, on_delete=models.SET_NULL, null=True, blank=True, related_name='vessels', help_text="Verified external marine operator")
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='crosses', null=True, blank=True, help_text="Registered platform owner (if claimed)")
+
     name = models.CharField(max_length=150)
     slug = models.SlugField(max_length=180, unique=True, blank=True)
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='Luxury Ocean Cruise')
-    description = models.TextField(help_text="Detailed overview of the cruise ship or luxury vessel")
-    location = models.CharField(max_length=100, help_text="Home Port / Base Location (e.g. Mumbai, Goa, Kochi, Chennai, Port Blair)")
-    address = models.TextField(help_text="Full passenger embarkation terminal address")
-    price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Starting base rate in INR (₹)")
-    capacity = models.PositiveIntegerField(help_text="Maximum passenger / guest capacity")
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='YACHT')
+    vessel_category = models.CharField(max_length=50, choices=VESSEL_CATEGORY_CHOICES, blank=True, null=True, help_text="Controlled vessel inventory category")
+    listing_type = models.CharField(max_length=30, choices=LISTING_TYPE_CHOICES, default='PRIVATE_CHARTER')
+
+    description = models.TextField(help_text="Detailed overview of the vessel or cruise product")
+    location = models.CharField(max_length=100, help_text="Home Port / Base Location (e.g. Goa, Andaman, Kochi, Mumbai)")
+    address = models.TextField(help_text="Embarkation terminal / jetty address")
+
+    # Pricing & Units
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Starting base rate in INR (₹) or 0 if quote-based")
+    price_unit = models.CharField(max_length=30, choices=PRICE_UNIT_CHOICES, default='PER_BOAT', help_text="Strict pricing basis")
+    is_quote_based = models.BooleanField(default=False, help_text="If True, price is displayed as 'Price on Request'")
+    duration_display = models.CharField(max_length=100, blank=True, default='', help_text="e.g. 2.5 hours, 4 hours, Full Day, 3 Nights")
+
+    # Taxes & Separated Charges
+    tax_note = models.CharField(max_length=200, default='GST Extra as applicable', blank=True, help_text="e.g. GST 18% extra, Port taxes included")
+    permit_note = models.CharField(max_length=200, blank=True, default='', help_text="e.g. Permits ₹500 Indian / ₹2,500 foreign")
+    fuel_surcharge_note = models.CharField(max_length=200, blank=True, default='', help_text="e.g. Fuel surcharge included or extra")
+    included = models.TextField(blank=True, default='', help_text="Inclusions: Fuel, crew, safety gear, refreshments")
+    extra_charges = models.TextField(blank=True, default='', help_text="Details of extra fees: GST, permits, decoration")
+
+    # Passenger Capacity
+    capacity = models.PositiveIntegerField(default=12, help_text="Maximum passenger / guest capacity (or 0 if contact operator)")
+    capacity_note = models.CharField(max_length=150, blank=True, default='', help_text="e.g. Up to 12, Up to 150, Capacity varies, Contact operator")
+    has_unknown_capacity = models.BooleanField(default=False, help_text="True if capacity is not stated and needs operator enquiry")
 
     # Capability Flags
     supports_private_charter = models.BooleanField(default=True, help_text="Available for full private hire/charter")
-    supports_public_tours = models.BooleanField(default=True, help_text="Offers ticketed public cruise departures")
+    supports_public_tours = models.BooleanField(default=False, help_text="Offers ticketed public cruise departures")
     supports_weddings = models.BooleanField(default=True, help_text="Supports ocean wedding ceremonies and receptions")
     supports_birthdays = models.BooleanField(default=True, help_text="Supports birthday parties and milestones")
     supports_corporate = models.BooleanField(default=True, help_text="Supports corporate retreats and conferences")
@@ -37,34 +126,69 @@ class Cross(models.Model):
 
     # Cruise voyage specifications
     destination = models.CharField(max_length=150, default='Goa & Arabian Sea', help_text="Primary voyage destination")
-    route = models.CharField(max_length=250, default='Mumbai - Goa - Lakshadweep - Mumbai', help_text="Cruise route / ports sequence")
-    departure_port = models.CharField(max_length=120, default='Mumbai International Cruise Terminal', help_text="Embarkation terminal")
-    duration_days = models.PositiveIntegerField(default=4, help_text="Standard voyage duration in days")
-    ship_length_meters = models.PositiveIntegerField(default=280, help_text="Vessel length in meters")
-    beam_meters = models.PositiveIntegerField(default=34, help_text="Vessel beam width in meters")
-    decks_count = models.PositiveIntegerField(default=12, help_text="Total passenger decks")
-    cabin_count = models.PositiveIntegerField(default=180, help_text="Total staterooms and suites")
+    route = models.CharField(max_length=250, default='Panaji - Mandovi River - Arabian Sea', help_text="Cruise route / ports sequence")
+    departure_port = models.CharField(max_length=120, default='Panaji Jetty', help_text="Embarkation terminal")
+    duration_days = models.PositiveIntegerField(default=1, help_text="Standard voyage duration in days")
+    ship_length_meters = models.PositiveIntegerField(default=35, help_text="Vessel length in meters")
+    beam_meters = models.PositiveIntegerField(default=8, help_text="Vessel beam width in meters")
+    decks_count = models.PositiveIntegerField(default=2, help_text="Total passenger decks")
+    cabin_count = models.PositiveIntegerField(default=4, help_text="Total staterooms and suites")
 
     itinerary_highlights = models.TextField(
         blank=True,
-        default="Day 1: Embarkation & Welcome Gala Dinner\nDay 2: Coastal Navigation & Sun Deck Cabana Soiree\nDay 3: Scenic Island Anchorage & Water Sports\nDay 4: Starlight Farewell Party & Return to Port"
+        default="Scenic coastal navigation, island anchorage, marine sightseeing, sunset cruise"
     )
     dining_venues = models.TextField(
         blank=True,
-        default="The Captain's Table, Oceanview Lido Buffet, Starlight Lounge, Coastal Seafood Grill, Spice Panorama"
+        default="Open-air Sun Deck Dining, Saloon Lounge, Refreshment Bar"
     )
     entertainment = models.TextField(
         blank=True,
-        default="Grand Oceanfront Broadway Show, Casino Royale, Infinity Sunset Pool, Starlight Jazz Club, Ayurvedic Spa"
+        default="Marine Audio Rig, Sightseeing Guide, Starlight Deck"
     )
 
     # Image support: uploaded file OR remote URL
     image = models.ImageField(upload_to='crosses/', blank=True, null=True, help_text="Upload local photo")
     image_url = models.URLField(max_length=600, blank=True, null=True, help_text="Or direct web image URL")
 
-    facilities = models.TextField(help_text="Comma-separated amenities (e.g. Wi-Fi, Swimming Pool, Heliport, Fine Dining, DJ Audio Rigs, Theatre, Spa)")
-    rules = models.TextField(default="Valid government photo ID required. Mandatory safety lifeboat briefing prior to departure. Quiet hours observed after midnight.", help_text="Voyage rules and policies")
-    cancellation_policy = models.TextField(default="Full refund up to 72 hours prior to scheduled departure. Flexible date rescheduling available.", help_text="Terms for booking cancellation")
+    facilities = models.TextField(default="Wi-Fi, Safety Life Rafts, Sound System, Sun Deck, Marine Crew", help_text="Comma-separated amenities")
+    rules = models.TextField(default="Valid government photo ID required. Mandatory safety lifeboat briefing prior to departure.", help_text="Voyage rules and policies")
+    cancellation_policy = models.TextField(default="Cancellation policy governed by operator terms. Check prior to confirmation.", help_text="Terms for booking cancellation")
+
+    # Source & Audit
+    source_url = models.URLField(max_length=600, blank=True, null=True, help_text="Official source link from research")
+    source_checked = models.CharField(max_length=80, default='01 Oct 2026', blank=True, help_text="Date verified against public web sources")
+    last_verified_at = models.DateField(null=True, blank=True)
+    availability_status = models.CharField(max_length=30, choices=AVAILABILITY_CHOICES, default='AVAILABLE')
+
+    # Detailed Vessel Attributes (Prompt Requirement #1 & #3)
+    vessel_model = models.CharField(max_length=120, blank=True, default='', help_text="Ship/vessel Model or Builder")
+    ac_status = models.CharField(
+        max_length=30,
+        choices=[('AC', 'Air Conditioned'), ('NON_AC', 'Non-AC Open Deck'), ('PARTIAL_AC', 'Partial AC Saloon')],
+        default='AC'
+    )
+    food_service = models.CharField(max_length=200, blank=True, default='Catering and refreshments available', help_text="Food / Dining inclusions")
+    dj_music = models.BooleanField(default=True, help_text="DJ / Audio Music setup")
+    decoration_service = models.BooleanField(default=True, help_text="Event decoration options available")
+    photography_service = models.BooleanField(default=True, help_text="Photography / Drone options available")
+    water_sports = models.BooleanField(default=False, help_text="Water sports (Jet ski, snorkelling, scuba, seabob)")
+    extra_services = models.TextField(blank=True, default='', help_text="Summary of extra services")
+
+    # Direct Operator & Contact Info
+    contact_number = models.CharField(max_length=100, blank=True, default='', help_text="Direct phone contact")
+    whatsapp_number = models.CharField(max_length=100, blank=True, default='', help_text="Direct WhatsApp contact")
+    email = models.CharField(max_length=120, blank=True, default='', help_text="Contact email")
+    website = models.URLField(max_length=400, blank=True, default='', help_text="Official website")
+    booking_url = models.URLField(max_length=500, blank=True, default='', help_text="Official booking URL")
+    is_external_operator = models.BooleanField(default=False, help_text="External public operator catalogue vessel")
+
+    # Pricing Integrity & Validation (Prompt Requirement #3 & #4)
+    source_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Original imported source price")
+    valid_from = models.DateField(null=True, blank=True, help_text="Price validity start date")
+    valid_to = models.DateField(null=True, blank=True, help_text="Price validity end date")
+    price_review_flag = models.BooleanField(default=False, help_text="Flagged for admin price audit if suspiciously low")
+    price_review_reason = models.CharField(max_length=255, blank=True, default='', help_text="Reason for price review")
 
     is_active = models.BooleanField(default=True, help_text="Ship active status for bookings")
     is_approved = models.BooleanField(default=True, help_text="Admin approval status")
@@ -73,8 +197,8 @@ class Cross(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Cruise Ship"
-        verbose_name_plural = "Cruise Ships"
+        verbose_name = "Cruise Ship / Vessel"
+        verbose_name_plural = "Cruise Ships & Vessels"
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
@@ -86,10 +210,49 @@ class Cross(models.Model):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+        if not self.vessel_category:
+            self.vessel_category = self.category
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} - {self.location} (₹{self.price})"
+        op = self.effective_operator_name
+        return f"{self.name} ({op}) - {self.location}"
+
+    @property
+    def effective_category(self):
+        return self.vessel_category or self.category
+
+    @property
+    def effective_operator_name(self):
+        if self.operator:
+            return self.operator.name
+        if self.owner:
+            return self.owner.get_full_name() or self.owner.username
+        return "Cross-Hunt Fleet"
+
+    @property
+    def display_capacity_text(self):
+        if self.capacity_note:
+            return self.capacity_note
+        if self.has_unknown_capacity or not self.capacity:
+            return "Contact operator"
+        return f"Up to {self.capacity} guests"
+
+    @property
+    def formatted_price_basis(self):
+        if self.is_quote_based or not self.price or self.price_unit == 'QUOTE':
+            return "Price on Request"
+        unit_map = {
+            'PER_PERSON': '/ person',
+            'PER_CABIN': '/ cabin',
+            'PER_BOAT': '/ boat',
+            'PER_HOUR': '/ hour',
+            'PER_DAY': '/ day',
+        }
+        unit_text = unit_map.get(self.price_unit, f"/ {self.price_unit.lower()}")
+        if self.duration_display and self.price_unit == 'PER_BOAT':
+            return f"₹{self.price:,.0f} / {self.duration_display}"
+        return f"₹{self.price:,.0f} {unit_text}"
 
     @property
     def display_image_url(self):
@@ -130,15 +293,143 @@ class Cross(models.Model):
             return self.supports_corporate
         elif 'conference' in purpose_key or 'seminar' in purpose_key:
             return self.supports_conferences
+        elif 'anniversary' in purpose_key:
+            return self.supports_birthdays or self.supports_weddings or self.supports_private_charter
         elif 'party' in purpose_key or 'celebration' in purpose_key:
             return self.supports_parties
         elif 'dinner' in purpose_key or 'gala' in purpose_key:
             return self.supports_dinners
         return self.supports_private_charter
 
+    def get_all_gallery_urls(self):
+        """Returns ordered list of all gallery photos for the ship."""
+        urls = []
+        cover = self.display_image_url
+        if cover and cover != '/static/images/placeholder.png':
+            urls.append(cover)
+        for img in self.gallery_images.all():
+            u = img.display_url
+            if u and u not in urls:
+                urls.append(u)
+        if not urls:
+            urls.append('/static/images/placeholder.png')
+        return urls
 
-# Convenient Alias
+
+# Backward compatibility aliases
 Ship = Cross
+Vessel = Cross
+
+
+class ShipImage(models.Model):
+    ship = models.ForeignKey(Cross, on_delete=models.CASCADE, related_name='gallery_images')
+    image = models.ImageField(upload_to='crosses/gallery/', blank=True, null=True, help_text="Upload local photo")
+    image_url = models.URLField(max_length=600, blank=True, null=True, help_text="Direct web image URL")
+    caption = models.CharField(max_length=150, blank=True, default='')
+    is_cover = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    @property
+    def display_url(self):
+        if self.image:
+            try:
+                return self.image.url
+            except Exception:
+                pass
+        if self.image_url:
+            return self.image_url.strip()
+        return '/static/images/placeholder.png'
+
+    def __str__(self):
+        return f"Image for {self.ship.name} ({self.caption or 'Untitled'})"
+
+
+VesselImage = ShipImage
+
+
+class ShipMaintenance(models.Model):
+    ship = models.ForeignKey(Cross, on_delete=models.CASCADE, related_name='maintenance_periods')
+    start_date = models.DateField(help_text="Start of maintenance/blackout")
+    end_date = models.DateField(help_text="End of maintenance/blackout")
+    reason = models.CharField(max_length=250, default="Scheduled Drydock & Safety Inspection")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.ship.name} Maintenance: {self.start_date} to {self.end_date}"
+
+
+class Route(models.Model):
+    operator = models.ForeignKey(Operator, on_delete=models.CASCADE, null=True, blank=True, related_name='routes')
+    departure = models.CharField(max_length=150)
+    destination = models.CharField(max_length=150)
+    duration = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['departure', 'destination']
+
+    def __str__(self):
+        return f"{self.departure} → {self.destination}"
+
+
+class PrivateCharterRate(models.Model):
+    vessel = models.ForeignKey(Cross, on_delete=models.CASCADE, related_name='charter_rates')
+    duration = models.CharField(max_length=100, help_text="e.g. 1 hour, 2.5 hours, 4 hours, Full Day")
+    duration_hours = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
+    price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=10, default='INR')
+    price_unit = models.CharField(max_length=30, choices=PRICE_UNIT_CHOICES, default='PER_BOAT')
+    is_quote_based = models.BooleanField(default=False)
+    minimum_guests = models.PositiveIntegerField(default=1)
+    maximum_guests = models.PositiveIntegerField(null=True, blank=True)
+    included = models.TextField(blank=True, default='')
+    extra_charges = models.TextField(blank=True, default='')
+    validity = models.CharField(max_length=120, blank=True, default='2026 Season')
+    source = models.URLField(max_length=600, blank=True, null=True)
+    last_verified_at = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['duration_hours', 'price']
+
+    def __str__(self):
+        pr = "Price on Request" if self.is_quote_based or self.price is None else f"₹{self.price:,.0f}"
+        return f"{self.vessel.name} - {self.duration} ({pr})"
+
+    @property
+    def formatted_display(self):
+        if self.is_quote_based or self.price is None:
+            return "Price on Request"
+        return f"₹{self.price:,.0f} / {self.duration}"
+
+
+class TourCabin(models.Model):
+    tour = models.ForeignKey('PublicTour', on_delete=models.CASCADE, related_name='cabins')
+    name = models.CharField(max_length=100, help_text="e.g. Presidential Sea Suite, Royal Ocean Balcony, Premium Oceanview, Deluxe Interior Haven")
+    description = models.TextField(blank=True, default="")
+    price_per_person = models.DecimalField(max_digits=10, decimal_places=2, help_text="Fare per person in INR (₹)")
+    total_capacity = models.PositiveIntegerField(default=50)
+    booked_capacity = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-price_per_person']
+
+    @property
+    def remaining_capacity(self):
+        return max(0, self.total_capacity - self.booked_capacity)
+
+    def __str__(self):
+        return f"{self.name} - ₹{self.price_per_person:,.0f} ({self.tour.tour_title})"
 
 
 class ShipExtra(models.Model):
@@ -158,14 +449,25 @@ class ShipExtra(models.Model):
     class Meta:
         ordering = ['price']
 
+    @property
+    def pricing_type(self):
+        return self.pricing_mode
+
     def __str__(self):
         mode_str = "flat" if self.pricing_mode == 'FIXED' else "/ guest"
         return f"{self.name} - ₹{self.price} {mode_str} ({self.ship.name})"
 
 
+Extra = ShipExtra
+
+
 class PublicTour(models.Model):
     STATUS_CHOICES = (
         ('SCHEDULED', 'Scheduled'),
+        ('AVAILABLE', 'Available'),
+        ('SOLD_OUT', 'Sold Out'),
+        ('WEATHER_HOLD', 'Weather Hold'),
+        ('NOT_SCHEDULED', 'Not Scheduled'),
         ('BOARDING', 'Boarding Now'),
         ('DEPARTED', 'Departed / In Transit'),
         ('COMPLETED', 'Completed'),
@@ -173,6 +475,9 @@ class PublicTour(models.Model):
     )
 
     ship = models.ForeignKey(Cross, on_delete=models.CASCADE, related_name='public_tours')
+    operator = models.ForeignKey(Operator, on_delete=models.SET_NULL, null=True, blank=True, related_name='public_tours')
+    route_ref = models.ForeignKey(Route, on_delete=models.SET_NULL, null=True, blank=True, related_name='tours')
+
     tour_title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     departure_port = models.CharField(max_length=150)
@@ -181,16 +486,27 @@ class PublicTour(models.Model):
     departure_time = models.TimeField()
     return_date = models.DateField()
     return_time = models.TimeField()
-    duration_days = models.PositiveIntegerField(default=3)
+    duration_days = models.PositiveIntegerField(default=1)
+    duration_display = models.CharField(max_length=100, blank=True, default='')
     total_capacity = models.PositiveIntegerField(help_text="Total ticket capacity for this voyage")
     booked_capacity = models.PositiveIntegerField(default=0)
     adult_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Fare per adult in INR (₹)")
     child_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Fare per child in INR (₹)")
+    price_unit = models.CharField(max_length=30, choices=PRICE_UNIT_CHOICES, default='PER_PERSON')
+    is_live_pricing = models.BooleanField(default=False, help_text="If True, fare varies by sailing and verified at booking")
+
     itinerary = models.TextField(blank=True, default="")
     ports_of_call = models.CharField(max_length=255, blank=True, default="")
     meals_included = models.CharField(max_length=200, default="All Gourmet Meals & High Tea Included")
+    tax_note = models.CharField(max_length=200, blank=True, default="GST & Port Taxes Extra")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
     is_published = models.BooleanField(default=True)
+
+    image_url = models.URLField(max_length=600, blank=True, null=True, help_text="Tour-specific cover photo")
+    source_url = models.URLField(max_length=600, blank=True, null=True)
+    source_checked = models.CharField(max_length=80, default='01 Oct 2026', blank=True)
+    last_verified_at = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -217,7 +533,27 @@ class PublicTour(models.Model):
 
     @property
     def is_bookable(self):
-        return self.is_published and self.status == 'SCHEDULED' and self.remaining_capacity > 0
+        return self.is_published and self.status in ['SCHEDULED', 'AVAILABLE'] and self.remaining_capacity > 0
+
+
+class TourFare(models.Model):
+    public_tour = models.ForeignKey(PublicTour, on_delete=models.CASCADE, related_name='fares')
+    cabin_type = models.CharField(max_length=120, help_text="e.g. Interior Stateroom, Oceanview Balcony, Deluxe Class, Economy Class")
+    price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=10, default='INR')
+    price_unit = models.CharField(max_length=30, choices=PRICE_UNIT_CHOICES, default='PER_PERSON')
+    taxes = models.CharField(max_length=150, blank=True, default='GST & Port Charges Extra')
+    validity = models.CharField(max_length=120, blank=True, default='2026 Scheduled Sailing')
+    source = models.URLField(max_length=600, blank=True, null=True)
+    last_verified_at = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['price']
+
+    def __str__(self):
+        pr = "Price on Request" if self.price is None else f"₹{self.price:,.0f}"
+        return f"{self.public_tour.tour_title} - {self.cabin_type} ({pr})"
 
 
 class Offer(models.Model):
@@ -282,4 +618,3 @@ class CrossReview(models.Model):
 
     def __str__(self):
         return f"Review by {self.user.username} for {self.cross.name} ({self.rating}★)"
-

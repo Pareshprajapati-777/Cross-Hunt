@@ -10,28 +10,29 @@ export const OceanHeroScene: React.FC = () => {
 
     const isMobile = window.innerWidth < 768;
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xf0f9ff, 0.018);
+    // Seamless fog matching exact page background #f8fafc with deeper viewing distance
+    scene.fog = new THREE.FogExp2(0xf8fafc, 0.015);
 
     const camera = new THREE.PerspectiveCamera(
-      40,
+      42,
       mount.clientWidth / mount.clientHeight,
       0.1,
       1000
     );
-    // Elevated perspective so the water channel and floating ship are clearly framed
-    camera.position.set(0, 3.8, 18.5);
+    camera.position.set(0, 4.6, 21.0);
 
     let renderer: THREE.WebGLRenderer | null = null;
     try {
       renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: false, // Performance: antialias false on high-DPI screens saves massive rasterization time
         alpha: true,
         powerPreference: 'high-performance',
       });
       renderer.setSize(mount.clientWidth, mount.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 1.5));
+      // Cap pixel ratio to 1.25 max to prevent high-DPI lag and GPU thermal throttling
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 1.25));
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
+      renderer.toneMappingExposure = 1.1;
       mount.appendChild(renderer.domElement);
     } catch (e) {
       console.warn('WebGL initialization failed, using static fallback:', e);
@@ -39,7 +40,7 @@ export const OceanHeroScene: React.FC = () => {
     }
 
     // ============================================================
-    // 1. MARITIME DAYLIGHT LIGHTING
+    // 1. LIGHTING
     // ============================================================
     const ambientLight = new THREE.AmbientLight(0xdbeafe, 1.8);
     scene.add(ambientLight);
@@ -53,46 +54,46 @@ export const OceanHeroScene: React.FC = () => {
     azureFill.position.set(-18, 14, -10);
     scene.add(azureFill);
 
-    const warmSpec = new THREE.PointLight(0xfef08a, 1.8, 40);
+    const warmSpec = new THREE.PointLight(0xfef08a, 1.6, 40);
     warmSpec.position.set(0, 6, 8);
     scene.add(warmSpec);
 
     // ============================================================
-    // 2. CRYSTALLINE BLUE WATER CHANNEL (RIVER / OCEAN SURFACE)
+    // 2. ULTRA-OPTIMIZED EXTENDED WATER MESH (Seamless deeper field)
     // ============================================================
-    const segments = isMobile ? 45 : 90;
-    const oceanGeo = new THREE.PlaneGeometry(120, 90, segments, segments);
+    const segments = isMobile ? 22 : 36;
+    const oceanGeo = new THREE.PlaneGeometry(160, 160, segments, segments);
     oceanGeo.rotateX(-Math.PI / 2);
     const posAttr = oceanGeo.attributes.position;
     const initialPositions = posAttr.array.slice() as Float32Array;
 
     const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Mediterranean Azure Sea Blue
-      roughness: 0.1,
-      metalness: 0.45,
+      color: 0x0284c7,
+      roughness: 0.12,
+      metalness: 0.4,
       flatShading: true,
     });
     const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
-    oceanMesh.position.y = -0.7;
+    oceanMesh.position.y = -0.5;
     scene.add(oceanMesh);
 
     // ============================================================
-    // 3. WATER SURFACE SPRAY & OCEAN BOKEH PARTICLES
+    // 3. WATER SPRAY PARTICLES (Optimized particle count)
     // ============================================================
-    const sparkleCount = isMobile ? 80 : 160;
+    const sparkleCount = isMobile ? 50 : 90;
     const sparkleGeo = new THREE.BufferGeometry();
     const sparkleCoords = new Float32Array(sparkleCount * 3);
     for (let i = 0; i < sparkleCount * 3; i += 3) {
-      sparkleCoords[i] = (Math.random() - 0.5) * 85;
-      sparkleCoords[i + 1] = Math.random() * 18 + 0.5;
-      sparkleCoords[i + 2] = (Math.random() - 0.5) * 60;
+      sparkleCoords[i] = (Math.random() - 0.5) * 110;
+      sparkleCoords[i + 1] = Math.random() * 20 + 0.5;
+      sparkleCoords[i + 2] = (Math.random() - 0.5) * 85;
     }
     sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparkleCoords, 3));
     const sparkleMat = new THREE.PointsMaterial({
-      size: 0.16,
+      size: 0.18,
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.7,
     });
     const oceanSparkles = new THREE.Points(sparkleGeo, sparkleMat);
     scene.add(oceanSparkles);
@@ -110,33 +111,52 @@ export const OceanHeroScene: React.FC = () => {
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
     // ============================================================
-    // 4. CONTINUOUS SERENE RIVER / OCEAN WATER WAVE ANIMATION
+    // 4. VISIBILITY & FRAME-THROTTLED ANIMATION LOOP
     // ============================================================
+    let isVisible = true;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(mount);
+
     let animationFrameId: number;
     const startTime = performance.now();
+    let lastWaveCalc = 0;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = (performance.now() - startTime) * 0.001;
 
-      // Gentle undulating river/ocean waves
-      const currentPos = oceanGeo.attributes.position;
-      for (let i = 0; i < currentPos.count; i++) {
-        const u = initialPositions[i * 3];
-        const v = initialPositions[i * 3 + 2];
-        const wave =
-          Math.sin(u * 0.22 + elapsedTime * 1.4) * 0.28 +
-          Math.cos(v * 0.26 + elapsedTime * 1.0) * 0.22 +
-          Math.sin((u + v) * 0.15 + elapsedTime * 1.6) * 0.1;
-        currentPos.setY(i, wave);
+      // Skip frame processing completely if scrolled out of view (saves 100% CPU/GPU)
+      if (!isVisible) return;
+
+      const now = performance.now();
+      const elapsedTime = (now - startTime) * 0.001;
+
+      // Throttle wave calculation to ~35fps for butter-smooth UI responsiveness
+      if (now - lastWaveCalc > 28) {
+        lastWaveCalc = now;
+        const currentPos = oceanGeo.attributes.position;
+        const count = currentPos.count;
+        for (let i = 0; i < count; i++) {
+          const u = initialPositions[i * 3];
+          const v = initialPositions[i * 3 + 2];
+          const wave =
+            Math.sin(u * 0.22 + elapsedTime * 1.3) * 0.26 +
+            Math.cos(v * 0.26 + elapsedTime * 0.95) * 0.2 +
+            Math.sin((u + v) * 0.15 + elapsedTime * 1.5) * 0.08;
+          currentPos.setY(i, wave);
+        }
+        currentPos.needsUpdate = true;
       }
-      currentPos.needsUpdate = true;
 
       // Parallax Camera Easing
-      targetX += (mouseX * 1.4 - targetX) * 0.04;
-      targetY += (mouseY * 0.5 - targetY) * 0.04;
+      targetX += (mouseX * 1.2 - targetX) * 0.04;
+      targetY += (mouseY * 0.4 - targetY) * 0.04;
       camera.position.x = targetX;
-      camera.position.y = 3.8 - targetY;
+      camera.position.y = 4.6 - targetY;
       camera.lookAt(0, 0.4, 0);
 
       if (renderer) {
@@ -154,6 +174,7 @@ export const OceanHeroScene: React.FC = () => {
     window.addEventListener('resize', handleResize);
 
     return () => {
+      observer.disconnect();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
@@ -171,7 +192,13 @@ export const OceanHeroScene: React.FC = () => {
   return (
     <div
       ref={mountRef}
-      className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden"
+      className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden transition-opacity duration-700"
+      style={{
+        maskImage:
+          'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 68%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)',
+        WebkitMaskImage:
+          'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 68%, rgba(0,0,0,0.45) 86%, rgba(0,0,0,0) 100%)',
+      }}
       aria-hidden="true"
     />
   );

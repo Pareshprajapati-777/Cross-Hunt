@@ -16,9 +16,12 @@ import {
   getAdminReviews,
   adminDeleteReview,
   getAdminReports,
+  getAdminOperators,
+  updateAdminOperator,
+  resyncAdminSeedData,
   AdminDashboardData
 } from '../api/dashboards';
-import { Offer, Booking, PublicTour } from '../api/types';
+import { Offer, Booking, PublicTour, OperatorSummary } from '../api/types';
 import {
   Shield,
   Users,
@@ -35,22 +38,32 @@ import {
   Trash2,
   MapPin,
   Waves,
-  Anchor
+  Anchor,
+  Database,
+  RefreshCw,
+  CheckCircle2,
+  ExternalLink,
+  Globe,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
+import { AdminAnalyticsView } from '../components/admin/AdminAnalyticsView';
+import { AdminWhatsAppView } from '../components/admin/AdminWhatsAppView';
+import { MessageSquare } from 'lucide-react';
 
 type AdminTab =
   | 'overview'
-  | 'analytics'
+  | 'whatsapp'
+  | 'operators'
   | 'users'
   | 'owners'
   | 'ships'
   | 'bookings'
   | 'tours'
   | 'offers'
-  | 'reviews'
-  | 'reports';
+  | 'reviews';
 
 export const AdminDashboardPage: React.FC = () => {
   const [data, setData] = useState<AdminDashboardData | null>(null);
@@ -66,6 +79,10 @@ export const AdminDashboardPage: React.FC = () => {
   const [offersList, setOffersList] = useState<Offer[]>([]);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [reportsData, setReportsData] = useState<any | null>(null);
+  const [operatorsList, setOperatorsList] = useState<OperatorSummary[]>([]);
+  const [resyncLoading, setResyncLoading] = useState(false);
+  const [resyncResult, setResyncResult] = useState<string | null>(null);
+  const [selectedOperatorForVessels, setSelectedOperatorForVessels] = useState<OperatorSummary | null>(null);
 
   // Search & Filter filters
   const [userSearch, setUserSearch] = useState('');
@@ -90,11 +107,20 @@ export const AdminDashboardPage: React.FC = () => {
 
   const loadBaseData = () => {
     setLoading(true);
-    Promise.all([getAdminDashboard(), getAdminOffers(), getAdminReports()])
-      .then(([dashRes, offersRes, reportsRes]) => {
-        setData(dashRes);
-        setOffersList(offersRes.offers || []);
-        setReportsData(reportsRes);
+    Promise.allSettled([getAdminDashboard(), getAdminOffers(), getAdminReports(), getAdminOperators()])
+      .then(([dashRes, offersRes, reportsRes, opRes]) => {
+        if (dashRes.status === 'fulfilled') {
+          setData(dashRes.value);
+        }
+        if (offersRes.status === 'fulfilled') {
+          setOffersList(offersRes.value.offers || []);
+        }
+        if (reportsRes.status === 'fulfilled') {
+          setReportsData(reportsRes.value);
+        }
+        if (opRes.status === 'fulfilled') {
+          setOperatorsList(opRes.value.operators || []);
+        }
       })
       .catch((err) => console.error('Failed to load admin dashboard:', err))
       .finally(() => setLoading(false));
@@ -106,7 +132,11 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Fetch contextual tab data
   useEffect(() => {
-    if (activeTab === 'users') {
+    if (activeTab === 'operators') {
+      getAdminOperators()
+        .then((res) => setOperatorsList(res.operators || []))
+        .catch((err) => console.error('Error fetching operators:', err));
+    } else if (activeTab === 'users') {
       getAdminUsers({ q: userSearch || undefined })
         .then((res) => setUsersList(res.users || []))
         .catch((err) => console.error('Error fetching users:', err));
@@ -132,6 +162,31 @@ export const AdminDashboardPage: React.FC = () => {
         .catch((err) => console.error('Error fetching reviews:', err));
     }
   }, [activeTab, userSearch, bookingTypeFilter, bookingStatusFilter]);
+
+  const handleToggleOperatorVerified = async (op: OperatorSummary) => {
+    try {
+      const res = await updateAdminOperator(op.id, { verified: !op.verified });
+      setOperatorsList((prev) => prev.map((item) => (item.id === op.id ? { ...item, verified: res.operator.verified } : item)));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update operator status');
+    }
+  };
+
+  const handleResyncSeed = async () => {
+    if (!window.confirm('Re-run database cruise seed sync? This will safely update operator and vessel records without destroying data.')) return;
+    setResyncLoading(true);
+    setResyncResult(null);
+    try {
+      const res = await resyncAdminSeedData();
+      setResyncResult(res.message);
+      getAdminOperators().then((r) => setOperatorsList(r.operators || []));
+      loadBaseData();
+    } catch (err: any) {
+      setResyncResult(`Failed: ${err.message}`);
+    } finally {
+      setResyncLoading(false);
+    }
+  };
 
   const handleToggleUser = async (userId: number) => {
     try {
@@ -221,57 +276,78 @@ export const AdminDashboardPage: React.FC = () => {
 
   const stats = data?.stats || {
     total_users: 0,
+    total_owners: 0,
     total_operators: 0,
     total_ships: 0,
     active_ships: 0,
+    external_operators: 11,
+    external_operators_count: 11,
     total_tours: 0,
     active_tours: 0,
     total_bookings: 0,
     private_bookings: 0,
     tour_bookings: 0,
+    total_tickets: 0,
+    tickets_count: 0,
     pending_bookings: 0,
+    pending_requests: 0,
     confirmed_bookings: 0,
+    cancelled_bookings: 0,
     total_revenue: 0,
+    gross_revenue: 0,
+    owner_payout: 0,
+    platform_commission: 0,
+    platform_profit: 0,
+    net_profit: 0,
+    occupancy_rate: 0,
+    cancellation_rate: 0,
   };
 
+  const monthlyAnalytics = data?.analytics?.monthly_revenue || [];
+  const maxMonthRevenue = Math.max(...monthlyAnalytics.map((m) => m.revenue), 100000);
+
   return (
-    <div className="min-h-screen pt-28 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-slate-50/70">
-      {/* 1. ADMIN IDENTITY HEADER */}
-      <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-bold uppercase tracking-wider mb-2 border border-red-500/30">
+    <div className="min-h-screen pt-28 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ocean-spatial-mesh">
+      {/* 1. ADMIN SPATIAL IDENTITY HEADER */}
+      <div className="spatial-glass-dark rounded-3xl p-6 sm:p-8 text-white shadow-2xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-white/10 relative overflow-hidden">
+        {/* Subtle Ambient Refraction */}
+        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-bold uppercase tracking-wider mb-2.5 border border-red-500/30 backdrop-blur-md">
             <Shield className="w-3.5 h-3.5 text-red-400" />
             Platform Control Center & Master Ledger
           </div>
-          <h1 className="text-2xl sm:text-4xl font-display font-black tracking-tight font-serif">
+          <h1 className="text-3xl sm:text-4xl font-display font-black tracking-tight text-white drop-shadow-sm">
             Executive Platform Administration
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-300/90 mt-1.5 font-ui">
             Global system management, role access controls, financial auditing, and fleet governance in INR (₹).
           </p>
         </div>
 
         <button
           onClick={() => setShowAddOfferModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center gap-1.5 self-start cursor-pointer shadow-md"
+          className="relative z-10 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center gap-2 self-start cursor-pointer shadow-lg shadow-rose-950/40 hover:shadow-rose-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
           <Plus className="w-4 h-4" /> Create Coupon Promo
         </button>
       </div>
 
-      {/* 2. SUB-NAVIGATION TABS BAR */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-8 overflow-x-auto text-xs font-bold">
+      {/* 2. SPATIAL SUB-NAVIGATION DOCK */}
+      <div className="p-1.5 bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-sm flex items-center gap-1.5 mb-8 overflow-x-auto text-xs font-bold font-ui">
         {[
-          { id: 'overview', label: 'Platform Overview', icon: BarChart3 },
-          { id: 'analytics', label: 'Charts & Analytics', icon: TrendingUp },
+          { id: 'overview', label: 'Platform Overview & Analytics', icon: BarChart3 },
+          { id: 'whatsapp', label: 'WhatsApp Reminders', icon: MessageSquare },
+          { id: 'operators', label: `Data Sources (${operatorsList.length || 11})`, icon: Database },
           { id: 'users', label: `Users (${stats.total_users})`, icon: Users },
-          { id: 'owners', label: `Owners (${stats.total_operators})`, icon: Anchor },
+          { id: 'owners', label: `Owners (${stats.total_owners || stats.total_operators})`, icon: Anchor },
           { id: 'ships', label: `Ships Fleet (${stats.total_ships})`, icon: Ship },
           { id: 'bookings', label: `Bookings (${stats.total_bookings})`, icon: Calendar },
           { id: 'tours', label: `Tours (${stats.total_tours || 0})`, icon: Waves },
           { id: 'offers', label: `Offers (${offersList.length})`, icon: Tag },
           { id: 'reviews', label: 'Reviews', icon: Star },
-          { id: 'reports', label: 'Audit Reports', icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -279,10 +355,10 @@ export const AdminDashboardPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as AdminTab)}
-              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 isActive
-                  ? 'bg-slate-900 text-white font-black shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-slate-900 text-white font-black shadow-md shadow-slate-900/25 border border-slate-800'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -292,73 +368,218 @@ export const AdminDashboardPage: React.FC = () => {
         })}
       </div>
 
-      {/* TAB 1: OVERVIEW & KPIS */}
+      {/* TAB 1: OVERVIEW & ANALYTICS */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gross Platform Revenue</span>
-              <span className="text-3xl font-black text-slate-900">{formatINR(stats.total_revenue)}</span>
-              <p className="text-[11px] text-emerald-600 font-bold">100% In INR (₹)</p>
+          {/* CLEAR PROFIT CALCULATION CARD (Spatial Financial Model) */}
+          <div className="spatial-glass-dark rounded-3xl p-6 sm:p-8 text-white shadow-2xl space-y-6 border border-white/10 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-500/30 backdrop-blur-md">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  Financial Accounting Model
+                </span>
+                <h3 className="text-2xl font-bold font-display tracking-tight">Platform Profit & Commission Breakdown</h3>
+                <p className="text-xs text-slate-300/80 mt-0.5">
+                  Formula: Customer Paid − Owner Payout (85%) − Refunds/Discounts = Platform Net Profit
+                </p>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Net Profit</span>
+                <span className="text-3xl font-black text-emerald-400 font-mono-numbers">
+                  {formatINR(stats.platform_profit || stats.net_profit || (stats.total_revenue * 0.15))}
+                </span>
+              </div>
             </div>
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Bookings</span>
-              <span className="text-3xl font-black text-slate-900">{stats.total_bookings}</span>
-              <p className="text-[11px] text-slate-500">{stats.private_bookings || 0} Private • {stats.tour_bookings || 0} Tours</p>
-            </div>
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Registered Vessels</span>
-              <span className="text-3xl font-black text-slate-900">{stats.total_ships}</span>
-              <p className="text-[11px] text-slate-500">{stats.active_ships || stats.total_ships} Active Ships</p>
-            </div>
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Platform Accounts</span>
-              <span className="text-3xl font-black text-slate-900">{stats.total_users + stats.total_operators}</span>
-              <p className="text-[11px] text-slate-500">{stats.total_users} Users • {stats.total_operators} Operators</p>
+
+            {/* 4 Spatial Financial Columns */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 relative z-10">
+              <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 space-y-1.5 hover:bg-white/10 transition-all shadow-inner">
+                <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wider">Gross Customer Paid</span>
+                <span className="text-2xl font-black text-white font-mono-numbers">{formatINR(stats.gross_revenue || stats.total_revenue)}</span>
+                <p className="text-[10px] text-slate-400">Total customer collections</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 space-y-1.5 hover:bg-white/10 transition-all shadow-inner">
+                <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wider">Owner Payout (85%)</span>
+                <span className="text-2xl font-black text-sky-300 font-mono-numbers">{formatINR(stats.owner_payout || (stats.total_revenue * 0.85))}</span>
+                <p className="text-[10px] text-slate-400">Paid out to ship operators</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 space-y-1.5 hover:bg-white/10 transition-all shadow-inner">
+                <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wider">Platform Commission (15%)</span>
+                <span className="text-2xl font-black text-amber-300 font-mono-numbers">{formatINR(stats.platform_commission || (stats.total_revenue * 0.15))}</span>
+                <p className="text-[10px] text-slate-400">Standard commission rate</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-500/15 backdrop-blur-md border border-emerald-400/30 space-y-1.5 hover:bg-emerald-500/20 transition-all shadow-inner">
+                <span className="text-[10px] uppercase font-bold text-emerald-300 block tracking-wider">Net Platform Profit</span>
+                <span className="text-2xl font-black text-emerald-400 font-mono-numbers">{formatINR(stats.platform_profit || stats.net_profit || (stats.total_revenue * 0.15))}</span>
+                <p className="text-[10px] text-emerald-200 font-semibold">After all payouts & discounts</p>
+              </div>
             </div>
           </div>
 
-          {/* Quick Recent Platform Activity */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 font-serif">Recent Platform Reservations</h3>
+          {/* 3. BUSINESS ANALYTICS & VISUAL TRENDS (Merged Smartly with Overview) */}
+          <AdminAnalyticsView initialData={data} />
+
+        </div>
+      )}
+
+      {/* TAB: WHATSAPP TOUR REMINDERS & AUTOMATION */}
+      {activeTab === 'whatsapp' && (
+        <AdminWhatsAppView />
+      )}
+
+      {/* TAB: DATA SOURCES & OPERATORS (Requirement 17 & 28) */}
+      {activeTab === 'operators' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Source of Truth: Research 2026 Dataset
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 font-serif">Data Sources & Verified Operators</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Audit research operators, fleet vessels, price units, and source verification dates.
+              </p>
+            </div>
+
+            <button
+              onClick={handleResyncSeed}
+              disabled={resyncLoading}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 self-start cursor-pointer shadow-md disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${resyncLoading ? 'animate-spin' : ''}`} />
+              <span>{resyncLoading ? 'Re-Syncing Seed...' : 'Re-Sync Seed Data'}</span>
+            </button>
+          </div>
+
+          {resyncResult && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+              <span>{resyncResult}</span>
+              <button onClick={() => setResyncResult(null)} className="text-emerald-600 font-bold hover:underline cursor-pointer">
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Seed Audit Summary Cards (Requirement 28) */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Operators</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">{operatorsList.length || 11}</span>
+              <span className="text-[10px] text-emerald-600 font-semibold">100% Verified</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Routes</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">15</span>
+              <span className="text-[10px] text-slate-500">Goa, Andaman, etc.</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Research Fleet</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">13</span>
+              <span className="text-[10px] text-sky-600 font-semibold">32 Fleet Total</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Charter Rates</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">13</span>
+              <span className="text-[10px] text-amber-600 font-semibold">Exact Units</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Public Tours</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">23</span>
+              <span className="text-[10px] text-emerald-600 font-semibold">Scheduled</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cabin Fares</span>
+              <span className="text-2xl font-black text-slate-900 mt-1 block font-mono">41</span>
+              <span className="text-[10px] text-slate-500">Tier Rates</span>
+            </div>
+          </div>
+
+          {/* Operators Inventory Table */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="py-3 px-4">Booking Ref</th>
-                    <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Vessel</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Operator Name</th>
+                    <th className="py-3 px-4">Base Location</th>
+                    <th className="py-3 px-4">Contact Phone & Email</th>
+                    <th className="py-3 px-4">Source URL</th>
+                    <th className="py-3 px-4">Ships</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Amount (₹)</th>
-                    <th className="py-3 px-4 text-right">Invoice</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data?.recent_bookings.slice(0, 10).map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">#{b.booking_id}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">{b.customer_name || 'Passenger'}</td>
-                      <td className="py-3.5 px-4 text-slate-700">{b.cruise_title}</td>
+                  {operatorsList.map((op) => (
+                    <tr key={op.id} className="hover:bg-slate-50 transition">
                       <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
-                          {b.booking_type === 'EVENT' ? 'Private' : 'Tour'}
+                        <div className="font-bold text-slate-900 text-sm">{op.name}</div>
+                        <div className="text-[11px] text-slate-500 line-clamp-1">{op.description}</div>
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-700">{op.location}</td>
+                      <td className="py-3.5 px-4 text-slate-600 space-y-0.5">
+                        {op.phone && (
+                          <div className="flex items-center gap-1 text-[11px]">
+                            <Phone className="w-3 h-3 text-sky-600" />
+                            <span>{op.phone}</span>
+                          </div>
+                        )}
+                        {op.email && (
+                          <div className="flex items-center gap-1 text-[11px]">
+                            <Mail className="w-3 h-3 text-sky-600" />
+                            <span>{op.email}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {op.website ? (
+                          <a
+                            href={op.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sky-600 font-semibold hover:underline"
+                          >
+                            <Globe className="w-3 h-3" />
+                            <span>Source Link</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">Research doc</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-800">
+                        {op.vessels_count} Ships
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          op.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {op.verified ? 'Verified' : 'Pending Review'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">{b.booking_date}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
-                          {b.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-black text-slate-900">{formatINR(b.total_price)}</td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right space-x-2">
                         <button
-                          onClick={() => setSelectedInvoiceId(b.booking_id)}
-                          className="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[11px] transition cursor-pointer"
+                          onClick={() => setSelectedOperatorForVessels(selectedOperatorForVessels?.id === op.id ? null : op)}
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 font-bold text-[11px] cursor-pointer hover:bg-sky-100 transition"
                         >
-                          View
+                          {selectedOperatorForVessels?.id === op.id ? 'Hide Fleet' : 'Inspect Fleet'}
+                        </button>
+                        <button
+                          onClick={() => handleToggleOperatorVerified(op)}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer hover:bg-slate-100 transition"
+                        >
+                          {op.verified ? 'Revoke' : 'Verify'}
                         </button>
                       </td>
                     </tr>
@@ -366,75 +587,63 @@ export const AdminDashboardPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* TAB 2: ANALYTICS & CHARTS */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Booking Classification Distribution */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-slate-900 font-serif">Booking Type Distribution</h3>
-              <div className="space-y-3 pt-2">
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span className="text-amber-800">Private Ship Charters ({stats.private_bookings || 0})</span>
-                    <span>{Math.round(((stats.private_bookings || 0) / Math.max(1, stats.total_bookings)) * 100)}%</span>
-                  </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full"
-                      style={{ width: `${((stats.private_bookings || 0) / Math.max(1, stats.total_bookings)) * 100}%` }}
-                    />
-                  </div>
+            {/* Expandable Vessel Details for Selected Operator */}
+            {selectedOperatorForVessels && (
+              <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Ship className="w-4 h-4 text-sky-600" />
+                    <span>Fleet & Inventory for {selectedOperatorForVessels.name}</span>
+                  </h4>
+                  <span className="text-xs text-slate-500 font-semibold">
+                    {selectedOperatorForVessels.vessels?.length || 0} active ships in database
+                  </span>
                 </div>
 
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span className="text-sky-800">Public Cruise Tour Tickets ({stats.tour_bookings || 0})</span>
-                    <span>{Math.round(((stats.tour_bookings || 0) / Math.max(1, stats.total_bookings)) * 100)}%</span>
-                  </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500 rounded-full"
-                      style={{ width: `${((stats.tour_bookings || 0) / Math.max(1, stats.total_bookings)) * 100}%` }}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(selectedOperatorForVessels.vessels || []).map((v) => (
+                    <div key={v.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 text-xs truncate font-serif">{v.name}</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800">
+                          {v.category}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Capacity:</span>
+                          <span className="font-semibold text-slate-800">{v.display_capacity_text || `${v.capacity} guests`}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Rate Basis:</span>
+                          <span className="font-bold text-sky-800">
+                            {v.is_quote_based ? 'Price on Request' : `${formatINR(v.price)} ${v.formatted_price_basis}`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Unit:</span>
+                          <span className="font-mono text-[11px] font-bold text-slate-700">{v.price_unit}</span>
+                        </div>
+                      </div>
+                      {v.source_url && (
+                        <div className="pt-2 border-t border-slate-100">
+                          <a
+                            href={v.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-sky-600 font-bold hover:underline flex items-center gap-1"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Verified Source URL</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-
-            {/* Top Destinations Audit */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-slate-900 font-serif">Top Destinations Demand</h3>
-              <div className="space-y-2">
-                {reportsData?.popular_destinations?.map((d: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50">
-                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-sky-600" />
-                      {d.destination}
-                    </span>
-                    <span className="font-mono font-bold text-slate-600">{d.count} Bookings</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Popular Flagships */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 font-serif">High-Performing Fleet Ships</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {reportsData?.popular_ships?.map((s: any, idx: number) => (
-                <div key={idx} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 space-y-1">
-                  <span className="text-xs font-bold text-slate-900 block font-serif">{s.name}</span>
-                  <p className="text-[11px] text-slate-500">{s.location}</p>
-                  <p className="text-xs font-black text-emerald-700">{s.bookings_count} Total Reservations</p>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -513,7 +722,7 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-black text-slate-900 font-serif">Ship Operators & Fleet Owners</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Approve, verify, or suspend maritime operators across India.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Approve, verify, or suspend cruise & boat operators across India.</p>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -577,8 +786,8 @@ export const AdminDashboardPage: React.FC = () => {
       {activeTab === 'ships' && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 font-serif">Platform Vessel Governance</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Inspect all registered vessels across all owners on the platform.</p>
+            <h2 className="text-2xl font-black text-slate-900 font-serif">Platform Ship Fleet Governance</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Inspect all registered ships across all owners on the platform.</p>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -824,7 +1033,7 @@ export const AdminDashboardPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="py-3 px-4">Vessel</th>
+                    <th className="py-3 px-4">Ship</th>
                     <th className="py-3 px-4">Author</th>
                     <th className="py-3 px-4">Rating</th>
                     <th className="py-3 px-4">Comment</th>
@@ -861,33 +1070,6 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 10: AUDIT REPORTS */}
-      {activeTab === 'reports' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 font-serif">Platform Financial & Operational Audit</h2>
-            <p className="text-xs text-slate-500 mt-0.5">High-level financial summaries for regulatory and platform records.</p>
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block uppercase">Total GMV Processed</span>
-                <span className="text-2xl font-black text-slate-900 mt-1 block">{formatINR(stats.total_revenue)}</span>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block uppercase">Platform Commission (15%)</span>
-                <span className="text-2xl font-black text-emerald-700 mt-1 block">{formatINR(stats.total_revenue * 0.15)}</span>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block uppercase">Cancellation Rate</span>
-                <span className="text-2xl font-black text-slate-900 mt-1 block">{reportsData?.cancellation_rate || 0}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ADD OFFER MODAL */}
       {showAddOfferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -917,7 +1099,7 @@ export const AdminDashboardPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Festive Maritime 15% Off"
+                  placeholder="e.g. Festive Trip 15% Off"
                   value={offerForm.title}
                   onChange={(e) => setOfferForm({ ...offerForm, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"

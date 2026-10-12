@@ -38,7 +38,7 @@ def customer_required(view_func):
 
 
 def owner_required(view_func):
-    return role_required(['CROSS_OWNER'])(view_func)
+    return role_required(['OWNER', 'CROSS_OWNER'])(view_func)
 
 
 def admin_required(view_func):

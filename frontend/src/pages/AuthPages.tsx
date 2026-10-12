@@ -83,12 +83,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <Anchor className="w-6 h-6 text-sky-600" />
           </div>
           <h1 className="text-2xl font-display font-extrabold text-slate-900 tracking-tight">
-            {mode === 'login' ? 'Sign In to Cross Hunt' : 'Create Maritime Account'}
+            {mode === 'login' ? 'Sign In to Cross Hunt' : 'Create an Account'}
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             {mode === 'login'
-              ? 'Access your staterooms, voyage tickets, and event bookings.'
-              : 'Join the premier luxury ocean travel & charter platform.'}
+              ? 'Access your cabins, trip tickets, and bookings.'
+              : 'Book private boat charters and cruise trips with verified operators.'}
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Admiral James Cook"
+                  placeholder="e.g. Rahul Sharma"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500 transition"
                 />
               </div>
@@ -126,7 +126,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="captain@maritime.com"
+                  placeholder="name@example.com"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500 transition"
                 />
               </div>
@@ -141,7 +141,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500 transition"
                 >
                   <option value="USER">Guest Traveler / Event Host</option>
-                  <option value="CROSS_OWNER">Cruise Ship Operator</option>
+                  <option value="CROSS_OWNER">Boat / Cruise Operator</option>
                 </select>
               </div>
             </>
@@ -189,7 +189,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           {mode === 'login' ? (
             <p className="text-xs text-slate-600 font-medium">
-              Don't have a maritime account?{' '}
+              Don't have an account?{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -198,7 +198,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 }}
                 className="text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
               >
-                Join Voyage
+                Sign Up
               </button>
             </p>
           ) : (

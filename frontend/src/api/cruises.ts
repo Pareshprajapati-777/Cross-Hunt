@@ -5,6 +5,9 @@ export interface CruiseFilterParams {
   q?: string;
   destination?: string;
   category?: string;
+  vessel_category?: string;
+  listing_type?: string;
+  city?: string;
   duration?: string | number;
   cabin?: string;
   min_price?: number;
@@ -30,12 +33,18 @@ export interface CruiseListResponse {
 }
 
 export interface MatchEngineParams {
-  purpose: string;
-  guests: number;
+  search_mode?: 'PRIVATE_CHARTER' | 'PUBLIC_CRUISE';
+  purpose?: string;
+  guests?: number;
+  passengers?: number;
   date?: string;
   budget?: number;
   location?: string;
+  city?: string;
+  departure_port?: string;
+  destination?: string;
   duration?: number;
+  vessel_category?: string;
 }
 
 export interface MatchEngineResponse {
@@ -51,6 +60,9 @@ export async function getCruises(params: CruiseFilterParams = {}): Promise<Cruis
   if (params.q) query.set('q', params.q);
   if (params.destination) query.set('destination', params.destination);
   if (params.category) query.set('category', params.category);
+  if (params.vessel_category) query.set('vessel_category', params.vessel_category);
+  if (params.listing_type) query.set('listing_type', params.listing_type);
+  if (params.city) query.set('city', params.city);
   if (params.duration) query.set('duration', params.duration.toString());
   if (params.cabin) query.set('cabin', params.cabin);
   if (params.min_price) query.set('min_price', params.min_price.toString());

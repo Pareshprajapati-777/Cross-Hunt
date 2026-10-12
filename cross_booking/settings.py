@@ -119,3 +119,20 @@ MESSAGE_TAGS = {
     messages.WARNING: 'warning',
     messages.ERROR: 'danger',
 }
+
+# Cross-Hunt AI Assistant Configuration (Server-Side Only - Never Exposed to Frontend)
+import os
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+
+# =====================================================================
+# WHATSAPP TOUR REMINDER & BUSINESS API INTEGRATION (Server-Side)
+# =====================================================================
+WHATSAPP_API_ENABLED = os.environ.get('WHATSAPP_API_ENABLED', 'True').lower() in ('true', '1')
+WHATSAPP_API_PROVIDER = os.environ.get('WHATSAPP_API_PROVIDER', 'META_CLOUD')  # META_CLOUD, TWILIO, GUPSHUP, MOCK
+WHATSAPP_API_TOKEN = os.environ.get('WHATSAPP_API_TOKEN', '')
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
+WHATSAPP_BUSINESS_ACCOUNT_ID = os.environ.get('WHATSAPP_BUSINESS_ACCOUNT_ID', '')
+WHATSAPP_REMINDER_HOURS_BEFORE = int(os.environ.get('WHATSAPP_REMINDER_HOURS_BEFORE', 24))
+
+

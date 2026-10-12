@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { Booking } from '../api/types';
 import confetti from 'canvas-confetti';
 import { formatINR } from '../utils/currency';
+import { useNavigate } from 'react-router-dom';
+import { TicketPass } from '../components/ticket/TicketPass';
 import {
   Sparkles,
   Anchor,
@@ -12,6 +14,7 @@ import {
   ArrowRight,
   AlertCircle,
   Gem,
+  Printer,
 } from 'lucide-react';
 
 interface PrivateEventsPageProps {
@@ -24,8 +27,10 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
   onNeedLogin,
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<EventPackagesResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   // Form State
   const [selectedEventType, setSelectedEventType] = useState('WEDDING');
@@ -72,7 +77,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
     }
 
     if (!selectedShipId) {
-      setErrorMessage('Please select a vessel for your maritime charter.');
+      setErrorMessage('Please select a boat or ship for your private charter.');
       return;
     }
 
@@ -95,17 +100,59 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
       confetti({
         particleCount: 120,
         spread: 80,
-        origin: { y: 0.6 },
+        origin: { y: 0.5 },
         colors: ['#0284c7', '#38bdf8', '#f59e0b', '#0369a1'],
       });
 
-      onSuccess(res.booking);
+      setConfirmedBooking(res.booking);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to submit event reservation.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (confirmedBooking) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-xl mb-6 text-center space-y-3">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <span className="text-[11px] font-mono tracking-widest font-black uppercase text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
+            Event Charter Confirmed • Ref #{confirmedBooking.booking_id}
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+            Your Boarding Pass is Ready!
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+            Your private event ship charter has been confirmed. The digital QR gate code on your boarding pass will grant boarding authorization for your guest party.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+            <button
+              onClick={() => onSuccess(confirmedBooking)}
+              className="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2"
+            >
+              <span>View in Passenger Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>Print Boarding Pass</span>
+            </button>
+          </div>
+        </div>
+
+        <TicketPass
+          booking={confirmedBooking}
+          onViewInvoice={() => navigate(`/dashboard?booking_id=${confirmedBooking.booking_id}&tab=invoices`)}
+        />
+      </div>
+    );
+  }
 
   if (loading || !data) {
     return (
@@ -121,7 +168,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
       <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-          Bespoke Maritime Charters
+          Private Boat & Ship Rentals
         </div>
         <h1 className="text-4xl sm:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
           Host Your Moment at Sea
@@ -243,7 +290,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
           {/* Ship Charter Selection */}
           <div className="space-y-2">
             <label className="block text-xs uppercase font-bold text-slate-700 tracking-wider">
-              Select Charter Vessel
+              Select Charter Ship
             </label>
             <select
               value={selectedShipId}
@@ -275,7 +322,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Embarkation Time
+                Departure Time
               </label>
               <input
                 type="time"
@@ -287,7 +334,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Return Sailaway
+                Return Time
               </label>
               <input
                 type="time"

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PublicTour } from '../api/types';
+import { apiRequest } from '../api/client';
 import {
   MapPin,
   Calendar,
@@ -9,30 +11,99 @@ import {
   ArrowRight,
   Utensils,
   CheckCircle2,
-  Anchor
+  Anchor,
+  Loader2
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
 interface TourDetailPageProps {
-  tour: PublicTour;
-  onBack: () => void;
-  onBookTourTicket: (tour: PublicTour) => void;
+  tour?: PublicTour | null;
+  onBack?: () => void;
+  onBookTourTicket?: (tour: PublicTour) => void;
 }
 
 export const TourDetailPage: React.FC<TourDetailPageProps> = ({
-  tour,
+  tour: initialTour,
   onBack,
   onBookTourTicket,
 }) => {
-  const [selectedCabin, setSelectedCabin] = useState<'Standard Stateroom' | 'Oceanview Balcony Stateroom' | 'Captain Suite'>('Oceanview Balcony Stateroom');
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [tour, setTour] = useState<PublicTour | null>(initialTour || null);
+  const [loading, setLoading] = useState<boolean>(!initialTour && !!id);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCabin, setSelectedCabin] = useState<'Standard Cabin' | 'Balcony Cabin' | 'Captain Suite'>('Balcony Cabin');
+
+  useEffect(() => {
+    if (!tour && id) {
+      setLoading(true);
+      apiRequest<{ tour?: PublicTour } & PublicTour>(`/api/tours/${id}/`)
+        .then((res) => {
+          const loaded = (res as any).tour || res;
+          setTour(loaded);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError(err.message || 'Failed to load tour details');
+          setLoading(false);
+        });
+    }
+  }, [id, tour]);
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate('/tours');
+    }
+  };
+
+  const handleBookTicket = (selectedTour: PublicTour) => {
+    if (onBookTourTicket) {
+      onBookTourTicket(selectedTour);
+    } else {
+      navigate(`/book-tour/${selectedTour.id}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-sky-600 animate-spin mx-auto" />
+          <p className="text-slate-600 font-semibold">Loading cruise tour details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !tour) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-200 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
+            <Anchor className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Cruise Tour Not Found</h2>
+          <p className="text-sm text-slate-600">{error || 'The requested cruise tour could not be found or has expired.'}</p>
+          <button
+            onClick={() => navigate('/tours')}
+            className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm cursor-pointer transition"
+          >
+            Explore Public Tours
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const itineraryLines = tour.itinerary_highlights && tour.itinerary_highlights.length > 0
     ? tour.itinerary_highlights
     : [
-        `Day 1: Embarkation at ${tour.departure_port} at ${tour.departure_time} — Welcome Cocktail & Grand Buffet`,
+        `Day 1: Boarding at ${tour.departure_port} at ${tour.departure_time} — Welcome Drink & Buffet`,
         `Day 2: Coastal navigation past Konkan fortress islands & Sunset Lido Deck party`,
-        `Day 3: Anchor at ${tour.destination} — Shore excursions, watersports, and gala starlight dinner`,
-        `Day 4: Return docking and disembarkation at ${tour.return_time}`
+        `Day 3: Anchor at ${tour.destination} — Shore activities, watersports, and dinner under the stars`,
+        `Day 4: Return and docking at ${tour.return_time}`
       ];
 
   const isLowCapacity = tour.remaining_capacity <= 20;
@@ -42,7 +113,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Back Button */}
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -52,9 +123,15 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
         {/* Hero Banner */}
         <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-200/80 bg-slate-900 text-white min-h-[380px] flex flex-col justify-end p-6 sm:p-10">
           <img
-            src={tour.ship_image || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1600&q=80'}
+            src={tour.tour_image || tour.ship_image || tour.image_url || '/static/images/placeholder.png'}
             alt={tour.tour_title}
             className="absolute inset-0 w-full h-full object-cover opacity-45"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.src.includes('placeholder.png')) {
+                target.src = '/static/images/placeholder.png';
+              }
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent" />
 
@@ -119,7 +196,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
             <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
               <div className="flex items-center gap-2">
                 <Anchor className="w-5 h-5 text-sky-500" />
-                <h2 className="text-xl font-black text-slate-900 font-serif">Voyage Itinerary & Port Calls</h2>
+                <h2 className="text-xl font-black text-slate-900 font-serif">Trip Itinerary & Stops</h2>
               </div>
 
               <div className="space-y-4">
@@ -137,7 +214,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
 
               {tour.ports_of_call && (
                 <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-100 text-xs text-sky-900 font-medium">
-                  <span className="font-bold">Ports of Call:</span> {tour.ports_of_call}
+                  <span className="font-bold">Trip Stops:</span> {tour.ports_of_call}
                 </div>
               )}
             </div>
@@ -151,11 +228,11 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {[
                   tour.meals_included || 'All Gourmet Meals, High Tea & Midnight Snacks',
-                  'Live Musical Broadway Shows & Cultural Amphitheatre',
+                  'Live Musical Shows & Cultural Theatre',
                   'Access to Swimming Pools, Sun Decks & Jacuzzis',
-                  'Port Fees, Maritime Safety Protocol & Lifeboat Briefings',
-                  'Complimentary High-Speed Wi-Fi in Observation Lounges',
-                  'Daily Morning Yoga & Wellness Deck Sessions'
+                  'Port Fees, Safety Briefings & Life Jackets',
+                  'Complimentary Wi-Fi in Observation Lounges',
+                  'Daily Morning Yoga & Wellness Sessions'
                 ].map((inc, i) => (
                   <div key={i} className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -177,12 +254,12 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
 
               {/* Cabin Tier Selector */}
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Select Cabin Tier</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Select Room / Cabin Type</label>
                 <div className="space-y-2">
                   {[
-                    { id: 'Standard Stateroom', name: 'Signature Oceanview', surcharge: 0 },
-                    { id: 'Oceanview Balcony Stateroom', name: 'Royal Balcony Stateroom', surcharge: 2500 },
-                    { id: 'Captain Suite', name: 'Captain Presidential Suite', surcharge: 5000 },
+                    { id: 'Standard Cabin', name: 'Signature Oceanview Cabin', surcharge: 0 },
+                    { id: 'Balcony Cabin', name: 'Private Balcony Cabin', surcharge: 2500 },
+                    { id: 'Captain Suite', name: 'Luxury Suite', surcharge: 5000 },
                   ].map((cab) => (
                     <div
                       key={cab.id}
@@ -211,7 +288,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
 
               {/* Book Ticket Button */}
               <button
-                onClick={() => onBookTourTicket(tour)}
+                onClick={() => handleBookTicket(tour)}
                 disabled={!tour.is_bookable}
                 className="w-full py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >

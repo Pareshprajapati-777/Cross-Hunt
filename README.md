@@ -92,6 +92,20 @@ Cross-Hunt/
 
 ## 🚀 Run Locally
 
+### Quick Start (Backend + Frontend Concurrently)
+Run directly from the root project folder:
+```powershell
+npm run dev
+```
+This automatically boots both:
+1. **Django REST Backend** on `http://127.0.0.1:8000/`
+2. **React + Vite Frontend** on `http://localhost:5173/`
+
+### Individual Services (Optional)
+- **Frontend only**: `npm run dev:frontend` (or `cd frontend && npm run dev`)
+- **Backend only**: `npm run dev:backend` (or `python manage.py runserver 127.0.0.1:8000`)
+- **Build Frontend**: `npm run build`
+
 ### Prerequisites
 
 Install **Python 3.10+** and a compatible Node.js/npm version. Use the versions supported by the project's dependency files.
@@ -103,7 +117,7 @@ git clone https://github.com/Pareshprajapati-777/Cross-Hunt.git
 cd Cross-Hunt
 ```
 
-### 2️⃣ Set up the Django backend
+### 2️⃣ Set up the Django backend manually
 
 Create and activate a virtual environment:
 
@@ -129,7 +143,7 @@ python manage.py runserver 127.0.0.1:8000
 
 Keep the backend terminal running.
 
-### 3️⃣ Set up the React frontend
+### 3️⃣ Set up the React frontend manually
 
 Open a second terminal:
 

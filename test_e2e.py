@@ -64,25 +64,31 @@ def run_e2e_verification():
 
     # 6. Book a Private Ship Charter (Product A)
     first_ship = cruises[0]
-    next_date = (datetime.date.today() + datetime.timedelta(days=random.randint(40, 90))).strftime('%Y-%m-%d')
-    charter_payload = {
-        'booking_type': 'EVENT',
-        'cruise_id': first_ship['id'],
-        'booking_date': next_date,
-        'start_time': '16:00',
-        'end_time': '22:00',
-        'event_type': 'Corporate Leadership Conclave',
-        'number_of_people': 40,
-        'selected_extras': [
-            {'name': 'Grand Floral & Thematic Deck Decoration'},
-            {'name': 'Professional DJ Rig & Concert Sound System'}
-        ],
-        'promo_code': 'ROYAL5000',
-        'special_requests': 'Executive presentation screen required on deck 5'
-    }
-    b2_res = s.post(f'{BASE}/api/bookings/create/', json=charter_payload)
+    b2_res = None
+    b2_data = None
+    for offset in range(35, 150):
+        next_date = (datetime.date.today() + datetime.timedelta(days=offset)).strftime('%Y-%m-%d')
+        charter_payload = {
+            'booking_type': 'EVENT',
+            'cruise_id': first_ship['id'],
+            'booking_date': next_date,
+            'start_time': '16:00',
+            'end_time': '22:00',
+            'event_type': 'Corporate Leadership Conclave',
+            'number_of_people': 40,
+            'selected_extras': [
+                {'name': 'Grand Floral & Thematic Deck Decoration'},
+                {'name': 'Professional DJ Rig & Concert Sound System'}
+            ],
+            'promo_code': 'ROYAL5000',
+            'special_requests': 'Executive presentation screen required on deck 5'
+        }
+        b2_res = s.post(f'{BASE}/api/bookings/create/', json=charter_payload)
+        b2_data = b2_res.json()
+        if b2_res.status_code == 200:
+            break
+
     print('6. Private Ship Charter Booking Response:', b2_res.status_code)
-    b2_data = b2_res.json()
     assert b2_res.status_code == 200, b2_data
     b2_id = b2_data['booking']['booking_id']
     print(f"   Booked Reference: {b2_id} | Total: INR {b2_data['booking']['total_price']:,.2f}")

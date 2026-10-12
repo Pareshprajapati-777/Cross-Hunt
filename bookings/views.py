@@ -59,6 +59,9 @@ def booking_create_view(request, slug):
                     messages.error(request, "This Cross is already booked for the selected time slot. Please choose another time.")
                     return render(request, 'bookings/create.html', {'cross': cross, 'form': form})
 
+                cust_wa = form.cleaned_data.get('customer_whatsapp', '')
+                opt_in = form.cleaned_data.get('whatsapp_reminder_opt_in', True)
+
                 booking = Booking.objects.create(
                     user=request.user,
                     cross=cross,
@@ -70,6 +73,9 @@ def booking_create_view(request, slug):
                     total_price=total_price,
                     number_of_people=number_of_people,
                     special_request=special_request,
+                    customer_whatsapp=cust_wa,
+                    whatsapp_reminder_opt_in=opt_in,
+                    whatsapp_reminder_status='SCHEDULED' if (cust_wa and opt_in) else ('OPTED_OUT' if not opt_in else 'SCHEDULED'),
                     status='PENDING'
                 )
 

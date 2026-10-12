@@ -4,6 +4,7 @@ import { Booking, InvoiceData } from './types';
 export interface CreateBookingPayload {
   cruise_id?: number;
   cruise_slug?: string;
+  rate_id?: number;
   public_tour_id?: number;
   public_tour_slug?: string;
   booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT';
@@ -21,6 +22,8 @@ export interface CreateBookingPayload {
   promo_code?: string;
   special_requests?: string;
   special_request?: string;
+  customer_whatsapp?: string;
+  whatsapp_reminder_opt_in?: boolean;
 }
 
 export async function createBooking(payload: CreateBookingPayload): Promise<{ success: boolean; message?: string; booking: Booking }> {
@@ -59,3 +62,33 @@ export async function submitReview(
     body: JSON.stringify({ rating, comment }),
   });
 }
+
+export async function verifyTicket(code: string): Promise<any> {
+  return apiRequest(`/api/tickets/verify/${encodeURIComponent(code)}/`);
+}
+
+export async function markTicketUsed(code: string): Promise<{ success: boolean; message: string; ticket_status?: string }> {
+  return apiRequest(`/api/tickets/verify/${encodeURIComponent(code)}/mark-used/`, {
+    method: 'POST',
+  });
+}
+
+export async function updateBookingWhatsAppOpt(
+  bookingId: string,
+  optIn: boolean,
+  whatsappNumber?: string
+): Promise<{ success: boolean; message: string; booking: Booking }> {
+  return apiRequest(`/api/bookings/${bookingId}/whatsapp-opt/`, {
+    method: 'POST',
+    body: JSON.stringify({ opt_in: optIn, whatsapp_number: whatsappNumber }),
+  });
+}
+
+export async function sendTestWhatsAppReminder(
+  bookingId: string
+): Promise<{ success: boolean; message: string; result?: any; booking?: Booking }> {
+  return apiRequest(`/api/bookings/${bookingId}/whatsapp-test/`, {
+    method: 'POST',
+  });
+}
+

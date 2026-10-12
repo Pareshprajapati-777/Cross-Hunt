@@ -27,10 +27,31 @@ class BookingForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Any specific seating, audio/visual, or entry requests (optional)...'})
     )
+    customer_whatsapp = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'WhatsApp mobile (e.g. +91 9876543210)'}),
+        help_text="Customer WhatsApp mobile for voyage updates and 24h reminders"
+    )
+    whatsapp_reminder_opt_in = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="I agree to receive automated departure embarkation reminders via WhatsApp"
+    )
 
     class Meta:
         model = Booking
-        fields = ['booking_date', 'start_time', 'end_time', 'number_of_people', 'special_request']
+        fields = ['booking_date', 'start_time', 'end_time', 'number_of_people', 'special_request', 'customer_whatsapp', 'whatsapp_reminder_opt_in']
+
+    def clean_customer_whatsapp(self):
+        from .whatsapp_service import normalize_whatsapp_number
+        raw = self.cleaned_data.get('customer_whatsapp')
+        if raw and str(raw).strip():
+            norm = normalize_whatsapp_number(raw)
+            if not norm:
+                raise ValidationError("Please provide a valid 10-digit Indian WhatsApp mobile number or international number with country code.")
+            return norm
+        return ''
 
     def __init__(self, *args, **kwargs):
         self.cross = kwargs.pop('cross', None)

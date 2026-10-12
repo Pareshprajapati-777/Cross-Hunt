@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getMyBookings, cancelBooking, submitReview } from '../api/bookings';
+import { useSearchParams } from 'react-router-dom';
+import confetti from 'canvas-confetti';
+import { getMyBookings, cancelBooking, submitReview, updateBookingWhatsAppOpt, sendTestWhatsAppReminder } from '../api/bookings';
 import { getCruises } from '../api/cruises';
 import { getTours } from '../api/tours';
 import { getActiveOffers } from '../api/offers';
@@ -8,7 +10,6 @@ import { Booking, Cruise, PublicTour, Offer } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { TicketPass } from '../components/ticket/TicketPass';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
-import { RequirementSearch } from '../components/home/RequirementSearch';
 import {
   Ship,
   Calendar,
@@ -27,7 +28,18 @@ import {
   Search,
   Waves,
   ArrowRight,
-  Anchor
+  Anchor,
+  MessageSquare,
+  Send,
+  Bell,
+  BellOff,
+  QrCode,
+  ExternalLink,
+  BarChart3,
+  TrendingUp,
+  PieChart,
+  Activity,
+  Award
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -41,11 +53,7 @@ interface UserDashboardPageProps {
 
 type UserSubTab =
   | 'home'
-  | 'find-ship'
-  | 'tours'
   | 'bookings'
-  | 'tickets'
-  | 'invoices'
   | 'offers'
   | 'profile';
 
@@ -56,12 +64,18 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   onBookTour,
 }) => {
   const { user, refreshUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetBookingId = searchParams.get('booking_id');
+  const autoOpenPass = searchParams.get('openPass') === 'true' || searchParams.get('showTicket') === 'true';
+  const tabParam = searchParams.get('tab');
+
   const [activeSubTab, setActiveSubTab] = useState<UserSubTab>('home');
 
   // Bookings state
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [bookingFilter, setBookingFilter] = useState<'ALL' | 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ALL');
+  const [bookingSearch, setBookingSearch] = useState<string>('');
 
   // Recommendation & Discovery Data
   const [recommendedShips, setRecommendedShips] = useState<Cruise[]>([]);
@@ -100,6 +114,39 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     }
   }, [user]);
 
+  // Sync tab parameter from URL
+  useEffect(() => {
+    if (tabParam) {
+      if (['tickets', 'invoices'].includes(tabParam)) {
+        setActiveSubTab('bookings');
+      } else if (['home', 'bookings', 'offers', 'profile'].includes(tabParam)) {
+        setActiveSubTab(tabParam as UserSubTab);
+      }
+    }
+  }, [tabParam]);
+
+  // Auto-open boarding pass modal with confetti when redirected after booking
+  useEffect(() => {
+    if (targetBookingId && bookings.length > 0) {
+      const match = bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
+      if (match) {
+        if (autoOpenPass) {
+          setSelectedTicketBooking(match);
+          try {
+            confetti({
+              particleCount: 120,
+              spread: 80,
+              origin: { y: 0.5 },
+              colors: ['#0284c7', '#38bdf8', '#10b981', '#f59e0b'],
+            });
+          } catch {
+            // ignore confetti error if any
+          }
+        }
+      }
+    }
+  }, [targetBookingId, bookings, autoOpenPass]);
+
   const fetchBookings = () => {
     setLoading(true);
     getMyBookings()
@@ -130,6 +177,32 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       fetchBookings();
     } catch (err: any) {
       alert(err.message || 'Failed to cancel reservation.');
+    }
+  };
+
+  const [testingWaId, setTestingWaId] = useState<string | null>(null);
+
+  const handleToggleWhatsAppOpt = async (booking: Booking) => {
+    try {
+      const nextOpt = !booking.whatsapp_reminder_opt_in;
+      const res = await updateBookingWhatsAppOpt(booking.booking_id, nextOpt);
+      alert(res.message);
+      fetchBookings();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update WhatsApp preferences.');
+    }
+  };
+
+  const handleSendTestWhatsApp = async (bookingId: string) => {
+    setTestingWaId(bookingId);
+    try {
+      const res = await sendTestWhatsAppReminder(bookingId);
+      alert(res.message);
+      fetchBookings();
+    } catch (err: any) {
+      alert(err.message || 'Failed to dispatch WhatsApp test notification.');
+    } finally {
+      setTestingWaId(null);
     }
   };
 
@@ -178,7 +251,8 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   // Booking Categorization
   const upcomingBookings = bookings.filter(
@@ -190,28 +264,178 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.tracking_status === 'COMPLETED');
   const cancelledBookings = bookings.filter((b) => b.status === 'CANCELLED');
   const publicTickets = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
+  const charterBookings = bookings.filter((b) => b.booking_type === 'EVENT' || b.booking_type === 'PRIVATE_EVENT');
 
-  // Next upcoming booking highlight
-  const nextVoyage = upcomingBookings.length > 0 ? upcomingBookings[0] : null;
 
-  // Filtered list for 'bookings' tab
+  // User Travel Analytics & Charts Computation
+  const analyticsData = React.useMemo(() => {
+    const validBookings = bookings.filter((b) => b.status !== 'CANCELLED');
+    const totalSpent = validBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+    const totalDiscount = validBookings.reduce((sum, b) => sum + (Number(b.discount_amount) || 0), 0);
+    const totalGuests = validBookings.reduce((sum, b) => sum + (Number(b.passengers_count || b.number_of_people) || 1), 0);
+    const totalDaysOnWater = validBookings.reduce((sum, b) => sum + (Number(b.duration_days) || 1), 0);
+
+    // 1. Monthly Spending & Trips Trend
+    const monthsOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthMap: Record<string, { label: string; spent: number; count: number }> = {};
+    monthsOrder.forEach((m) => {
+      monthMap[m] = { label: m, spent: 0, count: 0 };
+    });
+
+    bookings.forEach((b) => {
+      if (b.booking_date) {
+        const d = new Date(b.booking_date);
+        const mIdx = d.getMonth();
+        const mName = monthsOrder[mIdx] || 'Oct';
+        if (!monthMap[mName]) {
+          monthMap[mName] = { label: mName, spent: 0, count: 0 };
+        }
+        if (b.status !== 'CANCELLED') {
+          monthMap[mName].spent += Number(b.total_price) || 0;
+        }
+        monthMap[mName].count += 1;
+      }
+    });
+
+    const monthlyTrend = monthsOrder.map((m) => monthMap[m]);
+    const maxMonthlySpent = Math.max(...monthlyTrend.map((m) => m.spent), 1000);
+
+    // 2. Private Charters vs Public Tours
+    const privateBookings = bookings.filter((b) => b.booking_type === 'EVENT' || b.booking_type === 'PRIVATE_EVENT');
+    const tourBookings = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
+    const privateSpent = privateBookings.filter((b) => b.status !== 'CANCELLED').reduce((s, b) => s + (Number(b.total_price) || 0), 0);
+    const tourSpent = tourBookings.filter((b) => b.status !== 'CANCELLED').reduce((s, b) => s + (Number(b.total_price) || 0), 0);
+    const totalTypeCount = Math.max(1, privateBookings.length + tourBookings.length);
+    const privatePercent = Math.round((privateBookings.length / totalTypeCount) * 100);
+    const tourPercent = 100 - privatePercent;
+
+    // 3. Status breakdown
+    const statusCounts = {
+      CONFIRMED: bookings.filter((b) => b.status === 'CONFIRMED').length,
+      COMPLETED: bookings.filter((b) => b.status === 'COMPLETED').length,
+      PENDING: bookings.filter((b) => b.status === 'PENDING').length,
+      CANCELLED: bookings.filter((b) => b.status === 'CANCELLED').length,
+    };
+
+    // 4. Destinations visited
+    const destMap: Record<string, { count: number; spent: number }> = {};
+    bookings.forEach((b) => {
+      const dest = b.destination || 'Arabian Sea';
+      if (!destMap[dest]) {
+        destMap[dest] = { count: 0, spent: 0 };
+      }
+      destMap[dest].count += 1;
+      if (b.status !== 'CANCELLED') {
+        destMap[dest].spent += Number(b.total_price) || 0;
+      }
+    });
+    const topDestinations = Object.entries(destMap)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const maxDestCount = Math.max(...topDestinations.map((d) => d.count), 1);
+
+    return {
+      totalSpent,
+      totalDiscount,
+      totalGuests,
+      totalDaysOnWater,
+      monthlyTrend,
+      maxMonthlySpent,
+      privateCount: privateBookings.length,
+      tourCount: tourBookings.length,
+      privateSpent,
+      tourSpent,
+      privatePercent,
+      tourPercent,
+      statusCounts,
+      topDestinations,
+      maxDestCount,
+    };
+  }, [bookings]);
+
+  // Filtered list for 'bookings' tab with search query support
   const getFilteredBookings = () => {
+    let list = bookings;
     switch (bookingFilter) {
       case 'UPCOMING':
-        return upcomingBookings;
+        list = upcomingBookings;
+        break;
       case 'ACTIVE':
-        return activeBookings;
+        list = activeBookings;
+        break;
       case 'COMPLETED':
-        return completedBookings;
+        list = completedBookings;
+        break;
       case 'CANCELLED':
-        return cancelledBookings;
+        list = cancelledBookings;
+        break;
       default:
-        return bookings;
+        list = bookings;
+        break;
     }
+    if (bookingSearch.trim()) {
+      const q = bookingSearch.trim().toLowerCase();
+      list = list.filter(
+        (b) =>
+          b.booking_id.toLowerCase().includes(q) ||
+          b.cruise_name.toLowerCase().includes(q) ||
+          (b.ticket_code && b.ticket_code.toLowerCase().includes(q)) ||
+          b.destination.toLowerCase().includes(q)
+      );
+    }
+    return list;
   };
 
   return (
     <div className="min-h-screen pt-28 pb-20 bg-slate-50/70 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 0. NEWLY BOOKED / TARGET TICKET CELEBRATION NOTIFICATION */}
+      {targetBookingId && (
+        <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-600 to-sky-600 text-white shadow-xl shadow-emerald-900/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-emerald-400/40 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+              <CheckCircle2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono tracking-widest font-black uppercase text-emerald-100 block">
+                BOOKING CONFIRMED & TICKET ISSUED
+              </span>
+              <h4 className="text-base font-bold text-white font-serif">
+                Reservation Reference #{targetBookingId}
+              </h4>
+              <p className="text-xs text-emerald-100">
+                Your official boarding pass with scannable gate QR code has been generated and is ready for boarding.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              onClick={() => {
+                const found = bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
+                if (found) setSelectedTicketBooking(found);
+              }}
+              className="px-4 py-2 rounded-xl bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-50 shadow-md transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Ticket className="w-4 h-4 text-emerald-600" />
+              <span>Open Boarding Pass</span>
+            </button>
+            <button
+              onClick={() => {
+                const nextParams = new URLSearchParams(searchParams);
+                nextParams.delete('booking_id');
+                nextParams.delete('openPass');
+                setSearchParams(nextParams);
+              }}
+              className="p-2 rounded-xl text-emerald-100 hover:bg-white/10 transition cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. CUSTOMER IDENTITY & WELCOME HEADER */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-sky-200/80 shadow-sm mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -253,12 +477,8 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       {/* 2. SUB-NAVIGATION TABS BAR */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-8 overflow-x-auto text-xs font-bold">
         {[
-          { id: 'home', label: 'Dashboard Home', icon: Ship },
-          { id: 'find-ship', label: 'Find a Ship', icon: Search },
-          { id: 'tours', label: 'Upcoming Tours', icon: Waves },
+          { id: 'home', label: 'Dashboard Home', icon: BarChart3 },
           { id: 'bookings', label: `My Bookings (${bookings.length})`, icon: Calendar },
-          { id: 'tickets', label: `My Tickets (${publicTickets.length})`, icon: Ticket },
-          { id: 'invoices', label: `My Invoices (${bookings.length})`, icon: FileText },
           { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
           { id: 'profile', label: 'Passenger Profile', icon: UserIcon },
         ].map((tab) => {
@@ -283,368 +503,325 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
 
       {/* TAB 1: DASHBOARD HOME */}
       {activeSubTab === 'home' && (
-        <div className="space-y-10">
-          {/* Next Upcoming Voyage Hero Banner */}
-          {nextVoyage ? (
-            <div className="bg-gradient-to-r from-sky-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl border border-sky-800">
-              <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none hidden lg:block">
-                <img
-                  src={nextVoyage.cruise_image || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1200&q=80'}
-                  alt={nextVoyage.cruise_name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="relative z-10 max-w-2xl space-y-4">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/30 text-sky-200 text-xs font-bold uppercase tracking-wider border border-sky-400/40">
-                  <Clock className="w-3.5 h-3.5 text-sky-300" />
-                  Next Departure Imminent
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black font-serif">
-                  {nextVoyage.cruise_name}
-                </h2>
-                <p className="text-sky-100 text-sm">
-                  {nextVoyage.route || `${nextVoyage.departure_port} → ${nextVoyage.destination}`} • Departure Date: <strong className="text-white">{nextVoyage.booking_date}</strong>
-                </p>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <span className="text-[10px] uppercase font-bold text-sky-200 block">Stateroom</span>
-                    <span className="font-bold text-sm">{nextVoyage.cabin_name || nextVoyage.cabin_type || 'Standard Suite'}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <span className="text-[10px] uppercase font-bold text-sky-200 block">Passengers</span>
-                    <span className="font-bold text-sm">{nextVoyage.passengers_count || nextVoyage.number_of_people} Guests</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
-                    <span className="text-[10px] uppercase font-bold text-sky-200 block">Booking Reference</span>
-                    <span className="font-bold text-sm text-sky-300">#{nextVoyage.booking_id}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex flex-wrap gap-3">
-                  <button
-                    onClick={() => setSelectedTicketBooking(nextVoyage)}
-                    className="px-5 py-2.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md"
-                  >
-                    <Ticket className="w-4 h-4" />
-                    <span>View Digital Boarding Pass</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedInvoiceId(nextVoyage.booking_id)}
-                    className="px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold transition flex items-center gap-2 cursor-pointer"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Tax Invoice</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-4 shadow-sm">
-              <Compass className="w-12 h-12 mx-auto text-sky-600 animate-pulse" />
-              <h2 className="text-xl font-bold text-slate-900 font-serif">No Upcoming Voyages Scheduled</h2>
-              <p className="text-slate-500 text-xs max-w-md mx-auto">
-                Ready for the open sea? Book a private milestone charter for weddings and galas, or grab stateroom tickets for scheduled cruise tours.
-              </p>
-              <div className="flex justify-center gap-3 pt-2">
-                <button
-                  onClick={() => setActiveSubTab('find-ship')}
-                  className="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition cursor-pointer shadow-sm"
-                >
-                  Find a Ship
-                </button>
-                <button
-                  onClick={() => setActiveSubTab('tours')}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition cursor-pointer"
-                >
-                  Browse Tours
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Available Offers Grid */}
-          {offers.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 font-serif flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-amber-500" />
-                    Active Passenger Promos & Coupons
-                  </h3>
-                  <p className="text-xs text-slate-500">Apply these verified codes during checkout for instant savings in ₹ INR.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {offers.map((offer) => (
-                  <div key={offer.id} className="p-5 rounded-2xl bg-white border border-sky-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
-                          {offer.discount_type === 'PERCENTAGE' ? `${offer.discount_value}% OFF` : `₹${offer.discount_value} OFF`}
-                        </span>
-                        <span className="text-[10px] text-slate-400">Valid to {offer.valid_to}</span>
-                      </div>
-                      <h4 className="font-bold text-sm text-slate-900">{offer.title}</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed">{offer.description}</p>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                      <code className="text-xs font-mono font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-200">
-                        {offer.code}
-                      </code>
-                      <button
-                        onClick={() => handleCopyCoupon(offer.code)}
-                        className="text-xs font-bold text-slate-600 hover:text-sky-600 transition flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedCoupon === offer.code ? (
-                          <span className="text-emerald-600 flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Copied!
-                          </span>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" /> Copy Code
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recommended Ships & Tours */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 font-serif flex items-center gap-2">
-                  <Anchor className="w-4 h-4 text-sky-600" />
-                  Recommended Vessels for Private Charter
-                </h3>
-                <button
-                  onClick={onExplore}
-                  className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 cursor-pointer"
-                >
-                  View All Ships <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {recommendedShips.map((ship) => (
-                  <div
-                    key={ship.id}
-                    className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-sky-300 transition"
-                  >
-                    <img
-                      src={ship.image || (ship as any).image_url || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=300&q=80'}
-                      alt={ship.name}
-                      className="w-20 h-20 rounded-xl object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-slate-900 truncate font-serif">{ship.name}</h4>
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-slate-400" /> {ship.location} • Up to {ship.capacity} Guests
-                      </p>
-                      <p className="text-xs font-black text-slate-900 mt-1">
-                        {formatINR(ship.price)} <span className="text-[10px] font-normal text-slate-400">/ day</span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => onSelectCruise ? onSelectCruise(ship) : onExplore()}
-                      className="px-3.5 py-1.5 rounded-xl border border-sky-200 text-sky-700 hover:bg-sky-50 text-xs font-bold transition cursor-pointer shrink-0"
-                    >
-                      Inspect Ship
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 font-serif flex items-center gap-2">
-                  <Waves className="w-4 h-4 text-sky-600" />
-                  Featured Scheduled Tours
-                </h3>
-                <button
-                  onClick={() => setActiveSubTab('tours')}
-                  className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 cursor-pointer"
-                >
-                  View All Tours <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {upcomingTours.map((tour) => (
-                  <div
-                    key={tour.id}
-                    className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-sky-300 transition"
-                  >
-                    <img
-                      src={tour.ship_image || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=300&q=80'}
-                      alt={tour.tour_title}
-                      className="w-20 h-20 rounded-xl object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
-                          {tour.duration_days} Days
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-700">
-                          {tour.remaining_capacity} Seats Left
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-sm text-slate-900 truncate font-serif mt-1">{tour.tour_title}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {tour.departure_port} → {tour.destination} ({tour.departure_date})
-                      </p>
-                      <p className="text-xs font-black text-slate-900 mt-1">
-                        From {formatINR(tour.adult_price)} <span className="text-[10px] font-normal text-slate-400">/ adult</span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => onSelectTour ? onSelectTour(tour) : setActiveSubTab('tours')}
-                      className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition cursor-pointer shrink-0 shadow-sm"
-                    >
-                      Book Ticket
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: FIND A SHIP */}
-      {activeSubTab === 'find-ship' && (
         <div className="space-y-8">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-sky-100 shadow-sm">
-            <div className="max-w-2xl mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-sky-700 block mb-1">
-                Product A — Private Vessel Charters
-              </span>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">
-                Charter the Exact Ship for Your Occasion
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Enter your milestone celebration criteria (guest count, purpose, location, date) to match available flagships with anti-double-booking guarantee.
-              </p>
-            </div>
-
-            <RequirementSearch
-              onSearch={(_criteria) => {
-                onExplore();
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: UPCOMING PUBLIC TOURS */}
-      {activeSubTab === 'tours' && (
-        <div className="space-y-6">
-          <div>
-            <span className="text-xs font-bold text-sky-700 uppercase tracking-widest block">
-              Product B — Scheduled Departures
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 font-serif">
-              Browse Scheduled Cruise Tours
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Reserve individual stateroom cabins on pre-scheduled maritime itineraries across India.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {upcomingTours.map((tour) => (
-              <div
-                key={tour.id}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md transition"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={tour.ship_image || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=600&q=80'}
-                    alt={tour.tour_title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold uppercase">
-                      {tour.ship_name}
-                    </span>
+          {/* 📊 PASSENGER TRAVEL ANALYTICS & INSIGHTS (Visual Charts) 📊 */}
+          <div className="space-y-6">
+            {/* Header banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="p-2.5 rounded-2xl bg-sky-500 text-white shadow-md shadow-sky-500/20">
+                    <BarChart3 className="w-5 h-5" />
                   </div>
-                  <div className="absolute top-3 right-3">
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase">
-                      {tour.remaining_capacity} Seats Left
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <p className="text-[11px] font-bold text-sky-700 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {tour.departure_port} → {tour.destination}
+                    <h3 className="text-xl font-black text-slate-900 font-serif">
+                      Travel Spending Analytics
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Real-time interactive analysis of your maritime bookings, expenditure, and destinations.
                     </p>
-                    <h3 className="font-bold text-base text-slate-900 font-serif mt-1">{tour.tour_title}</h3>
-                    <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-3">
-                      <span className="flex items-center gap-1 text-slate-600">
-                        <Calendar className="w-3.5 h-3.5 text-sky-500" />
-                        {tour.departure_date}
-                      </span>
-                      <span className="flex items-center gap-1 text-slate-600">
-                        <Clock className="w-3.5 h-3.5 text-sky-500" />
-                        {tour.duration_days} Days Voyage
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">From</span>
-                      <span className="text-lg font-black text-slate-900">{formatINR(tour.adult_price)}</span>
-                      <span className="text-[10px] text-slate-400 block">/ adult</span>
-                    </div>
-
-                    <button
-                      onClick={() => onBookTour ? onBookTour(tour) : onExplore()}
-                      className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition cursor-pointer shadow-sm"
-                    >
-                      Book Ticket
-                    </button>
                   </div>
                 </div>
               </div>
-            ))}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-sm">
+                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{bookings.length} Total Bookings</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Top 4 Passenger KPI Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Total Voyages</span>
+                  <Calendar className="w-4 h-4 text-sky-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 font-serif">{bookings.length}</div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {analyticsData.statusCounts.COMPLETED} completed • {analyticsData.statusCounts.CONFIRMED} confirmed
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Total Spend</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 font-serif">
+                  {formatINR(analyticsData.totalSpent)}
+                </div>
+                <p className="text-[11px] text-emerald-600 font-bold">
+                  All valid charters & tours
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Promo Savings</span>
+                  <Tag className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 font-serif">
+                  {formatINR(analyticsData.totalDiscount)}
+                </div>
+                <p className="text-[11px] text-amber-700 font-semibold">
+                  Saved with coupon codes
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Sea Milestones</span>
+                  <Award className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 font-serif">
+                  {analyticsData.totalDaysOnWater} Days
+                </div>
+                <p className="text-[11px] text-indigo-600 font-semibold">
+                  {analyticsData.totalGuests} passenger guests hosted
+                </p>
+              </div>
+            </div>
+
+            {/* Dual Chart Row 1: Monthly Spend Trend & Trip Type Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Chart 1: Monthly Travel Spend (2 columns) */}
+              <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-sky-600" />
+                      <span>Monthly Voyage Expenditure & Trips</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">Travel spending across months in ₹ INR with booking frequency</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1.5 text-slate-600 font-semibold">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-sky-500" /> Spending
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-slate-600 font-semibold">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Trips
+                    </span>
+                  </div>
+                </div>
+
+                {/* Vertical Bar Chart */}
+                <div className="pt-4 pb-2">
+                  <div className="h-56 flex items-end justify-between gap-1.5 sm:gap-2 border-b border-slate-200 px-2">
+                    {analyticsData.monthlyTrend.map((m, idx) => {
+                      const spendHeight = Math.max(4, Math.round((m.spent / analyticsData.maxMonthlySpent) * 100));
+                      const tripsHeight = Math.max(0, Math.min(100, m.count * 18));
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative">
+                          {/* Tooltip */}
+                          <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-slate-900 text-white text-[10px] rounded-lg p-2 whitespace-nowrap z-30 shadow-xl border border-slate-800">
+                            <p className="font-bold text-white">{m.label}: {m.count} Voyages</p>
+                            <p className="text-sky-300 font-bold">Spent: {formatINR(m.spent)}</p>
+                          </div>
+
+                          {/* Bars */}
+                          <div className="w-full flex items-end justify-center gap-1 h-full">
+                            <div
+                              className="w-1/2 bg-sky-500 hover:bg-sky-600 rounded-t-md transition-all duration-300 cursor-pointer shadow-sm"
+                              style={{ height: `${m.spent > 0 ? spendHeight : 4}%` }}
+                            />
+                            {m.count > 0 && (
+                              <div
+                                className="w-1/2 bg-emerald-500 hover:bg-emerald-600 rounded-t-md transition-all duration-300 cursor-pointer shadow-sm"
+                                style={{ height: `${tripsHeight}%` }}
+                              />
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 mt-2 block truncate">
+                            {m.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart 2: Category Ratio (Charters vs Scheduled Tours) (1 column) */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
+                    <PieChart className="w-4 h-4 text-amber-500" />
+                    <span>Voyage Category Ratio</span>
+                  </h4>
+                  <p className="text-xs text-slate-500">Private ship charters vs public scheduled tours</p>
+
+                  {/* Visual Split Bar */}
+                  <div className="mt-5 space-y-2">
+                    <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                      <div
+                        className="h-full bg-amber-500 hover:bg-amber-600 transition-all duration-500 cursor-pointer"
+                        style={{ width: `${analyticsData.privatePercent}%` }}
+                        title={`Private Charters: ${analyticsData.privatePercent}%`}
+                      />
+                      <div
+                        className="h-full bg-sky-500 hover:bg-sky-600 transition-all duration-500 cursor-pointer"
+                        style={{ width: `${analyticsData.tourPercent}%` }}
+                        title={`Public Tours: ${analyticsData.tourPercent}%`}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs font-bold text-slate-500">
+                      <span className="text-amber-700">{analyticsData.privatePercent}% Charters</span>
+                      <span className="text-sky-700">{analyticsData.tourPercent}% Tours</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="p-3 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-amber-900 block">Private Event Charters</span>
+                      <span className="text-[11px] text-amber-700">{analyticsData.privateCount} ships chartered</span>
+                    </div>
+                    <span className="font-black text-sm text-amber-900">{formatINR(analyticsData.privateSpent)}</span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-sky-900 block">Scheduled Cruise Tours</span>
+                      <span className="text-[11px] text-sky-700">{analyticsData.tourCount} tour tickets booked</span>
+                    </div>
+                    <span className="font-black text-sm text-sky-900">{formatINR(analyticsData.tourSpent)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dual Chart Row 2: Status Breakdown & Top Destinations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Chart 3: Booking Status Breakdown */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-emerald-600" />
+                      <span>Reservation Lifecycle Breakdown</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">Current status distribution of your maritime reservations</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  {[
+                    { label: 'Confirmed (Upcoming)', count: analyticsData.statusCounts.CONFIRMED, color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
+                    { label: 'Completed (Voyaged)', count: analyticsData.statusCounts.COMPLETED, color: 'bg-sky-500', text: 'text-sky-700', bg: 'bg-sky-50' },
+                    { label: 'Pending Confirmation', count: analyticsData.statusCounts.PENDING, color: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50' },
+                    { label: 'Cancelled / Refunded', count: analyticsData.statusCounts.CANCELLED, color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50' },
+                  ].map((st, i) => {
+                    const pct = bookings.length > 0 ? Math.round((st.count / bookings.length) * 100) : 0;
+                    return (
+                      <div key={i} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="flex items-center gap-1.5 text-slate-700">
+                            <span className={`w-2.5 h-2.5 rounded-full ${st.color}`} />
+                            {st.label}
+                          </span>
+                          <span className="text-slate-900 font-mono">
+                            {st.count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${st.color} transition-all duration-500`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Chart 4: Top Explored Maritime Destinations */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-sky-600" />
+                      <span>Top Explored Maritime Destinations</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">Your most frequented coastal cruise ports and destinations</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  {analyticsData.topDestinations.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400">No destination data logged yet.</div>
+                  ) : (
+                    analyticsData.topDestinations.map((d, i) => {
+                      const destPct = Math.round((d.count / analyticsData.maxDestCount) * 100);
+                      return (
+                        <div key={i} className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs font-bold">
+                            <span className="flex items-center gap-1.5 text-slate-800">
+                              <span className="text-sky-500 font-mono">#{i + 1}</span>
+                              {d.name}
+                            </span>
+                            <span className="text-slate-500 text-[11px] font-mono">
+                              {d.count} {d.count === 1 ? 'Trip' : 'Trips'} • {formatINR(d.spent)}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-sky-500 to-indigo-600 rounded-full transition-all duration-500"
+                              style={{ width: `${destPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* TAB 4: MY BOOKINGS */}
+      {/* TAB 2: MY BOOKINGS */}
       {activeSubTab === 'bookings' && (
         <div className="space-y-6">
-          <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold pb-2">
-            {[
-              { id: 'ALL', label: `All Bookings (${bookings.length})` },
-              { id: 'UPCOMING', label: `Upcoming (${upcomingBookings.length})` },
-              { id: 'ACTIVE', label: `Active (${activeBookings.length})` },
-              { id: 'COMPLETED', label: `Completed (${completedBookings.length})` },
-              { id: 'CANCELLED', label: `Cancelled (${cancelledBookings.length})` },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setBookingFilter(f.id as any)}
-                className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer ${
-                  bookingFilter === f.id
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+            <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold pb-1">
+              {[
+                { id: 'ALL', label: `All Bookings (${bookings.length})` },
+                { id: 'UPCOMING', label: `Upcoming (${upcomingBookings.length})` },
+                { id: 'ACTIVE', label: `Active (${activeBookings.length})` },
+                { id: 'COMPLETED', label: `Completed (${completedBookings.length})` },
+                { id: 'CANCELLED', label: `Cancelled (${cancelledBookings.length})` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setBookingFilter(f.id as any)}
+                  className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+                    bookingFilter === f.id
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search filter input */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search by ID, ship, ticket code..."
+                value={bookingSearch}
+                onChange={(e) => setBookingSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 transition shadow-sm"
+              />
+            </div>
           </div>
 
           {loading ? (
@@ -657,9 +834,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
               <Ship className="w-12 h-12 mx-auto text-slate-300" />
               <h3 className="text-base font-bold text-slate-700">No Reservations Found in this Filter</h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Explore our luxury fleet of ocean cruise ships or reserve individual passenger staterooms.
+                Explore our luxury fleet of boats and cruise ships or book passenger cabins.
               </p>
               <button
+                type="button"
                 onClick={onExplore}
                 className="mt-3 px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-md transition cursor-pointer"
               >
@@ -668,259 +846,196 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {getFilteredBookings().map((b) => (
-                <div
-                  key={b.id}
-                  className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between hover:border-sky-300 transition"
-                >
-                  <div className="flex gap-4 items-center">
-                    <img
-                      src={b.cruise_image || 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=300&q=80'}
-                      alt={b.cruise_name}
-                      className="w-24 h-24 rounded-2xl object-cover shrink-0 border border-slate-100"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
-                          #{b.booking_id}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                            b.status === 'CONFIRMED'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : b.status === 'COMPLETED'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : b.status === 'CANCELLED'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}
-                        >
-                          {b.status}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
-                          {b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
-                        </span>
-                      </div>
-
-                      <h3 className="text-lg font-bold text-slate-900 font-serif">{b.cruise_name}</h3>
-
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          {b.departure_port} → {b.destination}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          {b.booking_date}
-                        </span>
-                        <span className="font-semibold text-slate-800">
-                          {b.cabin_name || b.cabin_type || 'Stateroom'} • {b.passengers_count || b.number_of_people} Guests
-                        </span>
-                      </div>
-
-                      {b.tracking_status && b.status !== 'CANCELLED' && (
-                        <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
-                          <Compass className="w-3.5 h-3.5 text-sky-500 animate-spin" />
-                          <span>Voyage State:</span>
-                          <span className="text-sky-700 font-bold uppercase tracking-wider">{b.tracking_status}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="w-full md:w-auto flex md:flex-col justify-between md:items-end gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
-                    <div className="text-left md:text-right">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Paid</span>
-                      <span className="text-xl font-black text-slate-900">{formatINR(b.total_price)}</span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => setSelectedTicketBooking(b)}
-                        className="px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <Ticket className="w-3.5 h-3.5" />
-                        <span>Pass</span>
-                      </button>
-
-                      <button
-                        onClick={() => setSelectedInvoiceId(b.booking_id)}
-                        className="px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Invoice</span>
-                      </button>
-
-                      {b.can_review && (
-                        <button
-                          onClick={() => {
-                            setReviewBooking(b);
-                            setRatingVal(5);
-                            setCommentVal('');
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        >
-                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                          <span>Review</span>
-                        </button>
-                      )}
-
-                      {b.is_cancellable && (
-                        <button
-                          onClick={() => handleCancelBooking(b.booking_id)}
-                          className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 5: MY TICKETS */}
-      {activeSubTab === 'tickets' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 font-serif">Public Cruise Digital Tickets</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Instant boarding passes with cryptographic QR verification for scheduled cruise departures.
-            </p>
-          </div>
-
-          {publicTickets.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
-              <Ticket className="w-12 h-12 mx-auto text-slate-300" />
-              <h3 className="text-base font-bold text-slate-700">No Cruise Tickets Issued Yet</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Book a passenger stateroom on any upcoming public cruise tour to receive digital boarding passes.
-              </p>
-              <button
-                onClick={() => setActiveSubTab('tours')}
-                className="mt-2 px-5 py-2 rounded-xl bg-sky-500 text-white font-bold text-xs cursor-pointer shadow-sm"
-              >
-                Browse Scheduled Departures
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {publicTickets.map((t) => (
-                <div
-                  key={t.id}
-                  className="bg-white rounded-3xl border border-sky-200/80 shadow-sm p-6 space-y-4 hover:shadow-md transition flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold uppercase tracking-wider">
-                        Boarding Pass #{t.booking_id}
-                      </span>
-                      <span className="text-[11px] font-mono font-bold text-slate-400">
-                        QR: {(t.qr_code_hash || t.booking_id).slice(0, 10)}
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-black text-slate-900 font-serif">{t.cruise_name}</h3>
-                    <p className="text-xs text-slate-600">
-                      {t.departure_port} → {t.destination} • <strong>{t.booking_date}</strong>
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Stateroom Tier</span>
-                        <span className="font-bold text-slate-800">{t.cabin_name || t.cabin_type || 'Standard Balcony'}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Passengers</span>
-                        <span className="font-bold text-slate-800">{t.passengers_count || t.number_of_people} Seats Reserved</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-base font-black text-slate-900">{formatINR(t.total_price)}</span>
-                    <button
-                      onClick={() => setSelectedTicketBooking(t)}
-                      className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Ticket className="w-4 h-4" />
-                      <span>Open Boarding Pass</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 6: MY INVOICES */}
-      {activeSubTab === 'invoices' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 font-serif">Official GST Maritime Tax Invoices</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Review, verify, and print compliant Indian maritime tax invoices in INR (₹) with 18% GST itemized.
-            </p>
-          </div>
-
-          {bookings.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8">
-              <FileText className="w-12 h-12 mx-auto text-slate-300" />
-              <h3 className="text-base font-bold text-slate-700 mt-2">No Invoices Available</h3>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="py-3.5 px-4">Invoice #</th>
-                      <th className="py-3.5 px-4">Date</th>
-                      <th className="py-3.5 px-4">Vessel / Service</th>
-                      <th className="py-3.5 px-4">Type</th>
-                      <th className="py-3.5 px-4 text-right">Amount (₹)</th>
-                      <th className="py-3.5 px-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {bookings.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition">
-                        <td className="py-4 px-4 font-mono font-bold text-sky-700">
-                          {b.invoice_number || `INV-2026-${b.booking_id.slice(-6).toUpperCase()}`}
-                        </td>
-                        <td className="py-4 px-4 text-slate-600">{b.booking_date}</td>
-                        <td className="py-4 px-4 font-semibold text-slate-900">{b.cruise_name}</td>
-                        <td className="py-4 px-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
-                            {b.booking_type === 'EVENT' ? 'Charter' : 'Ticket'}
+              {getFilteredBookings().map((b) => {
+                const isTarget = targetBookingId === b.booking_id;
+                return (
+                  <div
+                    key={b.id}
+                    className={`bg-white rounded-3xl border shadow-sm p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between transition ${
+                      isTarget
+                        ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-emerald-500/10'
+                        : 'border-slate-200/80 hover:border-sky-300'
+                    }`}
+                  >
+                    <div className="flex gap-4 items-center">
+                      <img
+                        src={b.cruise_image || '/static/images/vessels/cordelia_empress.jpg'}
+                        alt={b.cruise_name}
+                        className="w-24 h-24 rounded-2xl object-cover shrink-0 border border-slate-100"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('placeholder.png')) {
+                            target.src = '/static/images/placeholder.png';
+                          }
+                        }}
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
+                            #{b.booking_id}
                           </span>
-                        </td>
-                        <td className="py-4 px-4 text-right font-black text-slate-900">
-                          {formatINR(b.total_price)}
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <button
-                            onClick={() => setSelectedInvoiceId(b.booking_id)}
-                            className="px-3 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[11px] transition cursor-pointer"
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                              b.status === 'CONFIRMED'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : b.status === 'COMPLETED'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : b.status === 'CANCELLED'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}
                           >
-                            View Invoice
+                            {b.status}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
+                            {b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
+                          </span>
+                          {b.ticket_code && (
+                            <span className="text-[10px] font-mono font-bold text-sky-800 bg-sky-100/70 px-2 py-0.5 rounded-md">
+                              {b.ticket_code}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-lg font-bold text-slate-900 font-serif">{b.cruise_name}</h3>
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {b.departure_port} → {b.destination}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {b.booking_date}
+                          </span>
+                          <span className="font-semibold text-slate-800">
+                            {b.cabin_name || b.cabin_type || 'Cabin'} • {b.passengers_count || b.number_of_people} Guests
+                          </span>
+                        </div>
+
+                        {b.tracking_status && b.status !== 'CANCELLED' && (
+                          <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                            <Compass className="w-3.5 h-3.5 text-sky-500 animate-spin" />
+                            <span>Trip Status:</span>
+                            <span className="text-sky-700 font-bold uppercase tracking-wider">{b.tracking_status}</span>
+                          </div>
+                        )}
+
+                        {/* WhatsApp 24h Tour Reminder Status & Controls */}
+                        {b.status !== 'CANCELLED' && (
+                          <div className="pt-2 mt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              {b.whatsapp_reminder_sent ? (
+                                <span className="font-bold flex items-center gap-1 text-[11px]">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  24h Reminder Dispatched
+                                </span>
+                              ) : b.whatsapp_reminder_opt_in ? (
+                                <span className="font-semibold text-[11px] flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                  <span>24h Reminder Active:</span>
+                                  <code className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                                    {b.customer_whatsapp_masked || b.customer_whatsapp || 'Saved Mobile'}
+                                  </code>
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-500 font-medium">
+                                  Reminders: <span className="font-bold text-amber-600">Opted Out</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Opt-In / Opt-Out Action */}
+                            {!b.whatsapp_reminder_sent && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleWhatsAppOpt(b)}
+                                className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition cursor-pointer"
+                              >
+                                {b.whatsapp_reminder_opt_in ? 'Opt Out' : 'Opt In'}
+                              </button>
+                            )}
+
+                            {/* Instant Test Dispatch */}
+                            {(b.customer_whatsapp || user?.phone) && (
+                              <button
+                                type="button"
+                                disabled={testingWaId === b.booking_id}
+                                onClick={() => handleSendTestWhatsApp(b.booking_id)}
+                                className="px-2.5 py-1 rounded-xl bg-white border border-emerald-200 hover:bg-emerald-50 text-[11px] font-bold text-emerald-800 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                <Send className="w-3 h-3 text-emerald-600" />
+                                <span>{testingWaId === b.booking_id ? 'Sending...' : 'Test WhatsApp'}</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="w-full md:w-auto flex md:flex-col justify-between md:items-end gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
+                      <div className="text-left md:text-right">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Paid</span>
+                        <span className="text-xl font-black text-slate-900">{formatINR(b.total_price)}</span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTicketBooking(b)}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-sky-500/20"
+                        >
+                          <Ticket className="w-3.5 h-3.5" />
+                          <span>Boarding Pass (QR)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoiceId(b.booking_id)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Invoice</span>
+                        </button>
+
+                        {b.can_review && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReviewBooking(b);
+                              setRatingVal(5);
+                              setCommentVal('');
+                            }}
+                            className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            <span>Review</span>
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        )}
+
+                        {b.is_cancellable && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelBooking(b.booking_id)}
+                            className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 7: SPECIAL OFFERS */}
+
+
+      {/* TAB 3: SPECIAL OFFERS */}
       {activeSubTab === 'offers' && (
         <div className="space-y-6">
           <div>
@@ -970,7 +1085,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
           <div>
             <h2 className="text-2xl font-black text-slate-900 font-serif">Passenger Profile & Preferences</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Update your contact details, emergency maritime phone, and security credentials.
+              Update your contact details, emergency phone number, and security credentials.
             </p>
           </div>
 
@@ -1069,15 +1184,23 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
 
       {/* MODALS */}
       {selectedTicketBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg">
-            <button
-              onClick={() => setSelectedTicketBooking(null)}
-              className="absolute -top-12 right-0 p-2 rounded-full bg-white/20 text-white hover:bg-white/30 transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <TicketPass booking={selectedTicketBooking} />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+          onClick={() => setSelectedTicketBooking(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TicketPass
+              booking={selectedTicketBooking}
+              onClose={() => setSelectedTicketBooking(null)}
+              onViewInvoice={() => {
+                const bId = selectedTicketBooking.booking_id;
+                setSelectedTicketBooking(null);
+                setSelectedInvoiceId(bId);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1094,7 +1217,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-sky-100 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-extrabold text-lg text-slate-900">
-                Review Your Voyage on {reviewBooking.cruise_name}
+                Review Your Trip on {reviewBooking.cruise_name}
               </h3>
               <button
                 onClick={() => setReviewBooking(null)}
@@ -1136,7 +1259,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                   rows={4}
                   value={commentVal}
                   onChange={(e) => setCommentVal(e.target.value)}
-                  placeholder="Share details about the vessel amenities, crew service, dining, and scenic route..."
+                  placeholder="Share details about the ship amenities, crew service, dining, and scenic route..."
                   className="w-full p-3 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500"
                 />
               </div>

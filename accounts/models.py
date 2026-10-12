@@ -5,16 +5,21 @@ from django.db import models
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('USER', 'Guest / Customer'),
-        ('OWNER', 'Ship Operator / Owner'),
-        ('CROSS_OWNER', 'Ship Operator / Owner (Legacy)'),
+        ('OWNER', 'Ship Owner / Operator'),
         ('ADMIN', 'Platform Administrator'),
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USER')
     phone = models.CharField(max_length=20, blank=True, null=True)
+    whatsapp_number = models.CharField(max_length=30, blank=True, null=True, help_text="Verified WhatsApp number")
     address = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
     is_approved_owner = models.BooleanField(default=True, help_text="Designates whether this owner account is approved by admin.")
+
+    def save(self, *args, **kwargs):
+        if self.role == 'CROSS_OWNER':
+            self.role = 'OWNER'
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

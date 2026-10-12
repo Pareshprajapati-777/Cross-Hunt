@@ -4,17 +4,21 @@
   :root {
     --bg-main: #f8fafc;
     --bg-card: #ffffff;
-    --color-blue-50: #f0f9ff;
-    --color-blue-100: #e0f2fe;
-    --color-blue-200: #bae6fd;
-    --color-blue-400: #38bdf8;
-    --color-blue-500: #0ea5e9;
-    --color-blue-600: #0284c7;
-    --color-blue-700: #0369a1;
+    --color-ocean-950: #030712;
+    --color-ocean-900: #0a1128;
+    --color-ocean-850: #0f1c3f;
+    --color-ocean-800: #142850;
+    --color-ocean-700: #1c3d73;
+    --color-ocean-600: #25589c;
+    --color-cyan-glow: #38bdf8;
+    --color-emerald-glow: #10b981;
     --color-gold-500: #d97706;
-    --surface-glass: rgba(255, 255, 255, 0.88);
-    --surface-glass-border: rgba(186, 230, 253, 0.75);
-    --surface-glass-shadow: rgba(2, 132, 199, 0.08);
+
+    /* Spatial Surface Tokens */
+    --surface-glass-light: rgba(255, 255, 255, 0.88);
+    --surface-glass-border-light: rgba(226, 232, 240, 0.85);
+    --surface-glass-dark: rgba(10, 17, 40, 0.92);
+    --surface-glass-border-dark: rgba(255, 255, 255, 0.1);
   }
 
   body {
@@ -26,75 +30,183 @@
     padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4, .font-display {
-    font-family: 'Outfit', 'Cinzel', system-ui, sans-serif;
+  /* Impeccable Typography System */
+  h1, h2, h3, h4, .font-display, .font-serif-luxury {
+    font-family: 'Playfair Display', 'Cinzel', serif;
     letter-spacing: -0.02em;
     color: #0f172a;
   }
+
+  .font-regal {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.04em;
+  }
+
+  .font-ui {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .font-mono-numbers {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Pure White & Light Blue Glass Surface Utilities */
-.liquid-glass {
-  background: rgba(255, 255, 255, 0.85);
+/* ========================================================================= */
+/* IMPECCABLE SPATIAL UI DESIGN SYSTEM & SURFACES                            */
+/* ========================================================================= */
+
+/* Spatial Light Card with Ambient Occlusion & Specular Highlight */
+.spatial-card {
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(186, 230, 253, 0.7);
-  box-shadow: 0 12px 36px rgba(2, 132, 199, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.03),
+    0 16px 36px -4px rgba(2, 132, 199, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 250ms ease;
 }
 
-.liquid-glass-dock {
-  background: rgba(255, 255, 255, 0.94);
+.spatial-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 
+    0 8px 16px -2px rgba(0, 0, 0, 0.04),
+    0 24px 48px -4px rgba(2, 132, 199, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* Spatial Oceanic Midnight Glass (High-Depth Hero & Accounting Surface) */
+.spatial-glass-dark {
+  background: radial-gradient(circle at 85% 15%, rgba(14, 165, 233, 0.15), transparent 45%),
+              radial-gradient(circle at 15% 85%, rgba(16, 185, 129, 0.1), transparent 40%),
+              rgba(10, 17, 40, 0.95);
   backdrop-filter: blur(24px) saturate(200%);
   -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(125, 211, 252, 0.5);
-  box-shadow: 0 16px 45px rgba(2, 132, 199, 0.1), 0 2px 8px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 50px rgba(3, 7, 18, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.liquid-glass-interactive {
-  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+/* Spatial Pill Badges & Chips */
+.spatial-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.688rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid transparent;
 }
 
-.liquid-glass-interactive:hover {
-  background: #ffffff;
-  border-color: rgba(56, 189, 248, 0.9);
+.spatial-badge-cyan {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.spatial-badge-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.spatial-badge-amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ========================================================================= */
+/* SPATIAL DATA VISUAL CHARTS & METERS                                       */
+/* ========================================================================= */
+
+/* Glowing Gradient Bars with Specular Apex */
+.spatial-bar-sky {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+  border-radius: 6px 6px 0 0;
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spatial-bar-sky:hover {
+  background: linear-gradient(180deg, #7dd3fc 0%, #0369a1 100%);
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45);
   transform: translateY(-2px);
-  box-shadow: 0 20px 50px rgba(2, 132, 199, 0.12), inset 0 1px 1px rgba(255, 255, 255, 1);
 }
 
-.glow-cyan {
-  text-shadow: 0 0 20px rgba(2, 132, 199, 0.25);
+.spatial-bar-emerald {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  border-radius: 6px 6px 0 0;
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glow-gold {
-  text-shadow: 0 0 16px rgba(217, 119, 6, 0.25);
+.spatial-bar-emerald:hover {
+  background: linear-gradient(180deg, #6ee7b7 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  transform: translateY(-2px);
 }
 
-/* Light Ocean Ambient Gradient */
-.ocean-ambient-bg {
-  background: radial-gradient(circle at 50% 10%, rgba(224, 242, 254, 0.8), transparent 60%),
-              radial-gradient(circle at 80% 80%, rgba(186, 230, 253, 0.5), transparent 50%),
-              radial-gradient(circle at 10% 60%, rgba(240, 249, 255, 0.9), transparent 45%),
-              #ffffff;
+/* Inset Spatial Track for Progress Gauges */
+.spatial-track {
+  background: #f1f5f9;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+  border-radius: 9999px;
+  overflow: hidden;
 }
 
-/* Custom Scrollbar for Light Theme */
+/* Atmospheric Ambient Background */
+.ocean-spatial-mesh {
+  background: 
+    radial-gradient(circle at 10% 10%, rgba(224, 242, 254, 0.7), transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(254, 243, 199, 0.4), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(240, 253, 250, 0.8), transparent 50%),
+    #f8fafc;
+}
+
+/* ========================================================================= */
+/* BROWSER SURFACES CRAFTSMANSHIP (Impeccable Standard)                      */
+/* ========================================================================= */
+
+/* Tactile Frosted Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: rgba(241, 245, 249, 0.6);
+  backdrop-filter: blur(8px);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #bae6fd;
-  border-radius: 4px;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 200ms ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7dd3fc;
+  background: #94a3b8;
+  background-clip: content-box;
+}
+
+/* Themed Text Selection */
+::selection {
+  background: rgba(14, 165, 233, 0.2);
+  color: #0369a1;
 }

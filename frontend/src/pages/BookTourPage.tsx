@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Cruise, CabinTier, Booking, ShipExtra } from '../api/types';
 import { createBooking } from '../api/bookings';
 import { validateCoupon, CouponValidationResult } from '../api/offers';
+import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
 import {
@@ -13,26 +15,90 @@ import {
   ShieldCheck,
   AlertCircle,
   Tag,
-  Check
+  Check,
+  Loader2,
+  Anchor
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
+import { WhatsAppReminderCard } from '../components/common/WhatsAppReminderCard';
+import { TicketPass } from '../components/ticket/TicketPass';
+import { CheckCircle2, Printer } from 'lucide-react';
 
 interface BookTourPageProps {
-  cruise: Cruise;
+  cruise?: Cruise | null;
   initialCabin?: string;
-  onSuccess: (booking: Booking) => void;
-  onCancel: () => void;
-  onNeedLogin: () => void;
+  onSuccess?: (booking: Booking) => void;
+  onCancel?: () => void;
+  onNeedLogin?: () => void;
 }
 
 export const BookTourPage: React.FC<BookTourPageProps> = ({
-  cruise,
+  cruise: initialCruise,
   initialCabin = 'OCEANVIEW',
   onSuccess,
   onCancel,
   onNeedLogin,
 }) => {
+  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
+
+  const shipId = id || searchParams.get('ship') || searchParams.get('cruise');
+  const [cruise, setCruise] = useState<Cruise | null>(initialCruise || null);
+  const [loading, setLoading] = useState<boolean>(!initialCruise);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cruise) {
+      setLoading(true);
+      if (shipId) {
+        apiRequest<{ cruise?: Cruise } & Cruise>(`/api/cruises/${shipId}/`)
+          .then((res) => {
+            const loaded = (res as any).cruise || res;
+            setCruise(loaded);
+            setLoading(false);
+          })
+          .catch((err) => {
+            setLoadError(err.message || 'Failed to load ship details');
+            setLoading(false);
+          });
+      } else {
+        // Load first available ship if none specified
+        apiRequest<{ cruises: Cruise[] }>('/api/cruises/')
+          .then((res) => {
+            if (res.cruises && res.cruises.length > 0) {
+              setCruise(res.cruises[0]);
+            } else {
+              setLoadError('No cruise vessels available for charter.');
+            }
+            setLoading(false);
+          })
+          .catch((err) => {
+            setLoadError(err.message || 'Failed to load cruise fleet');
+            setLoading(false);
+          });
+      }
+    }
+  }, [shipId, cruise]);
+
+  const handleBack = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/explore');
+    }
+  };
+
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+
+  const handleSuccess = (b: Booking) => {
+    if (onSuccess) {
+      onSuccess(b);
+    } else {
+      navigate(`/dashboard?booking_id=${b.booking_id}&openPass=true`);
+    }
+  };
 
   // Booking Flow Steps: 1: Date & Time -> 2: Guests -> 3: Extras -> 4: Review & Coupon
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -51,6 +117,10 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   const [specialRequests, setSpecialRequests] = useState<string>('');
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
+  // WhatsApp Tour Reminder State
+  const [customerWhatsApp, setCustomerWhatsApp] = useState<string>(() => user?.phone || (user as any)?.whatsapp_number || '');
+  const [whatsappReminderOptIn, setWhatsappReminderOptIn] = useState<boolean>(true);
+
   // Promo Code State
   const [couponCode, setCouponCode] = useState<string>('');
   const [couponResult, setCouponResult] = useState<CouponValidationResult | null>(null);
@@ -60,6 +130,37 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   // Submitting and Error States
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-sky-600 animate-spin mx-auto" />
+          <p className="text-slate-600 font-semibold">Loading charter booking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !cruise) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-200 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
+            <Anchor className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Vessel Not Found</h2>
+          <p className="text-sm text-slate-600">{loadError || 'The requested vessel is not available for booking.'}</p>
+          <button
+            onClick={() => navigate('/explore')}
+            className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm cursor-pointer transition"
+          >
+            Explore Fleet
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const totalPassengers = adultsCount + childrenCount;
   const baseRate = cruise.price_per_day || cruise.price;
@@ -77,15 +178,15 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
         },
         {
           id: 'ROYAL_BALCONY',
-          name: 'Royal Ocean Balcony Stateroom',
+          name: 'Royal Ocean Balcony Cabin',
           multiplier: 1.3,
           description: 'Floor-to-ceiling glass doors opening directly to private sea breeze balcony.',
           price_per_day: baseRate * 1.3,
-          amenities: ['Private Balcony', 'King Stateroom Bed'],
+          amenities: ['Private Balcony', 'Comfortable King Bed'],
         },
         {
           id: 'OCEANVIEW',
-          name: 'Deluxe Oceanview Stateroom',
+          name: 'Deluxe Oceanview Cabin',
           multiplier: 1.1,
           description: 'Panoramic picture window with unobstructed oceanic horizons.',
           price_per_day: baseRate * 1.1,
@@ -93,11 +194,11 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
         },
         {
           id: 'INTERIOR',
-          name: 'Signature Interior Stateroom',
+          name: 'Signature Interior Cabin',
           multiplier: 1.0,
-          description: 'Cozy, whisper-quiet stateroom with ambient circadian lighting.',
+          description: 'Cozy, whisper-quiet room with ambient warm lighting.',
           price_per_day: baseRate,
-          amenities: ['Circadian Lighting', 'Soundproofing'],
+          amenities: ['Warm Lighting', 'Soundproofing'],
         },
       ];
 
@@ -155,7 +256,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   const handleNext = () => {
     setErrorMessage(null);
     if (currentStep === 1 && !bookingDate) {
-      setErrorMessage('Please select a valid voyage departure date.');
+      setErrorMessage('Please select a valid trip departure date.');
       return;
     }
     if (currentStep === 2 && totalPassengers <= 0) {
@@ -163,20 +264,28 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       return;
     }
     if (currentStep === 4 && !user) {
-      onNeedLogin();
+      if (onNeedLogin) {
+        onNeedLogin();
+      } else {
+        navigate('/login');
+      }
       return;
     }
     setCurrentStep((prev) => Math.min(prev + 1, 4));
   };
 
-  const handleBack = () => {
+  const handleStepBack = () => {
     setErrorMessage(null);
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleConfirmBooking = async () => {
     if (!user) {
-      onNeedLogin();
+      if (onNeedLogin) {
+        onNeedLogin();
+      } else {
+        navigate('/login');
+      }
       return;
     }
 
@@ -197,16 +306,18 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
         selected_extras: selectedExtras.map((name) => ({ name })),
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_requests: specialRequests,
+        customer_whatsapp: customerWhatsApp.trim() || undefined,
+        whatsapp_reminder_opt_in: whatsappReminderOptIn,
       });
 
       confetti({
         particleCount: 120,
         spread: 80,
-        origin: { y: 0.6 },
+        origin: { y: 0.5 },
         colors: ['#0284c7', '#38bdf8', '#f59e0b', '#10b981'],
       });
 
-      onSuccess(res.booking);
+      setConfirmedBooking(res.booking);
     } catch (err: any) {
       setErrorMessage(
         err.message || 'This vessel or charter slot is unavailable for the selected schedule. Please select another date.'
@@ -215,6 +326,48 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       setSubmitting(false);
     }
   };
+
+  if (confirmedBooking) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-xl mb-6 text-center space-y-3">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <span className="text-[11px] font-mono tracking-widest font-black uppercase text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
+            Charter Confirmed • Ref #{confirmedBooking.booking_id}
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+            Your Boarding Pass is Ready!
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+            Your private vessel charter reservation has been confirmed and locked. The official gate QR code on your boarding pass will grant terminal embarkation access.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+            <button
+              onClick={() => handleSuccess(confirmedBooking)}
+              className="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2"
+            >
+              <span>View in Passenger Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>Print Boarding Pass</span>
+            </button>
+          </div>
+        </div>
+
+        <TicketPass
+          booking={confirmedBooking}
+          onViewInvoice={() => navigate(`/dashboard?booking_id=${confirmedBooking.booking_id}&tab=invoices`)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-28 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-slate-50/70">
@@ -232,7 +385,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
           </p>
         </div>
         <button
-          onClick={onCancel}
+          onClick={handleBack}
           className="text-xs text-slate-500 hover:text-slate-900 transition cursor-pointer self-start sm:self-auto font-bold"
         >
           Cancel & Return
@@ -292,7 +445,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
               </h2>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Embarkation Date</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Trip Date</label>
                 <input
                   type="date"
                   min={new Date().toISOString().split('T')[0]}
@@ -304,7 +457,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Embarkation Time</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Departure Time</label>
                   <input
                     type="time"
                     value={startTime}
@@ -313,7 +466,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Disembarkation Time</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Return Time</label>
                   <input
                     type="time"
                     value={endTime}
@@ -330,7 +483,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
             <div className="space-y-6">
               <h2 className="text-xl font-bold font-serif text-slate-900 flex items-center gap-2">
                 <Users className="w-5 h-5 text-sky-500" />
-                Guest Headcount & Stateroom Tier
+                Guests & Cabin Choice
               </h2>
 
               <div className="grid grid-cols-2 gap-4">
@@ -371,7 +524,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
 
               {/* Cabin Choice */}
               <div className="space-y-3 pt-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Primary Accommodating Stateroom</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Selected Cabin / Room</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {defaultCabins.map((cab) => (
                     <div
@@ -398,10 +551,10 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
             <div className="space-y-6">
               <h2 className="text-xl font-bold font-serif text-slate-900 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-sky-500" />
-                Customize Event Extras & Maritime Services
+                Customize Event Extras & Services
               </h2>
               <p className="text-xs text-slate-500">
-                Enhance your private voyage with owner-configured catering, sound, decorations, and photography.
+                Enhance your private trip with catering, sound, decorations, and photography.
               </p>
 
               {availableExtras.length === 0 ? (
@@ -493,7 +646,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                   <span className="font-semibold text-slate-900">{adultsCount} Adults, {childrenCount} Children</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Selected Stateroom:</span>
+                  <span className="text-slate-500">Selected Cabin:</span>
                   <span className="font-semibold text-slate-900">{selectedCabinObj.name}</span>
                 </div>
                 {selectedExtras.length > 0 && (
@@ -515,7 +668,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                     type="text"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. VOYAGE10, ROYAL5000"
+                    placeholder="e.g. TRIP10, ROYAL5000"
                     className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs uppercase font-mono font-bold"
                   />
                   <button
@@ -537,6 +690,16 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                   </p>
                 )}
               </div>
+
+              {/* WhatsApp Voyage Reminder Input & Consent */}
+              <WhatsAppReminderCard
+                whatsappNumber={customerWhatsApp}
+                onWhatsAppNumberChange={setCustomerWhatsApp}
+                optIn={whatsappReminderOptIn}
+                onOptInChange={setWhatsappReminderOptIn}
+                userDefaultPhone={user?.phone || (user as any)?.whatsapp_number}
+                disabled={submitting}
+              />
             </div>
           )}
 
@@ -545,7 +708,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
             {currentStep > 1 ? (
               <button
                 type="button"
-                onClick={handleBack}
+                onClick={handleStepBack}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -600,7 +763,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
               </div>
             )}
             <div className="flex justify-between">
-              <span>Maritime GST (18%):</span>
+              <span>GST (18%):</span>
               <span className="font-bold text-slate-900">{formatINR(taxAmount)}</span>
             </div>
           </div>

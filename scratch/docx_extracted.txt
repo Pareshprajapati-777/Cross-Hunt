@@ -1,0 +1,557 @@
+INDIA SHIP & CRUISE RENTAL RESEARCHProject-ready operator, route, pricing & contact database
+
+Research status: verified against public web sources on 1 October 2026
+
+1. Project Scope
+
+This document separates the Indian marine-tourism market into two products: (A) PRIVATE CHARTER, where a customer hires an entire boat/yacht/vessel, and (B) PUBLIC / SHARED TOUR, where customers purchase individual seats or cabins. Large ocean-going cruise ships are generally sold per passenger or via charter enquiry; they should not be represented as ordinary hourly boat rentals.
+
+2. Recommended Data Model for Cross-Hunt
+
+Field
+
+Purpose
+
+listing_type
+
+PRIVATE_CHARTER / PUBLIC_CRUISE
+
+operator
+
+Company / operator name
+
+vessel_name
+
+Ship / yacht / boat name
+
+vessel_category
+
+Small / Medium / Large / Cruise Ship
+
+capacity
+
+Maximum passenger capacity
+
+departure
+
+Boarding port / jetty
+
+destinations
+
+Ports, islands or sightseeing points
+
+duration
+
+Hours / nights / days
+
+price
+
+Published starting price
+
+price_unit
+
+Per person / per boat / per hour / per day
+
+included
+
+Fuel, crew, food, guide, equipment, etc.
+
+extra_charges
+
+GST, permits, fuel surcharge, decoration, etc.
+
+contact_phone
+
+Phone / WhatsApp
+
+email
+
+Email
+
+booking_url
+
+Official booking page
+
+source_checked
+
+Date of verification
+
+PART A — PRIVATE SHIP / BOAT / YACHT RENTAL
+
+Location
+
+Operator
+
+Product
+
+Type
+
+Capacity
+
+Route / Area
+
+Published Price
+
+Pricing Basis
+
+Extras / Notes
+
+Contact
+
+Office / Base
+
+Official source
+
+Goa
+
+Navora
+
+Private yacht charter
+
+Private yacht
+
+Capacity varies
+
+North & South Goa; itinerary by enquiry
+
+From ₹10,999
+
+Per charter / starting price
+
+Date + headcount + itinerary quoted
+
++91 78601 56369; contact@navoragoa.com
+
+Anjuna Beach Road, North Goa
+
+https://navoragoa.com/
+
+Andaman
+
+Andaman Yacht Rentals
+
+Private AC charter
+
+Yacht / charter boat
+
+Up to 12
+
+Port Blair: Ross Island, Corbyn's Cove; Havelock: Elephant Beach, Turtle Beach
+
+₹30,000 / 2.5h; ₹50,000 / 4h; ₹75,000 / full day
+
+Per boat package; base package up to 6, max 12
+
+GST 18%; permits ₹500 Indian / ₹2,500 foreign; extras possible
+
++91 72900 10354 / +91 89292 97441; info@andamanyachtrentals.com
+
+Port Blair / Andaman
+
+https://www.andamanyachtrentals.com/private-charter-boat-at-andaman-islands
+
+Andaman
+
+Lacadives
+
+Private boat charter
+
+Boat
+
+Not stated on page
+
+Havelock / CT; bespoke sea trips
+
+₹15,000 / 1h; ₹20,000 / 1.5h; ₹25,000 / 2h; ₹40,000 / 3h; ₹50,000 / 4h
+
+Per boat
+
+Sunset per-person products may have minimum capacity
+
+Booking via official site
+
+Havelock / Andaman
+
+https://www.lacadives.com/activities/boat-charters/
+
+Kochi
+
+Neo Classic Cruises
+
+Classic Paradise private charter
+
+Sea cruise vessel
+
+Up to 150
+
+Kochi Marine Drive / Kochi harbour
+
+Published private school/college packages from ₹12,500–₹13,750 per hour; standard private charter is quote-based
+
+Hourly/package
+
+Food and entertainment vary by package
+
++91 80864 77720; mail@classicvoy.com
+
+High Court Jn., Marine Drive, Kochi
+
+https://www.cruiseneo.com/cruises/sea-cruise
+
+Kochi
+
+Neo Classic Cruises
+
+Classic Imperial private charter
+
+Sea cruise vessel
+
+Up to 150
+
+Kochi harbour
+
+Quote on request for whole-vessel charter
+
+Private whole-vessel charter
+
+Date, headcount and occasion determine quote
+
++91 80864 77720; mail@classicvoy.com
+
+High Court Jn., Marine Drive, Kochi
+
+https://www.cruiseneo.com/cruises/sea-cruise
+
+Goa
+
+Paradise Cruises
+
+Private Boat / event charter
+
+River cruise boat
+
+Not published
+
+Mandovi River, Panaji
+
+Quote on request
+
+Whole boat
+
+Private event can be customized
+
+8888002662 / 8888278381; 8888884951 / 8888884953
+
+Below Mandovi Bridge, Patto, Panaji, Goa
+
+https://www.paradisecruises.in/online-bookings/
+
+Private charter rule for the project: if the customer hires the whole vessel, store price_unit as PER_BOAT, PER_HOUR, PER_DAY or QUOTE. Do not convert an operator's package into a per-person price unless the operator explicitly publishes a per-person basis.
+
+PART B — PUBLIC / SHARED TOURS & CRUISES
+
+Location
+
+Operator
+
+Product
+
+Type
+
+Capacity
+
+Route / Area
+
+Published Price
+
+Pricing Basis
+
+Extras / Notes
+
+Contact
+
+Office / Base
+
+Official source
+
+Mumbai / Goa / Kochi / Lakshadweep
+
+Cordelia Cruises
+
+Empress / Sky
+
+Ocean cruise ship
+
+Large passenger cruise
+
+Mumbai–Mumbai; Mumbai–Goa; Mumbai–Kochi; Mumbai/Goa–Agatti; Kochi–Kavaratti; Kochi–Malé–Colombo on scheduled sailings
+
+Current 2026 official site shows live sailing offers; exact fare changes by sailing/cabin. Third-party 2026 timetable examples show from ₹21,675–₹32,512 for selected 2–3 night sailings
+
+Per passenger / cabin, date dependent
+
+Offers, cabin type, taxes and inclusions vary
+
+022-68811111; group desk 022-65545206
+
+Mumbai / Kochi / Goa sailings
+
+https://www.cordeliacruises.com/cruise-packages?start=Mumbai
+
+Goa
+
+Mandovi Cruises
+
+Luxury Sunset / Dinner / Dolphin trips
+
+River cruise / boat
+
+Not published
+
+Mandovi River; Fort Aguada / dolphin sightseeing products
+
+₹400 Dolphin Trip; ₹500–₹600 sunset products; ₹1,099 party boat; ₹1,200 family dinner; ₹3,800 VIP dinner (published site examples)
+
+Per person / ticket product
+
+Product-specific inclusions differ
+
+Official site contact page
+
+Panaji / Mandovi River
+
+https://mandovicruises.com/
+
+Goa
+
+Paradise Cruises
+
+Evening / Dinner Cruise
+
+River cruise
+
+Not published
+
+Mandovi River, Panaji
+
+Official site lists 1-hour evening cruise and 2-hour dinner cruise; live price should be checked at booking
+
+Per ticket
+
+Dinner cruise includes entertainment, buffet and specified drinks per FAQ
+
+8888002662 / 8888278381; 8888884951 / 8888884953
+
+Patto, Panaji, Goa
+
+https://www.paradisecruises.in/
+
+Goa
+
+Swastik Cruises
+
+Sunset / Dinner Cruise
+
+River cruise
+
+Not published
+
+Mandovi River / Betim area
+
+₹600 Sunset Cruise; ₹1,260 published Dinner Cruise listing
+
+Per person / ticket
+
+Sunset: 1 hour; dinner product is advance-booking product
+
+Official site contact / booking
+
+Near Betim ferry ramp, Bardez, Goa
+
+https://swastikcruises.in/products/list
+
+Kochi
+
+Neo Classic Cruises
+
+Classic Imperial
+
+Sea cruise
+
+Up to 150
+
+Marine Drive, Kochi
+
+From ₹1,700 lunch cruise; from ₹2,300 dinner cruise (published examples)
+
+Per person / ticket
+
+Live entertainment / lounge-bar options depend on sailing
+
++91 80864 77720; mail@classicvoy.com
+
+Marine Drive, Kochi
+
+https://www.cruiseneo.com/cruises/sea-cruise
+
+Kochi
+
+Neo Classic Cruises
+
+Classic Paradise
+
+Sea cruise
+
+Up to 150
+
+Marine Drive, Kochi
+
+From ₹500 evening; ₹600 sunset; ₹650 dinner in current published examples
+
+Per person / ticket
+
+Dinner package includes meal; product-specific inclusions
+
+ +91 80864 77720
+
+Marine Drive, Kochi
+
+https://www.cruiseneo.com/cruises/sea-cruise
+
+Andaman
+
+Nautika
+
+Fast passenger ferry
+
+Inter-island ferry
+
+Passenger vessel
+
+Port Blair ↔ Swaraj Dweep (Havelock); other island sectors depending on schedule
+
+Indicative 2026 one-way fares ₹1,250–₹3,400 by class/operator listing; verify live booking
+
+Per passenger
+
+Fare varies by class, season and surcharge
+
+Official booking/agent pages
+
+Port Blair / Havelock
+
+https://www.nautika.com/
+
+Andaman
+
+Green Ocean Seaways
+
+Green Ocean ferry
+
+Inter-island ferry
+
+Passenger vessel
+
+Port Blair ↔ Swaraj Dweep; Havelock ↔ Shaheed Dweep and other sectors
+
+Published booking records show class-based fares; live fare must be checked
+
+Per passenger
+
+Departure/arrival and fare vary by sailing
+
+03192 230777 / 9932080959; info@greenoceancruise.com
+
+Junglighat, Port Blair
+
+https://tickets.greenoceanseaways.com/portal/
+
+Andaman
+
+DSS, A&N Administration
+
+Government passenger ferry
+
+Government ferry
+
+Passenger / vehicle ferry
+
+Nearby intervening islands
+
+Fare and timetable published through official DSS enquiry
+
+Per passenger / class
+
+Weather and technical conditions can change sailings
+
+Official DSS e-ticketing / enquiry
+
+Andaman & Nicobar
+
+https://dss.andaman.gov.in/
+
+3. Route Map for the Project
+
+Goa: Panaji / Mandovi River → sunset, dinner, sightseeing, Aguada/dolphin products; private yacht itineraries are operator-dependent.
+
+Mumbai: Mumbai cruise terminal → Mumbai round trips; Mumbai → Goa; Mumbai → Kochi; Mumbai/Goa → Agatti/Lakshadweep on scheduled Cordelia sailings.
+
+Kochi: Marine Drive → Kochi harbour; public lunch/sunset/dinner cruises; whole-vessel private charter up to 150 guests; scheduled cruise sectors to Kavaratti/Lakshadweep.
+
+Andaman: Port Blair → Havelock/Swaraj Dweep; Havelock → Neil/Shaheed Dweep; private charter routes to Ross Island, Corbyn's Cove, Elephant Beach, Turtle Beach and longer island routes.
+
+Chennai: yacht/boat charter market exists, but public prices and capacities are less consistently published online than Goa, Kochi and Andaman. Treat unverified listings as QUOTE_ON_REQUEST.
+
+4. Pricing & Booking Logic
+
+PRIVATE: display the total boat price first. Example: ₹30,000 / 2.5 hours for a private Andaman charter, not ₹2,500 per person.
+
+PUBLIC: display per-person or per-cabin pricing. Example: Cordelia is a cruise booking product where fare depends on sailing date and cabin.
+
+Always store tax and permit charges separately. Andaman Yacht Rentals states 18% GST and permit charges of ₹500 per Indian and ₹2,500 per foreign guest on its listed charter package.
+
+For live inventory, never hard-code a price permanently. Save source_price, currency, price_unit, valid_from, valid_to and last_verified_at.
+
+For quote-based operators, show 'Price on Request' instead of inventing a rate.
+
+5. Product UI Recommendation for Cross-Hunt
+
+Search mode 1: PRIVATE CHARTER — choose city, date, passengers, duration and vessel size.
+
+Search mode 2: PUBLIC TOUR — choose departure, destination, date and passengers; show available sailings.
+
+Card badges: PRIVATE, PUBLIC, PER PERSON, WHOLE BOAT, GST EXTRA, PERMIT EXTRA, LIVE AVAILABILITY.
+
+Filters: capacity, price, duration, departure port, destination, vessel size, AC, food, music/DJ, fishing, sightseeing and overnight.
+
+Booking states: AVAILABLE, REQUEST_QUOTE, SOLD_OUT, WEATHER_HOLD, NOT_SCHEDULED.
+
+6. Important Accuracy Rules
+
+Prices and schedules are dynamic. The figures in this document are published examples captured from public sources on 1 October 2026, not guaranteed future booking quotes. For production use, Cross-Hunt should re-check the operator source before showing a final payable price.
+
+A cruise ship, inter-island ferry and private yacht are different inventory classes. Do not merge them into one generic 'ship' category in the database.
+
+7. Primary Sources
+
+Cordelia Cruises: https://www.cordeliacruises.com/cruise-packages?start=Mumbai
+
+Cordelia routes: https://www.cordeliacruises.com/routes
+
+Navora Goa: https://navoragoa.com/
+
+Andaman Yacht Rentals: https://www.andamanyachtrentals.com/private-charter-boat-at-andaman-islands
+
+Lacadives Boat Charters: https://www.lacadives.com/activities/boat-charters/
+
+Neo Classic Cruises: https://www.cruiseneo.com/cruises/sea-cruise
+
+Paradise Cruises Goa: https://www.paradisecruises.in/online-bookings/
+
+Mandovi Cruises Goa: https://mandovicruises.com/
+
+Swastik Cruises Goa: https://swastikcruises.in/products/list
+
+Green Ocean booking: https://tickets.greenoceanseaways.com/portal/
+
+Andaman & Nicobar Directorate of Shipping Services: https://dss.andaman.gov.in/

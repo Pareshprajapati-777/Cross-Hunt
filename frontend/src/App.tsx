@@ -1,4 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
@@ -13,246 +21,341 @@ import { PrivateEventsPage } from './pages/PrivateEventsPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { OperatorDashboardPage } from './pages/OperatorDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { TicketVerifyPage } from './pages/TicketVerifyPage';
 import { AuthPage } from './pages/AuthPages';
-import { Cruise, Booking, PublicTour } from './api/types';
+import { CrossHuntAiWidget } from './components/ai/CrossHuntAiWidget';
+import { Loader2 } from 'lucide-react';
 
-function getTabFromPath(): string {
-  const path = window.location.pathname.toLowerCase().replace(/^\/|\/$/g, '');
-  if (path === 'dashboard') return 'dashboard';
-  if (path === 'owner' || path === 'operator') return 'owner';
-  if (path === 'admin-panel' || path === 'admin') return 'admin-panel';
-  if (path === 'explore') return 'explore';
-  if (path === 'tours') return 'tours';
-  if (path === 'events') return 'events';
-  if (path === 'login') return 'login';
-  if (path === 'register') return 'register';
-  return 'home';
+
+/**
+ * Automatically scrolls to top on every route change.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
 }
 
-const MainApp: React.FC = () => {
+/**
+ * Sleek loading state while user auth session is being verified.
+ */
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="w-8 h-8 text-sky-600 animate-spin" />
+        <p className="text-slate-500 text-sm font-medium">Loading your trip...</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Route guard: requires user to be logged in.
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [currentTab, setCurrentTab] = useState<string>(getTabFromPath());
-  const [filterQuery, setFilterQuery] = useState<string>('');
-  const [selectedCruise, setSelectedCruise] = useState<Cruise | null>(null);
-  const [selectedTour, setSelectedTour] = useState<PublicTour | null>(null);
-  const [preselectedCabin, setPreselectedCabin] = useState<string>('OCEANVIEW');
+  const location = useLocation();
 
-  // Listen to browser forward/backward buttons
-  useEffect(() => {
-    const handlePopState = () => {
-      setCurrentTab(getTabFromPath());
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  if (loading) {
+    return <PageLoader />;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <>{children}</>;
+}
 
-  // Scroll to top on page change
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentTab, selectedCruise, selectedTour]);
+/**
+ * Route guard: requires user to have Operator/Owner or Admin permissions.
+ */
+function OperatorRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
-  const handleNavigate = (tab: string, param?: string) => {
-    setCurrentTab(tab);
-    if (param) {
-      setFilterQuery(param);
+  if (loading) {
+    return <PageLoader />;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!user.is_operator && !user.is_admin && user.role !== 'OWNER' && user.role !== 'CROSS_OWNER') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
+/**
+ * Route guard: requires Administrator permissions.
+ */
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <PageLoader />;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!user.is_admin && user.role !== 'ADMIN') {
+    if (user.is_operator || user.role === 'OWNER' || user.role === 'CROSS_OWNER') {
+      return <Navigate to="/owner" replace />;
     }
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
 
-    const pathToUrlMap: Record<string, string> = {
-      'home': '/',
-      'dashboard': '/dashboard',
-      'owner': '/owner',
-      'admin-panel': '/admin-panel',
-      'explore': '/explore',
-      'tours': '/tours',
-      'events': '/events',
-      'login': '/login',
-      'register': '/register',
-    };
+/**
+ * Route guard for Login and Register pages. If already signed in, redirects to appropriate dashboard.
+ */
+function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-    if (pathToUrlMap[tab]) {
-      window.history.pushState({}, '', pathToUrlMap[tab]);
-    }
-  };
+  if (loading) {
+    return <PageLoader />;
+  }
+  if (user) {
+    if (user.is_admin || user.role === 'ADMIN') return <Navigate to="/admin-panel" replace />;
+    if (user.is_operator || user.role === 'OWNER' || user.role === 'CROSS_OWNER') return <Navigate to="/owner" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
 
-  // Role-based route enforcement
-  useEffect(() => {
-    if (!loading && user) {
-      if (currentTab === 'owner' && !user.is_operator && !user.is_admin) {
-        handleNavigate('dashboard');
-      } else if (currentTab === 'admin-panel' && !user.is_admin) {
-        if (user.is_operator) {
-          handleNavigate('owner');
-        } else {
-          handleNavigate('dashboard');
-        }
-      }
-    } else if (!loading && !user) {
-      if (currentTab === 'dashboard' || currentTab === 'owner' || currentTab === 'admin-panel') {
-        handleNavigate('login');
-      }
-    }
-  }, [currentTab, user, loading]);
-
-  const handleSelectCruise = (cruise: Cruise) => {
-    setSelectedCruise(cruise);
-    setCurrentTab('cruise-detail');
-  };
-
-  const handleBookCruise = (cruise: Cruise, cabin?: string) => {
-    setSelectedCruise(cruise);
-    if (cabin) setPreselectedCabin(cabin);
-    setCurrentTab('book-tour');
-  };
-
-  const handleSelectTour = (tour: PublicTour) => {
-    setSelectedTour(tour);
-    setCurrentTab('tour-detail');
-  };
-
-  const handleBookPublicTour = (tour: PublicTour) => {
-    setSelectedTour(tour);
-    setCurrentTab('book-public-tour');
-  };
-
-  const handleBookingSuccess = (_booking: Booking) => {
-    handleNavigate('dashboard');
-  };
-
-  // Specific role redirection upon successful login / registration
   const handleAuthSuccess = (loggedUser: any) => {
     if (loggedUser?.is_admin || loggedUser?.role === 'ADMIN') {
-      handleNavigate('admin-panel');
+      navigate('/admin-panel');
     } else if (
       loggedUser?.is_operator ||
       loggedUser?.role === 'OWNER' ||
       loggedUser?.role === 'CROSS_OWNER'
     ) {
-      handleNavigate('owner');
+      navigate('/owner');
     } else {
-      handleNavigate('dashboard');
+      navigate('/dashboard');
     }
   };
 
   return (
+    <AuthPage
+      initialMode={mode}
+      onSuccess={handleAuthSuccess}
+      onSwitchMode={(nextMode) => navigate(`/${nextMode}`)}
+    />
+  );
+}
+
+/**
+ * Main application content with route handlers and navigation wiring.
+ */
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleNavigate = (tab: string, param?: string) => {
+    if (tab === 'home') navigate('/');
+    else if (tab === 'explore') navigate(param ? `/explore?query=${encodeURIComponent(param)}` : '/explore');
+    else if (tab === 'tours') navigate(param ? `/tours${param.startsWith('?') ? param : `?${param}`}` : '/tours');
+    else if (tab === 'events') navigate('/events');
+    else if (tab === 'dashboard') navigate('/dashboard');
+    else if (tab === 'owner') navigate('/owner');
+    else if (tab === 'admin-panel') navigate('/admin-panel');
+    else if (tab === 'login') navigate('/login');
+    else if (tab === 'register') navigate('/register');
+    else navigate('/');
+  };
+
+  return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between selection:bg-sky-500/20 selection:text-sky-800">
-      {/* Liquid Glass Dock Navbar */}
-      <Navbar currentTab={currentTab} onNavigate={handleNavigate} />
+      <ScrollToTop />
+      {/* Universal Responsive Navbar */}
+      <Navbar />
 
-      {/* Main Page Rendering */}
-      <div className="flex-1">
-        {currentTab === 'home' && (
-          <HomePage
-            onNavigate={handleNavigate}
-            onSelectCruise={handleSelectCruise}
-            onBookCruise={handleBookCruise}
-            onSelectTour={handleSelectTour}
-            onBookTour={handleBookPublicTour}
+      {/* Primary Routes */}
+      <main className="flex-1">
+        <Routes>
+          {/* Home View */}
+          <Route
+            path="/"
+            element={
+              <HomePage
+                onNavigate={handleNavigate}
+                onSelectCruise={(c) => { navigate(`/cruises/${c.slug || c.id}`); }}
+                onBookCruise={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onSelectTour={(t) => { navigate(`/tours/${t.slug || t.id}`); }}
+                onBookTour={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'explore' && (
-          <ExplorePage
-            initialFilterQuery={filterQuery}
-            onSelectCruise={handleSelectCruise}
-            onBookCruise={handleBookCruise}
+          {/* Catalog: Explore Ships & Private Charters */}
+          <Route
+            path="/explore"
+            element={
+              <ExplorePage
+                onSelectCruise={(c) => { navigate(`/cruises/${c.slug || c.id}`); }}
+                onBookCruise={(c) => { navigate(`/book-cruise/${c.slug || c.id}`); }}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'tours' && (
-          <ToursPage
-            onSelectTour={handleSelectTour}
-            onBookTour={handleBookPublicTour}
+          {/* Ship Details (supports both /cruises/:id and /ships/:id) */}
+          <Route
+            path="/cruises/:id"
+            element={
+              <CruiseDetailPage
+                onBack={() => { navigate('/explore'); }}
+                onBookTour={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onBookEvent={() => { navigate('/events'); }}
+              />
+            }
           />
-        )}
-
-        {currentTab === 'tour-detail' && selectedTour && (
-          <TourDetailPage
-            tour={selectedTour}
-            onBack={() => handleNavigate('tours')}
-            onBookTourTicket={(t) => handleBookPublicTour(t)}
+          <Route
+            path="/ships/:id"
+            element={
+              <CruiseDetailPage
+                onBack={() => { navigate('/explore'); }}
+                onBookTour={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onBookEvent={() => { navigate('/events'); }}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'book-public-tour' && selectedTour && (
-          <BookPublicTourTicketPage
-            tour={selectedTour}
-            onSuccess={handleBookingSuccess}
-            onCancel={() => handleNavigate('tour-detail')}
-            onNeedLogin={() => handleNavigate('login')}
+          {/* Catalog: Scheduled Public Tours */}
+          <Route
+            path="/tours"
+            element={
+              <ToursPage
+                onSelectTour={(t) => { navigate(`/tours/${t.slug || t.id}`); }}
+                onBookTour={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'cruise-detail' && selectedCruise && (
-          <CruiseDetailPage
-            cruise={selectedCruise}
-            onBack={() => handleNavigate('explore')}
-            onBookTour={(c, cabin) => handleBookCruise(c, cabin)}
-            onBookEvent={() => handleNavigate('events')}
+          {/* Public Tour Detail */}
+          <Route
+            path="/tours/:id"
+            element={
+              <TourDetailPage
+                onBack={() => { navigate('/tours'); }}
+                onBookTourTicket={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'book-tour' && selectedCruise && (
-          <BookTourPage
-            cruise={selectedCruise}
-            initialCabin={preselectedCabin}
-            onSuccess={handleBookingSuccess}
-            onCancel={() => handleNavigate('cruise-detail')}
-            onNeedLogin={() => handleNavigate('login')}
+          {/* Booking: Private Ship Charter */}
+          <Route
+            path="/book-cruise/:id"
+            element={
+              <BookTourPage
+                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                onCancel={() => navigate('/explore')}
+                onNeedLogin={() => navigate('/login')}
+              />
+            }
           />
-        )}
-
-        {currentTab === 'events' && (
-          <PrivateEventsPage
-            onSuccess={handleBookingSuccess}
-            onNeedLogin={() => handleNavigate('login')}
+          <Route
+            path="/book-cruise"
+            element={
+              <BookTourPage
+                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                onCancel={() => navigate('/explore')}
+                onNeedLogin={() => navigate('/login')}
+              />
+            }
           />
-        )}
+          <Route path="/private-booking" element={<Navigate to="/explore" replace />} />
 
-        {currentTab === 'dashboard' && (
-          <UserDashboardPage
-            onExplore={() => handleNavigate('explore')}
-            onSelectCruise={handleSelectCruise}
-            onBookCruise={handleBookCruise}
-            onSelectTour={handleSelectTour}
-            onBookTour={handleBookPublicTour}
+          {/* Booking: Public Cruise Tour Ticket */}
+          <Route
+            path="/book-tour/:id"
+            element={
+              <BookPublicTourTicketPage
+                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                onCancel={() => navigate('/tours')}
+                onNeedLogin={() => navigate('/login')}
+              />
+            }
           />
-        )}
 
-        {(currentTab === 'owner' || currentTab === 'operator') && (
-          <OperatorDashboardPage />
-        )}
-
-        {(currentTab === 'admin-panel' || currentTab === 'admin') && (
-          <AdminDashboardPage />
-        )}
-
-        {currentTab === 'login' && (
-          <AuthPage
-            initialMode="login"
-            onSuccess={handleAuthSuccess}
-            onSwitchMode={(mode) => handleNavigate(mode)}
+          {/* Events: Private Celebrations & Weddings */}
+          <Route
+            path="/events"
+            element={
+              <PrivateEventsPage
+                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                onNeedLogin={() => navigate('/login')}
+              />
+            }
           />
-        )}
 
-        {currentTab === 'register' && (
-          <AuthPage
-            initialMode="register"
-            onSuccess={handleAuthSuccess}
-            onSwitchMode={(mode) => handleNavigate(mode)}
+          {/* QR Scan & Boarding Pass Verification (Prompt Requirement #12 & #13) */}
+          <Route path="/ticket/verify/:code" element={<TicketVerifyPage />} />
+          <Route path="/tickets/verify/:code" element={<TicketVerifyPage />} />
+
+          {/* Customer Dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <UserDashboardPage
+                  onExplore={() => { navigate('/explore'); }}
+                  onSelectCruise={(c) => { navigate(`/cruises/${c.slug || c.id}`); }}
+                  onBookCruise={(c) => { navigate(`/book-cruise/${c.slug || c.id}`); }}
+                  onSelectTour={(t) => { navigate(`/tours/${t.slug || t.id}`); }}
+                  onBookTour={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+                />
+              </ProtectedRoute>
+            }
           />
-        )}
-      </div>
 
-      {/* Luxury Nautical Footer */}
-      <Footer onNavigate={handleNavigate} />
+          {/* Fleet Operator / Ship Owner Dashboard */}
+          <Route
+            path="/owner"
+            element={
+              <OperatorRoute>
+                <OperatorDashboardPage />
+              </OperatorRoute>
+            }
+          />
+          <Route path="/operator" element={<Navigate to="/owner" replace />} />
+
+          {/* Administrator Command Center */}
+          <Route
+            path="/admin-panel"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route path="/admin" element={<Navigate to="/admin-panel" replace />} />
+
+          {/* Authentication Pages */}
+          <Route path="/login" element={<GuestRoute mode="login" />} />
+          <Route path="/register" element={<GuestRoute mode="register" />} />
+
+          {/* Fallback to Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+
+      {/* Personal AI Cruise Assistant Widget (3D Dolphin 🐬 + Chat Modal) */}
+      <CrossHuntAiWidget />
+
+      {/* Global Nautical Footer */}
+      <Footer />
     </div>
   );
 };
 
+
 export default function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

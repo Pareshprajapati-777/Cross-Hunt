@@ -78,7 +78,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
                   <div className="w-7 h-7 rounded-lg bg-sky-500 text-white flex items-center justify-center font-black text-xs">CH</div>
                   <span className="text-xl font-black tracking-tight text-slate-900 font-serif">CROSS-HUNT</span>
                 </div>
-                <p className="text-xs text-slate-500">Maritime Cruise Bookings & Luxury Charters India</p>
+                <p className="text-xs text-slate-500">Cruise Bookings & Boat Rentals India</p>
                 <p className="text-xs text-slate-500">GSTIN: 27AABCC1234F1Z5</p>
               </div>
               <div className="sm:text-right">
@@ -100,10 +100,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
                 <p className="text-slate-600">{invoice.customer_phone}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Fleet Vessel & Route</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Boat / Ship & Route</p>
                 <p className="font-bold text-sm text-slate-900">{invoice.ship_name}</p>
                 <p className="text-slate-600">{invoice.departure_port} → {invoice.destination}</p>
-                <p className="text-slate-600">Embarkation: {invoice.booking_date} ({invoice.duration})</p>
+                <p className="text-slate-600">Trip Date: {invoice.booking_date} ({invoice.duration})</p>
               </div>
             </div>
 
@@ -151,7 +151,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
                   </div>
                 )}
                 <div className="flex justify-between text-slate-600">
-                  <span>Maritime Tourism GST (18%):</span>
+                  <span>GST (18%):</span>
                   <span className="font-semibold text-slate-900">{formatINR(invoice.tax_amount)}</span>
                 </div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between text-base font-black text-slate-900">
@@ -165,9 +165,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
             <div className="flex items-center justify-between pt-6 border-t border-slate-100 text-[11px] text-slate-400">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>Verified System-Generated Maritime Invoice in INR (₹)</span>
+                <span>Verified GST Invoice in INR (₹)</span>
               </div>
-              <span>Thank you for sailing with Cross-Hunt</span>
+              <span>Thank you for traveling with Cross-Hunt</span>
             </div>
           </div>
         )}

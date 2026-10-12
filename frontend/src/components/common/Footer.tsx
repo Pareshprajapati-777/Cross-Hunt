@@ -1,11 +1,34 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Anchor, Shield } from 'lucide-react';
 
 interface FooterProps {
-  onNavigate: (tab: string, param?: string) => void;
+  onNavigate?: (tab: string, param?: string) => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) => {
+  const navigate = useNavigate();
+
+  const onNavigate = (tab: string, param?: string) => {
+    if (propOnNavigate) {
+      propOnNavigate(tab, param);
+      return;
+    }
+    const routeMap: Record<string, string> = {
+      home: '/',
+      explore: param ? `/explore?query=${encodeURIComponent(param)}` : '/explore',
+      tours: '/tours',
+      events: '/events',
+      dashboard: '/dashboard',
+      owner: '/owner',
+      'admin-panel': '/admin-panel',
+      login: '/login',
+      register: '/register',
+    };
+    if (routeMap[tab]) {
+      navigate(routeMap[tab]);
+    }
+  };
   return (
     <footer className="border-t border-sky-200 bg-[#f0f9ff] relative overflow-hidden text-slate-600 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -29,12 +52,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </span>
             </div>
             <p className="text-slate-600 text-xs leading-relaxed font-medium">
-              The premier platform for flagship cruise ship tours, guaranteed stateroom reservations, and exclusive private maritime event charters worldwide.
+              The premier platform for cruise ship tours, guaranteed cabin bookings, and private boat rentals across India.
             </p>
             <div className="flex items-center space-x-2 text-sky-800">
               <Shield className="w-4 h-4 text-sky-600" />
               <span className="text-[11px] font-bold uppercase tracking-wider">
-                Certified Oceanic Operators
+                Certified Boat & Cruise Operators
               </span>
             </div>
           </div>
@@ -42,16 +65,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Col 2: Destinations */}
           <div className="space-y-3">
             <h4 className="font-display font-bold text-sm text-slate-900 uppercase tracking-wider">
-              Flagship Seas & Ports
+              Popular Ports & Destinations
             </h4>
             <ul className="space-y-2">
               {[
-                'Caribbean Paradise Voyages',
-                'Greek Isles & Mediterranean',
-                'Norwegian Fjords & Arctic',
-                'French Riviera & Monaco',
-                'South Pacific & Tahiti',
-                'Alaska Glacier Bay',
+                'Mumbai & Arabian Sea',
+                'Goa Coastal & Mormugao',
+                'Lakshadweep Archipelago',
+                'Kochi & Malabar Coast',
+                'Andaman & Nicobar Islands',
+                'Chennai & Bay of Bengal',
               ].map((dest, i) => (
                 <li key={i}>
                   <button
@@ -68,7 +91,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Col 3: Charters & Events */}
           <div className="space-y-3">
             <h4 className="font-display font-bold text-sm text-slate-900 uppercase tracking-wider">
-              Maritime Experiences
+              Cruise & Boat Trips
             </h4>
             <ul className="space-y-2 font-medium">
               <li>
@@ -108,7 +131,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   onClick={() => onNavigate('explore')}
                   className="hover:text-sky-700 transition cursor-pointer"
                 >
-                  Stateroom & Suite Catalog
+                  Cabin & Fleet Catalog
                 </button>
               </li>
             </ul>
@@ -117,14 +140,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Col 4: Operations & Assurance */}
           <div className="space-y-3">
             <h4 className="font-display font-bold text-sm text-slate-900 uppercase tracking-wider">
-              Nautical Assurance
+              Booking Guarantee
             </h4>
             <div className="p-4 rounded-2xl bg-white border border-sky-100 shadow-sm space-y-2">
               <span className="text-[11px] font-bold text-slate-900 block">
-                Atomic Transaction Guarantee
+                Instant Confirmation
               </span>
               <p className="text-[11px] text-slate-500 leading-normal font-medium">
-                Double-booking prevention is enforced server-side via SQL locks. Digital boarding passes include tamper-evident cryptographic hashes.
+                No double-booking guaranteed. Instant digital boarding tickets and itemized GST tax invoices.
               </p>
             </div>
           </div>
@@ -132,11 +155,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
         {/* Bottom Strip */}
         <div className="pt-8 border-t border-sky-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 font-medium">
-          <p>© {new Date().getFullYear()} Cross Hunt Maritime Inc. All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} Cross Hunt Inc. All Rights Reserved.</p>
           <div className="flex items-center space-x-6">
-            <span>Maritime Safety Standards SOLAS</span>
+            <span>Safety Standards & Certified Crew</span>
             <span>Port Terminal Security</span>
-            <span>Privacy & Passenger Bill of Rights</span>
+            <span>Privacy Policy</span>
           </div>
         </div>
       </div>

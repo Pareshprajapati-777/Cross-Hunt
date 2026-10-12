@@ -12,7 +12,7 @@ User = get_user_model()
 
 @login_required
 def user_dashboard_view(request):
-    if request.user.role == 'CROSS_OWNER':
+    if request.user.role in ['OWNER', 'CROSS_OWNER'] or getattr(request.user, 'is_owner', False):
         return redirect('owner_dashboard')
     elif request.user.role == 'ADMIN' or request.user.is_superuser:
         return redirect('admin_dashboard')
@@ -74,7 +74,7 @@ def owner_dashboard_view(request):
 @admin_required
 def admin_dashboard_view(request):
     total_users = User.objects.filter(role='USER').count()
-    total_owners = User.objects.filter(role='CROSS_OWNER').count()
+    total_owners = User.objects.filter(role__in=['OWNER', 'CROSS_OWNER']).count()
     total_crosses = Cross.objects.count()
     active_crosses = Cross.objects.filter(is_active=True).count()
     
@@ -138,7 +138,7 @@ def admin_user_toggle_view(request, user_id):
 @admin_required
 def admin_owners_view(request):
     q = request.GET.get('q', '').strip()
-    owners = User.objects.filter(role='CROSS_OWNER').annotate(cross_count=Count('crosses')).order_by('-date_joined')
+    owners = User.objects.filter(role__in=['OWNER', 'CROSS_OWNER']).annotate(cross_count=Count('crosses')).order_by('-date_joined')
     if q:
         owners = owners.filter(
             Q(username__icontains=q) |
@@ -152,7 +152,7 @@ def admin_owners_view(request):
 @login_required
 @admin_required
 def admin_owner_toggle_approval_view(request, owner_id):
-    owner = get_object_or_404(User, id=owner_id, role='CROSS_OWNER')
+    owner = get_object_or_404(User, id=owner_id, role__in=['OWNER', 'CROSS_OWNER'])
     owner.is_approved_owner = not owner.is_approved_owner
     owner.save()
     status_str = "approved" if owner.is_approved_owner else "unapproved"

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PublicTour, Booking } from '../api/types';
 import { createBooking } from '../api/bookings';
 import { validateCoupon, CouponValidationResult } from '../api/offers';
+import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
 import {
@@ -10,29 +12,78 @@ import {
   ChevronLeft,
   Tag,
   Check,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Anchor
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
+import { WhatsAppReminderCard } from '../components/common/WhatsAppReminderCard';
+import { TicketPass } from '../components/ticket/TicketPass';
+import { CheckCircle2, Printer } from 'lucide-react';
 
 interface BookPublicTourTicketPageProps {
-  tour: PublicTour;
-  onSuccess: (booking: Booking) => void;
-  onCancel: () => void;
-  onNeedLogin: () => void;
+  tour?: PublicTour | null;
+  onSuccess?: (booking: Booking) => void;
+  onCancel?: () => void;
+  onNeedLogin?: () => void;
 }
 
 export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> = ({
-  tour,
+  tour: initialTour,
   onSuccess,
   onCancel,
   onNeedLogin,
 }) => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
+
+  const [tour, setTour] = useState<PublicTour | null>(initialTour || null);
+  const [loading, setLoading] = useState<boolean>(!initialTour && !!id);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tour && id) {
+      setLoading(true);
+      apiRequest<{ tour?: PublicTour } & PublicTour>(`/api/tours/${id}/`)
+        .then((res) => {
+          const loaded = (res as any).tour || res;
+          setTour(loaded);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setLoadError(err.message || 'Failed to load tour details');
+          setLoading(false);
+        });
+    }
+  }, [id, tour]);
+
+  const handleBack = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/tours');
+    }
+  };
+
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+
+  const handleSuccess = (b: Booking) => {
+    if (onSuccess) {
+      onSuccess(b);
+    } else {
+      navigate(`/dashboard?booking_id=${b.booking_id}&openPass=true`);
+    }
+  };
 
   const [adultsCount, setAdultsCount] = useState<number>(2);
   const [childrenCount, setChildrenCount] = useState<number>(0);
-  const [cabinTier, setCabinTier] = useState<string>('Royal Balcony Stateroom');
+  const [cabinTier, setCabinTier] = useState<string>('Royal Balcony Cabin');
   const [specialRequests, setSpecialRequests] = useState<string>('');
+
+  // WhatsApp Tour Reminder State
+  const [customerWhatsApp, setCustomerWhatsApp] = useState<string>(() => user?.phone || (user as any)?.whatsapp_number || '');
+  const [whatsappReminderOptIn, setWhatsappReminderOptIn] = useState<boolean>(true);
 
   // Promo Code State
   const [couponCode, setCouponCode] = useState<string>('');
@@ -43,14 +94,64 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (tour?.cabins && tour.cabins.length > 0) {
+      setCabinTier(tour.cabins[0].name);
+    }
+  }, [tour]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-sky-600 animate-spin mx-auto" />
+          <p className="text-slate-600 font-semibold">Loading tour reservation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !tour) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 pb-16 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-200 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
+            <Anchor className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Tour Not Found</h2>
+          <p className="text-sm text-slate-600">{loadError || 'The requested cruise tour could not be found or has departed.'}</p>
+          <button
+            onClick={() => navigate('/tours')}
+            className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm cursor-pointer transition"
+          >
+            Browse Public Tours
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const totalPassengers = adultsCount + childrenCount;
+
+  // Available cabins list from database
+  const availableCabinTiers = tour.cabins && tour.cabins.length > 0
+    ? tour.cabins.map((c) => ({
+        name: c.name,
+        desc: c.description || 'Verified cabin accommodation',
+        surcharge: Math.max(0, c.price_per_person - tour.adult_price),
+      }))
+    : [
+        { name: 'Standard Cabin', desc: 'Comfortable oceanview room', surcharge: 0 },
+        { name: 'Royal Balcony Cabin', desc: 'Private veranda with sunset views', surcharge: 2500 },
+        { name: 'Captain Presidential Suite', desc: 'Luxury suite with dedicated concierge', surcharge: 5000 },
+      ];
+
+  const selectedTierObj = availableCabinTiers.find((t) => t.name === cabinTier) || availableCabinTiers[0];
 
   // Pricing calculation
   const adultFare = tour.adult_price * adultsCount;
   const childFare = tour.child_price * childrenCount;
-  let cabinSurcharge = 0;
-  if (cabinTier.includes('Suite')) cabinSurcharge = 5000 * adultsCount;
-  else if (cabinTier.includes('Balcony')) cabinSurcharge = 2500 * adultsCount;
+  const cabinSurcharge = selectedTierObj ? selectedTierObj.surcharge * adultsCount : 0;
 
   const subtotal = adultFare + childFare + cabinSurcharge;
   const discountAmount = couponResult?.valid ? couponResult.discount_amount : 0;
@@ -81,7 +182,11 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      onNeedLogin();
+      if (onNeedLogin) {
+        onNeedLogin();
+      } else {
+        navigate('/login');
+      }
       return;
     }
 
@@ -108,16 +213,18 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
         cabin_type: cabinTier,
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_requests: specialRequests,
+        customer_whatsapp: customerWhatsApp.trim() || undefined,
+        whatsapp_reminder_opt_in: whatsappReminderOptIn,
       });
 
       confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#0284c7', '#38bdf8', '#10b981'],
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#0284c7', '#38bdf8', '#10b981', '#f59e0b'],
       });
 
-      onSuccess(res.booking);
+      setConfirmedBooking(res.booking);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to complete ticket reservation.');
     } finally {
@@ -125,10 +232,52 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
     }
   };
 
+  if (confirmedBooking) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-xl mb-6 text-center space-y-3">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <span className="text-[11px] font-mono tracking-widest font-black uppercase text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
+            Booking Confirmed • Ticket #{confirmedBooking.booking_id}
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+            Your Boarding Pass is Ready!
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+            Your reservation has been confirmed and locked. Use the official QR code on your boarding pass for gate boarding access, or view anytime in your passenger dashboard.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+            <button
+              onClick={() => handleSuccess(confirmedBooking)}
+              className="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2"
+            >
+              <span>View in Passenger Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>Print Boarding Pass</span>
+            </button>
+          </div>
+        </div>
+
+        <TicketPass
+          booking={confirmedBooking}
+          onViewInvoice={() => navigate(`/dashboard?booking_id=${confirmedBooking.booking_id}&tab=invoices`)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-28 pb-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 bg-slate-50/70">
       <button
-        onClick={onCancel}
+        onClick={handleBack}
         className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition mb-6 cursor-pointer"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -140,13 +289,13 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 bg-sky-50 px-2.5 py-1 rounded-full">
-              Product B — Public Cruise Tour Ticket
+              Public Cruise Ticket
             </span>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif mt-2">
               Book Tickets: {tour.tour_title}
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Vessel: {tour.ship_name} • {tour.departure_port} → {tour.destination}
+              Ship: {tour.ship_name} • {tour.departure_port} → {tour.destination}
             </p>
           </div>
 
@@ -159,7 +308,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
 
           {!user && (
             <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs font-bold flex items-center justify-between">
-              <span>Sign in is required to issue your digital boarding pass.</span>
+              <span>Sign in is required to book your digital ticket.</span>
               <button onClick={onNeedLogin} className="px-3.5 py-1.5 rounded-xl bg-sky-500 text-white text-xs">
                 Sign In
               </button>
@@ -215,13 +364,9 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
 
             {/* Cabin Tier Choice */}
             <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Stateroom Tier</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Cabin / Room Type</label>
               <div className="space-y-2">
-                {[
-                  { name: 'Standard Stateroom', desc: 'Signature oceanview stateroom', surcharge: 0 },
-                  { name: 'Royal Balcony Stateroom', desc: 'Private ocean veranda with sunset views', surcharge: 2500 },
-                  { name: 'Captain Presidential Suite', desc: 'Luxury suite with dedicated concierge', surcharge: 5000 },
-                ].map((tier) => (
+                {availableCabinTiers.map((tier) => (
                   <div
                     key={tier.name}
                     onClick={() => setCabinTier(tier.name)}
@@ -254,7 +399,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
                   type="text"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. VOYAGE10"
+                  placeholder="e.g. TRIP10"
                   className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs uppercase font-mono font-bold"
                 />
                 <button
@@ -275,6 +420,16 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
               )}
             </div>
 
+            {/* WhatsApp Tour Reminder Input & Consent */}
+            <WhatsAppReminderCard
+              whatsappNumber={customerWhatsApp}
+              onWhatsAppNumberChange={setCustomerWhatsApp}
+              optIn={whatsappReminderOptIn}
+              onOptInChange={setWhatsappReminderOptIn}
+              userDefaultPhone={user?.phone || (user as any)?.whatsapp_number}
+              disabled={submitting}
+            />
+
             {/* Special Instructions */}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Special Requests / Dietary Requirements</label>
@@ -282,7 +437,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
                 rows={2}
                 value={specialRequests}
                 onChange={(e) => setSpecialRequests(e.target.value)}
-                placeholder="e.g. Jain meals, anniversary celebration, mobility assistance..."
+                placeholder="e.g. Vegetarian meals, anniversary celebration, assistance needed..."
                 className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs"
               />
             </div>
@@ -292,7 +447,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
               disabled={submitting}
               className="w-full py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
             >
-              <span>{submitting ? 'Confirming with Carrier...' : 'CONFIRM TICKET & ISSUE BOARDING PASS'}</span>
+              <span>{submitting ? 'Confirming Booking...' : 'CONFIRM & GET DIGITAL TICKET'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -301,7 +456,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
         {/* Right Sticky Summary */}
         <aside className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-lg space-y-5 lg:sticky lg:top-28 text-xs">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Voyage Overview</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trip Summary</span>
             <h3 className="text-base font-bold text-slate-900 mt-0.5">{tour.tour_title}</h3>
             <p className="text-slate-500 mt-1">Departs: {tour.departure_date} at {tour.departure_time}</p>
           </div>
@@ -330,7 +485,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
               </div>
             )}
             <div className="flex justify-between">
-              <span>Maritime GST (18%):</span>
+              <span>GST (18%):</span>
               <span className="font-semibold text-slate-900">{formatINR(taxAmount)}</span>
             </div>
           </div>
