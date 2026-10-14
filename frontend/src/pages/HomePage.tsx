@@ -62,6 +62,38 @@ export const HomePage: React.FC<HomePageProps> = ({
       .finally(() => setLoading(false));
   }, []);
 
+  // Reveal homepage sections as they enter the viewport, without adding an animation dependency.
+  useEffect(() => {
+    const root = document.querySelector('.cross-hunt-home');
+    if (!root) return;
+
+    const sections = Array.from(root.querySelectorAll<HTMLElement>('section:not(:first-child)'));
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach((section) => section.classList.add('ch-is-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('ch-is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    sections.forEach((section, index) => {
+      section.classList.add('ch-scroll-reveal');
+      section.style.setProperty('--ch-reveal-delay', `${Math.min(index % 3, 2) * 70}ms`);
+      observer.observe(section);
+    });
+
+    return () => observer.disconnect();
+  }, [loading, upcomingTours.length, featuredCruises.length, operators.length]);
+
   const handleRequirementSearch = (filters: any) => {
     if (filters.search_mode === 'PUBLIC_CRUISE') {
       const q = new URLSearchParams();
@@ -76,7 +108,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50/70">
+    <div className="cross-hunt-home relative min-h-screen bg-[#f8f6ef]">
       {/* ============================================================ */}
       {/* 1. CINEMATIC LUXURY OCEAN HERO SECTION                       */}
       {/* ============================================================ */}
@@ -124,7 +156,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="space-y-3 max-w-3xl text-left">
             <h1
               className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.08] drop-shadow-lg"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}
             >
               Book Your Ship. <br />
               Create The Journey.

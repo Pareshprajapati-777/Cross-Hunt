@@ -210,3 +210,139 @@
   background: rgba(14, 165, 233, 0.2);
   color: #0369a1;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* CROSS-HUNT EDITORIAL PRODUCT EXPERIENCE                                    */
+/* -------------------------------------------------------------------------- */
+.cross-hunt-home {
+  --ch-cream: #f8f6ef;
+  --ch-paper: #fffefa;
+  --ch-ink: #102a35;
+  --ch-ocean: #073b4c;
+  --ch-sea: #087e8b;
+  --ch-mint: #cfe8dc;
+  background: var(--ch-cream);
+  color: var(--ch-ink);
+  isolation: isolate;
+}
+
+.cross-hunt-home h1,
+.cross-hunt-home h2,
+.cross-hunt-home h3,
+.cross-hunt-home h4 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+  letter-spacing: -0.045em;
+}
+
+.cross-hunt-home h1 {
+  font-size: clamp(3rem, 7.1vw, 6.8rem);
+  line-height: 0.96;
+  font-weight: 800;
+  max-width: 900px;
+  text-wrap: balance;
+}
+
+.cross-hunt-home h2 {
+  font-size: clamp(2rem, 4.2vw, 3.6rem);
+  line-height: 1.02;
+  font-weight: 750;
+  text-wrap: balance;
+}
+
+.cross-hunt-home section:not(:first-child) {
+  padding-top: clamp(3.5rem, 7vw, 6.5rem);
+  padding-bottom: clamp(3.5rem, 7vw, 6.5rem);
+}
+
+.cross-hunt-home section:not(:first-child) > div:first-child {
+  margin-bottom: clamp(1.75rem, 3.5vw, 3rem);
+}
+
+.cross-hunt-home section:not(:first-child) .group {
+  border-radius: 1.5rem;
+  transition:
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms ease;
+}
+
+.cross-hunt-home section:not(:first-child) .group:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 55px rgba(7, 59, 76, 0.12);
+}
+
+.cross-hunt-home section:not(:first-child) .group img {
+  transition: transform 850ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cross-hunt-home section:not(:first-child) .group:hover img {
+  transform: scale(1.045);
+}
+
+.cross-hunt-home button {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms ease,
+    background-color 250ms ease,
+    border-color 250ms ease;
+}
+
+.cross-hunt-home button:active {
+  transform: scale(0.975);
+}
+
+.cross-hunt-home .ch-scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0);
+  transition:
+    opacity 760ms cubic-bezier(0.22, 1, 0.36, 1) var(--ch-reveal-delay, 0ms),
+    transform 760ms cubic-bezier(0.22, 1, 0.36, 1) var(--ch-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.cross-hunt-home .ch-scroll-reveal.ch-is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.cross-hunt-home section:first-child {
+  min-height: min(920px, 96svh);
+}
+
+.cross-hunt-home section:first-child h1 {
+  text-shadow: 0 8px 38px rgba(0, 18, 30, 0.24);
+}
+
+.cross-hunt-home section:not(:first-child) .rounded-3xl,
+.cross-hunt-home section:not(:first-child) .rounded-2xl {
+  border-color: rgba(16, 42, 53, 0.09);
+}
+
+@media (max-width: 640px) {
+  .cross-hunt-home h1 {
+    font-size: clamp(2.65rem, 13vw, 4rem);
+    line-height: 0.98;
+  }
+
+  .cross-hunt-home section:not(:first-child) {
+    padding-top: 3.25rem;
+    padding-bottom: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cross-hunt-home *,
+  .cross-hunt-home *::before,
+  .cross-hunt-home *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .cross-hunt-home .ch-scroll-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
