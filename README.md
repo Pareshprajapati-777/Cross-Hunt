@@ -1,7 +1,9 @@
 # 🚢 Cross Hunt — Luxury Cruise & Maritime Event Booking Platform
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-Django-092E20?logo=django&logoColor=white" alt="Python and Django">
+  <img src="https://img.shields.io/badge/Python-FastAPI-009688?logo=fastapi&logoColor=white" alt="Python and FastAPI">
+  <img src="https://img.shields.io/badge/ORM-SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white" alt="SQLAlchemy">
+  <img src="https://img.shields.io/badge/Validation-Pydantic-E92063?logo=pydantic&logoColor=white" alt="Pydantic">
   <img src="https://img.shields.io/badge/React-TypeScript-3178C6?logo=typescript&logoColor=white" alt="React and TypeScript">
   <img src="https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Three.js-3D%20Experience-black?logo=threedotjs&logoColor=white" alt="Three.js">
@@ -14,7 +16,7 @@
 
 ## 📌 Overview
 
-**Cross Hunt** is a full-stack maritime booking platform that combines a Django REST-style backend with a modern React interface. Travelers can explore cruise options and cabin tiers, review itineraries, and manage booking journeys. Event organizers can explore private charter packages for celebrations and corporate gatherings.
+**Cross Hunt** is a full-stack maritime booking platform that pairs a high-performance Python **FastAPI** backend (with SQLAlchemy ORM and Pydantic validation) with an interactive **React + Vite** frontend. Travelers can explore cruise options and cabin tiers, review itineraries, and manage booking journeys. Event organizers can explore private charter packages for celebrations and corporate gatherings.
 
 The frontend emphasizes a premium ocean-inspired visual experience, including a Three.js hero scene, responsive layouts, and motion effects.
 
@@ -36,7 +38,7 @@ The frontend emphasizes a premium ocean-inspired visual experience, including a 
 - 🧳 Traveler booking journeys
 - ⚓ Cruise operator vessel and reservation management
 - 🛡️ Administrator management and oversight
-- 📊 Dashboard views for operational information
+- 📊 Dashboard views with 10 KPI metrics, 10 interactive analytics charts, and profit accounting
 
 ### 🎨 Visual Experience
 - 🌊 Three.js ocean scene with animated waves and a stylized cruise ship
@@ -48,47 +50,53 @@ The frontend emphasizes a premium ocean-inspired visual experience, including a 
 
 | Layer | Technologies | Responsibility |
 | --- | --- | --- |
-| 🐍 Backend | Python, Django, Django ORM | Business logic, models, and server-side workflows |
-| 🔌 API | Django endpoints under `/api/` | Authentication, cruises, events, bookings, and dashboards |
-| ⚛️ Frontend | React, TypeScript, Vite | Interactive client interface |
+| ⚡ Backend | Python 3.10+, FastAPI, Starlette | High-performance asynchronous REST API framework |
+| 🗃️ ORM & Database | SQLAlchemy 2.0, SQLite (development) | Relational data access, relationship models, and data integrity |
+| 🛡️ Validation & Schemas | Pydantic v2 | Strict request validation, typing, and response serialization |
+| 🔄 Schema Migrations | Alembic | Trackable database schema revisions |
+| 📚 Interactive Docs | Swagger UI (`/docs`) & ReDoc (`/redoc`) | Auto-generated OpenAPI 3.0 specification |
+| ⚛️ Frontend | React 18, TypeScript, Vite | Interactive client interface (100% preserved visual design) |
 | 🎨 Styling | Tailwind CSS | Layout and design system |
 | 🌊 3D Graphics | Three.js / WebGL | Ocean-themed hero animation |
-| 🗃️ Database | SQLite | Local development data storage |
-| 🔐 Integration | CORS and session-cookie configuration | Local frontend/backend communication |
+| 🔐 Security & Auth | PBKDF2-SHA256, HTTP-only session cookies & Bearer JWT | Secure authentication preserving existing Django password hashes |
 
 ## 🏗️ Architecture
 
-The application is split into two main parts:
+The application is split into two cleanly separated tiers:
 
-- **Backend:** Django project at the repository root, with `manage.py`, application modules, and API routes.
-- **Frontend:** React/Vite application in the `frontend/` directory.
-
-The frontend communicates with the backend API. Booking totals and reservation rules should be validated server-side rather than trusted from browser input.
+- **Backend (`backend/`):** FastAPI application structured modularly:
+  - `backend/app/main.py`: Application entrypoint, CORS middleware, static file mounts, and route registration.
+  - `backend/app/core/`: Configuration (`config.py`) and security/hashing (`security.py`).
+  - `backend/app/database/`: Database session management (`session.py`) and declarative base (`base.py`).
+  - `backend/app/models/`: SQLAlchemy database models preserving the existing schema.
+  - `backend/app/schemas/`: Pydantic input validation and response schemas.
+  - `backend/app/routers/`: 10 domain routers covering auth, cruises, tours, offers, events, bookings, operator, admin, notifications, and AI.
+  - `backend/app/services/`: Serializers, WhatsApp engine, and Dolphin AI concierge.
+- **Frontend (`frontend/`):** React/Vite application in the `frontend/` directory (unmodified).
 
 ## 📂 Project Structure
 
 ```text
 Cross-Hunt/
-├── manage.py
-├── requirements.txt
-├── accounts/
-├── api/
-├── bookings/
-├── cross_booking/
-├── crosses/
-├── dashboard/
-├── frontend/
-├── static/
-├── templates/
-├── test_e2e.py
-├── test_role_routing.py
-├── DESIGN.md
-├── PRODUCT.md
+├── backend/
+│   ├── app/
+│   │   ├── core/           # Configuration & Security (PBKDF2, JWT)
+│   │   ├── database/       # SQLAlchemy engine & session factory
+│   │   ├── models/         # User, Operator, Cross, Booking, Tour, Offer, etc.
+│   │   ├── routers/        # Auth, Cruises, Tours, Bookings, Admin, Operator, etc.
+│   │   ├── schemas/        # Pydantic schemas
+│   │   ├── services/       # Serializers, WhatsApp, AI Concierge
+│   │   └── main.py         # FastAPI application entrypoint
+│   └── requirements.txt
+├── alembic/                # Alembic migration revisions
+├── frontend/               # React + TypeScript + Vite frontend
+├── tests/                  # Automated pytest test suite
+├── db.sqlite3              # Preserved SQLite database
+├── run-backend.js          # Cross-platform runner launching Uvicorn
+├── package.json            # Root npm scripts
+├── requirements.txt        # Python backend dependencies
 └── README.md
 ```
-
-- 🎨 [DESIGN.md](./DESIGN.md) — visual design tokens, typography, motion, and accessibility guidance.
-- 🧭 [PRODUCT.md](./PRODUCT.md) — product workflows, personas, booking rules, and data-model notes.
 
 ## 🚀 Run Locally
 
@@ -98,17 +106,17 @@ Run directly from the root project folder:
 npm run dev
 ```
 This automatically boots both:
-1. **Django REST Backend** on `http://127.0.0.1:8000/`
+1. **FastAPI Backend** on `http://127.0.0.1:8000/` (Interactive docs at `http://127.0.0.1:8000/docs`)
 2. **React + Vite Frontend** on `http://localhost:5173/`
 
 ### Individual Services (Optional)
 - **Frontend only**: `npm run dev:frontend` (or `cd frontend && npm run dev`)
-- **Backend only**: `npm run dev:backend` (or `python manage.py runserver 127.0.0.1:8000`)
+- **Backend only**: `npm run dev:backend` (or `python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload`)
 - **Build Frontend**: `npm run build`
 
 ### Prerequisites
 
-Install **Python 3.10+** and a compatible Node.js/npm version. Use the versions supported by the project's dependency files.
+Install **Python 3.10+** and **Node.js 18+** / npm.
 
 ### 1️⃣ Clone the repository
 
@@ -117,7 +125,7 @@ git clone https://github.com/Pareshprajapati-777/Cross-Hunt.git
 cd Cross-Hunt
 ```
 
-### 2️⃣ Set up the Django backend manually
+### 2️⃣ Set up the FastAPI backend manually
 
 Create and activate a virtual environment:
 
@@ -133,15 +141,16 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install Python dependencies and prepare the database:
+Install Python dependencies:
 
 ```bash
 python -m pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver 127.0.0.1:8000
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Keep the backend terminal running.
+Keep the backend terminal running. You can explore the interactive OpenAPI documentation at:
+- **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ### 3️⃣ Set up the React frontend manually
 
@@ -153,24 +162,31 @@ npm install
 npm run dev
 ```
 
-Open the local frontend URL printed by Vite, commonly `http://127.0.0.1:5173/`.
+Open the local frontend URL printed by Vite, commonly `http://127.0.0.1:5173/` or `http://localhost:5173/`.
 
 ### 🔧 Configuration Notes
 
-- Check the frontend's environment/configuration files to confirm the API base URL points to your local Django server.
-- If requests fail, verify Django is running and the frontend origin is allowed by the CORS settings.
+- Check the frontend's environment/configuration files to confirm the API base URL points to your local FastAPI server (`http://127.0.0.1:8000`).
+- If requests fail, verify FastAPI is running and the frontend origin is allowed in `.env` / CORS settings.
 - Use local development settings for local testing; do not expose development credentials or debug settings in a public deployment.
 
 ## 🧪 Tests
 
-The repository includes integration and role-routing test scripts:
+The repository includes a comprehensive automated test suite powered by `pytest` and FastAPI's `TestClient`, along with standalone end-to-end and role-routing verifiers:
 
 ```bash
-python test_e2e.py
-python test_role_routing.py
-```
+# Run the automated pytest suite (15 tests covering auth, admin, AI/WhatsApp, bookings, cruises, operator)
+python -m pytest tests/ -v
 
-Run the tests in a configured local environment with the backend dependencies installed. Test outcomes can vary with database state, seeded records, and environment configuration; review each script's output rather than assuming a previous result guarantees a current pass.
+# Run the role-routing permissions verifier
+python test_role_routing.py
+
+# Run the end-to-end booking, invoice & requirement matching verifier
+python test_e2e.py
+
+# Run the new features verifier (WhatsApp resolution, 10 KPI cards, profit formula, 10 charts)
+python test_new_features.py
+```
 
 ## 🔐 Security & Deployment Checklist
 
