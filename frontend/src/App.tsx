@@ -9,6 +9,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
@@ -396,7 +397,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <FavoritesProvider>
+          <AppContent />
+        </FavoritesProvider>
       </AuthProvider>
     </BrowserRouter>
   );

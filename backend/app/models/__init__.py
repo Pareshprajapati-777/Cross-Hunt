@@ -6,6 +6,7 @@ from backend.app.models.cross import (
 from backend.app.models.tour import PublicTour, TourFare, TourCabin
 from backend.app.models.booking import Booking, SystemSetting, WhatsAppMessageLog, PlatformNotification
 from backend.app.models.offer import Offer, CrossReview
+from backend.app.models.favorite import FavoriteShip
 
 __all__ = [
     "User",
@@ -29,4 +30,5 @@ __all__ = [
     "PlatformNotification",
     "Offer",
     "CrossReview",
+    "FavoriteShip",
 ]

@@ -8,6 +8,8 @@ import { getActiveOffers } from '../api/offers';
 import { updateUserProfile } from '../api/auth';
 import { Booking, Cruise, PublicTour, Offer } from '../api/types';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
+import { CruiseCard } from '../components/cruises/CruiseCard';
 import { TicketPass } from '../components/ticket/TicketPass';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import {
@@ -39,7 +41,8 @@ import {
   TrendingUp,
   PieChart,
   Activity,
-  Award
+  Award,
+  Heart
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -54,16 +57,19 @@ interface UserDashboardPageProps {
 type UserSubTab =
   | 'home'
   | 'bookings'
+  | 'favorites'
   | 'offers'
   | 'profile';
 
 export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   onExplore,
   onSelectCruise,
+  onBookCruise,
   onSelectTour,
   onBookTour,
 }) => {
   const { user, refreshUser } = useAuth();
+  const { favorites, loading: favoritesLoading } = useFavorites();
   const [searchParams, setSearchParams] = useSearchParams();
   const targetBookingId = searchParams.get('booking_id');
   const autoOpenPass = searchParams.get('openPass') === 'true' || searchParams.get('showTicket') === 'true';
@@ -119,7 +125,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     if (tabParam) {
       if (['tickets', 'invoices'].includes(tabParam)) {
         setActiveSubTab('bookings');
-      } else if (['home', 'bookings', 'offers', 'profile'].includes(tabParam)) {
+      } else if (['home', 'bookings', 'favorites', 'offers', 'profile'].includes(tabParam)) {
         setActiveSubTab(tabParam as UserSubTab);
       }
     }
@@ -459,7 +465,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
 
         {/* Overview KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
           <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-[#0284c7]/15 shadow-sm">
             <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Upcoming</span>
             <span className="font-mono-numbers text-2xl font-black text-[#051833]">{upcomingBookings.length}</span>
@@ -476,6 +482,20 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
             <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total</span>
             <span className="font-mono-numbers text-2xl font-black text-[#051833]">{bookings.length}</span>
           </div>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('favorites')}
+            className={`p-3.5 rounded-2xl border shadow-sm transition cursor-pointer text-center group ${
+              activeSubTab === 'favorites'
+                ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-300/50'
+                : 'bg-slate-50/80 border-[#0284c7]/15 hover:bg-rose-50/50 hover:border-rose-200'
+            }`}
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-500 group-hover:text-rose-600 block tracking-wider flex items-center justify-center gap-1">
+              <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> Saved
+            </span>
+            <span className="font-mono-numbers text-2xl font-black text-rose-600">{favorites.length}</span>
+          </button>
         </div>
       </div>
 
@@ -484,6 +504,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         {[
           { id: 'home', label: 'Dashboard Home', icon: BarChart3 },
           { id: 'bookings', label: `My Bookings (${bookings.length})`, icon: Calendar },
+          { id: 'favorites', label: `Saved Ships (${favorites.length})`, icon: Heart },
           { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
           { id: 'profile', label: 'Passenger Profile', icon: UserIcon },
         ].map((tab) => {
@@ -786,6 +807,40 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Quick Access: Saved Favorite Ships */}
+          {favorites.length > 0 && (
+            <div className="bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                    <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                    <span>Saved Ships ({favorites.length})</span>
+                  </h4>
+                  <p className="text-xs text-[#102B46]/60">Your bookmarked luxury vessels ready for your next charter or voyage</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('favorites')}
+                  className="self-start sm:self-auto px-4 py-1.5 rounded-full bg-white border border-[#082F5B]/15 hover:bg-[#EAF4FB] text-xs font-bold text-[#102B46] transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <span>View All ({favorites.length})</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#1677C8]" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                {favorites.slice(0, 3).map((item) => (
+                  <CruiseCard
+                    key={item.id || item.cruise_id}
+                    cruise={item.cruise}
+                    onSelect={onSelectCruise}
+                    onBookNow={onBookCruise}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1034,7 +1089,75 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
       )}
 
-      {/* TAB 3: SPECIAL OFFERS */}
+      {/* TAB 3: FAVORITE / SAVED SHIPS */}
+      {activeSubTab === 'favorites' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider mb-1 border border-rose-200">
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                Wishlist & Saved Fleet
+              </div>
+              <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">
+                Favorite Cruise Ships & Yachts
+              </h2>
+              <p className="text-xs text-[#102B46]/60 mt-0.5">
+                Vessels you have saved to your passenger account for private charters and sea voyages.
+              </p>
+            </div>
+            {favorites.length > 0 && (
+              <button
+                type="button"
+                onClick={onExplore}
+                className="self-start sm:self-auto px-5 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Explore More Ships</span>
+              </button>
+            )}
+          </div>
+
+          {favoritesLoading ? (
+            <div className="py-24 text-center">
+              <div className="w-10 h-10 mx-auto border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-xs font-bold text-[#102B46]/60 uppercase tracking-widest">Loading Favorite Ships...</p>
+            </div>
+          ) : favorites.length === 0 ? (
+            <div className="py-20 text-center bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-500">
+                <Heart className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-[#102B46]">No Favorite Ships Saved Yet</h3>
+                <p className="text-xs text-[#102B46]/60 max-w-md mx-auto">
+                  Browse our premier fleet of luxury yachts, cruise liners, and expedition vessels. Click the heart icon on any ship card or detail page to save it to your passenger panel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onExplore}
+                className="mt-2 px-6 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] font-bold text-xs shadow-md transition cursor-pointer inline-flex items-center gap-2"
+              >
+                <Ship className="w-4 h-4" />
+                <span>Explore Fleet & Save Ships</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {favorites.map((item) => (
+                <CruiseCard
+                  key={item.id || item.cruise_id}
+                  cruise={item.cruise}
+                  onSelect={onSelectCruise}
+                  onBookNow={onBookCruise}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: SPECIAL OFFERS */}
       {activeSubTab === 'offers' && (
         <div className="space-y-6">
           <div>

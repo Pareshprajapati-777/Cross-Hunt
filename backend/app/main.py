@@ -17,6 +17,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from backend.app.core.config import settings
+from backend.app.database.base import Base
+from backend.app.database.session import engine
+import backend.app.models  # Ensure all models are registered
 from backend.app.routers import (
     auth,
     cruises,
@@ -28,7 +31,11 @@ from backend.app.routers import (
     admin,
     notifications,
     ai,
+    favorites,
 )
+
+# Ensure tables exist (e.g. user_favorites)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -70,6 +77,7 @@ app.include_router(operator.router, prefix=api_prefix)
 app.include_router(admin.router, prefix=api_prefix)
 app.include_router(notifications.router, prefix=api_prefix)
 app.include_router(ai.router, prefix=api_prefix)
+app.include_router(favorites.router, prefix=api_prefix)
 
 
 @app.get("/")

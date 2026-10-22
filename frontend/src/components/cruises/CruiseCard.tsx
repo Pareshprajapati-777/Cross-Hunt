@@ -1,15 +1,23 @@
 import React from 'react';
-import { Star, Users, MapPin, Anchor, ArrowRight, ShieldCheck, Clock, Building2 } from 'lucide-react';
+import { Star, Users, MapPin, Anchor, ArrowRight, ShieldCheck, Clock, Building2, Heart } from 'lucide-react';
 import { Cruise } from '../../api/types';
 import { formatINR } from '../../utils/currency';
+import { useFavorites } from '../../context/FavoritesContext';
 
 interface CruiseCardProps {
   cruise: Cruise;
-  onSelect: (cruise: Cruise) => void;
+  onSelect?: (cruise: Cruise) => void;
   onBookNow?: (cruise: Cruise) => void;
 }
 
 export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBookNow }) => {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(cruise.id);
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(cruise);
+  };
   const isPrivate = cruise.listing_type !== 'PUBLIC_CRUISE';
   const isQuoteBased = cruise.is_quote_based || cruise.price <= 0;
 
@@ -125,10 +133,26 @@ export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBook
             )}
           </div>
 
-          {/* Rating */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 text-[#051833] text-xs font-bold shadow-sm">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{cruise.average_rating > 0 ? cruise.average_rating.toFixed(1) : '5.0'}</span>
+          {/* Rating & Favorite Button */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 text-[#051833] text-xs font-bold shadow-sm">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{cruise.average_rating > 0 ? cruise.average_rating.toFixed(1) : '5.0'}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleFavoriteClick}
+              title={favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+              aria-label={favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+              className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm cursor-pointer ${
+                favorited
+                  ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105 ring-2 ring-rose-300'
+                  : 'bg-white/90 text-slate-700 hover:text-rose-500 hover:bg-white border border-slate-200'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 transition-transform ${favorited ? 'fill-white text-white scale-110' : ''}`} />
+            </button>
           </div>
         </div>
 
@@ -192,13 +216,13 @@ export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBook
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={() => onSelect(cruise)}
+              onClick={() => onSelect?.(cruise)}
               className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-[#051833] text-xs font-bold border border-slate-200 transition cursor-pointer whitespace-nowrap"
             >
               Details
             </button>
             <button
-              onClick={() => (onBookNow ? onBookNow(cruise) : onSelect(cruise))}
+              onClick={() => (onBookNow ? onBookNow(cruise) : onSelect?.(cruise))}
               className="px-3.5 py-1.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition flex items-center gap-1 shadow-md shadow-[#051833]/20 cursor-pointer whitespace-nowrap"
             >
               <span>{isQuoteBased ? 'Enquire' : 'Book'}</span>

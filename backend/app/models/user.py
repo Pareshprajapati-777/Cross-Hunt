@@ -33,6 +33,7 @@ class User(Base):
     bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan", foreign_keys="Booking.user_id")
     reviews = relationship("CrossReview", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("PlatformNotification", back_populates="target_user", cascade="all, delete-orphan")
+    favorites = relationship("FavoriteShip", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def is_owner(self) -> bool:

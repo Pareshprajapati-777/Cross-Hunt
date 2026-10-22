@@ -20,11 +20,13 @@ import {
   Globe,
   Building2,
   CheckCircle2,
-  FileText
+  FileText,
+  Heart
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 import { ShipContactCard } from '../components/ship/ShipContactCard';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 interface CruiseDetailPageProps {
   cruise?: Cruise | null;
@@ -40,6 +42,7 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
   onBookEvent,
 }) => {
   const { user } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [cruise, setCruise] = useState<Cruise | null>(initialCruise || null);
@@ -187,6 +190,20 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => toggleFavorite(cruise)}
+                title={isFavorite(cruise.id) ? 'Remove from Favorites' : 'Save to Favorites'}
+                className={`px-4 py-3 rounded-2xl border transition shadow-sm flex items-center gap-2 text-xs font-bold cursor-pointer ${
+                  isFavorite(cruise.id)
+                    ? 'bg-rose-50 border-rose-300 text-rose-600'
+                    : 'bg-white border-slate-200 text-slate-700 hover:text-rose-600 hover:border-rose-200'
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isFavorite(cruise.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                <span>{isFavorite(cruise.id) ? 'Saved in Favorites' : 'Save to Favorites'}</span>
+              </button>
+
               <button
                 onClick={handleBook}
                 className="px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-sky-500/20 transition cursor-pointer"
