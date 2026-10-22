@@ -420,7 +420,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-bold transition cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Back to Sign In (लॉगिन पर वापस जाएं)</span>
+                  <span>Back to Sign In</span>
                 </button>
               </div>
             </form>
