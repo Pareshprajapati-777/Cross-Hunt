@@ -1,8 +1,9 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
+from backend.app.core.cache import cache
 from backend.app.database.session import get_db
 from backend.app.models.tour import PublicTour
 from backend.app.services.serializers import serialize_tour
@@ -19,7 +20,15 @@ async def api_tour_list(
     sort_by: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(PublicTour).filter(PublicTour.is_published == True)
+    cache_key = f"tours_list:{destination}:{departure_port}:{date}:{q}:{sort_by}"
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    query = db.query(PublicTour).filter(PublicTour.is_published == True).options(
+        joinedload(PublicTour.ship),
+        joinedload(PublicTour.operator)
+    )
 
     # 1. Destination filter with smart location alias resolution
     if destination and destination.strip() and destination.lower() not in ("all", "undefined", "null", "any"):
@@ -162,17 +171,27 @@ async def api_tour_list(
     tours = query.all()
     serialized = [serialize_tour(t) for t in tours]
 
-    return {
+    result = {
         "tours": serialized,
         "total": len(serialized)
     }
+    cache.set(cache_key, result, ttl=60)
+    return result
 
 
 @router.get("/{slug}/")
 async def api_tour_detail(slug: str, db: Session = Depends(get_db)):
-    tour = db.query(PublicTour).filter(PublicTour.slug == slug).first()
+    cached_detail = cache.get(f"tour_detail:{slug}")
+    if cached_detail is not None:
+        return cached_detail
+
+    query = db.query(PublicTour).options(
+        joinedload(PublicTour.ship),
+        joinedload(PublicTour.operator)
+    )
+    tour = query.filter(PublicTour.slug == slug).first()
     if not tour and slug.isdigit():
-        tour = db.query(PublicTour).filter(PublicTour.id == int(slug)).first()
+        tour = query.filter(PublicTour.id == int(slug)).first()
 
     if not tour:
         raise HTTPException(
@@ -181,4 +200,6 @@ async def api_tour_detail(slug: str, db: Session = Depends(get_db)):
         )
 
     data = serialize_tour(tour)
-    return {"tour": data, **data}
+    resp = {"tour": data, **data}
+    cache.set(f"tour_detail:{slug}", resp, ttl=60)
+    return resp

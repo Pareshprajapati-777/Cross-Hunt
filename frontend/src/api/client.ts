@@ -110,80 +110,134 @@ export function getFullApiUrl(endpoint: string): string {
   return `${API_BASE_URL}${cleanEndpoint}`;
 }
 
+import { apiCache, clearApiCache } from '../utils/apiCache';
+export { clearApiCache };
+
+export interface ApiRequestOptions extends RequestInit {
+  cacheTtlMs?: number;
+  bypassCache?: boolean;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiRequestOptions = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers || {});
-  
-  // Set default Content-Type for JSON if body is provided and not FormData
-  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  // Attach stored JWT Bearer token if available
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
   const authToken = getAuthToken();
-  if (authToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${authToken}`);
-  }
 
-  // Include Django/FastAPI CSRF token for mutating requests
-  const csrfToken = getCookie('csrftoken');
-  if (csrfToken && !headers.has('X-CSRFToken')) {
-    headers.set('X-CSRFToken', csrfToken);
-  }
+  // Cache key includes endpoint and auth token to maintain session security
+  const cacheKey = `API:${method}:${endpoint}:${authToken ? authToken.slice(-10) : 'guest'}`;
 
-  const targetUrl = getFullApiUrl(endpoint);
-  let response: Response;
-  try {
-    response = await fetch(targetUrl, {
-      ...options,
-      headers,
-      credentials: 'include', // vital for session cookies
-    });
-  } catch (networkErr: any) {
-    throw new ApiError(
-      networkErr?.message || 'Network error: Failed to reach the server. Please check your connection.',
-      0,
-      'NetworkError',
-      null,
-      endpoint
-    );
-  }
-
-  let data: any = null;
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
+  // Check cache for GET requests
+  if (isGet && !options.bypassCache) {
+    const cached = apiCache.get<T>(cacheKey);
+    if (cached !== null) {
+      return cached;
     }
-  } else {
-    try {
-      const text = await response.text();
-      data = { text };
-    } catch {
-      data = null;
+
+    // Deduplicate in-flight parallel requests
+    const inFlight = apiCache.getInFlight<T>(cacheKey);
+    if (inFlight !== null) {
+      return inFlight;
     }
   }
 
-  if (!response.ok) {
-    const errorMsg =
-      data?.error ||
-      data?.detail ||
-      data?.message ||
-      (typeof data?.text === 'string' && data.text.length < 200 ? data.text : null) ||
-      `API request failed with status ${response.status} (${response.statusText || 'Error'})`;
+  const execute = async (): Promise<T> => {
+    const headers = new Headers(options.headers || {});
+    
+    // Set default Content-Type for JSON if body is provided and not FormData
+    if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
-    throw new ApiError(
-      errorMsg,
-      response.status,
-      response.statusText,
-      data,
-      endpoint
-    );
+    // Attach stored JWT Bearer token if available
+    if (authToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${authToken}`);
+    }
+
+    // Include Django/FastAPI CSRF token for mutating requests
+    const csrfToken = getCookie('csrftoken');
+    if (csrfToken && !headers.has('X-CSRFToken')) {
+      headers.set('X-CSRFToken', csrfToken);
+    }
+
+    const targetUrl = getFullApiUrl(endpoint);
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, {
+        ...options,
+        headers,
+        credentials: 'include', // vital for session cookies
+      });
+    } catch (networkErr: any) {
+      throw new ApiError(
+        networkErr?.message || 'Network error: Failed to reach the server. Please check your connection.',
+        0,
+        'NetworkError',
+        null,
+        endpoint
+      );
+    }
+
+    let data: any = null;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    } else {
+      try {
+        const text = await response.text();
+        data = { text };
+      } catch {
+        data = null;
+      }
+    }
+
+    if (!response.ok) {
+      const errorMsg =
+        data?.error ||
+        data?.detail ||
+        data?.message ||
+        (typeof data?.text === 'string' && data.text.length < 200 ? data.text : null) ||
+        `API request failed with status ${response.status} (${response.statusText || 'Error'})`;
+
+      throw new ApiError(
+        errorMsg,
+        response.status,
+        response.statusText,
+        data,
+        endpoint
+      );
+    }
+
+    // Cache successful GET responses
+    if (isGet && !options.bypassCache) {
+      apiCache.set(cacheKey, data, options.cacheTtlMs);
+    } else if (!isGet) {
+      // Invalidate relevant cache on mutations
+      if (endpoint.includes('/favorites/')) {
+        apiCache.invalidate('favorites');
+      } else if (endpoint.includes('/bookings/')) {
+        apiCache.invalidate('bookings');
+        apiCache.invalidate('cruises');
+        apiCache.invalidate('tours');
+      } else {
+        apiCache.clear();
+      }
+    }
+
+    return data as T;
+  };
+
+  if (isGet && !options.bypassCache) {
+    const promise = execute();
+    apiCache.setInFlight(cacheKey, promise);
+    return await promise;
   }
 
-  return data as T;
+  return await execute();
 }

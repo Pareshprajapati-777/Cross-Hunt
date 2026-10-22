@@ -1,9 +1,10 @@
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import or_
 
+from backend.app.core.cache import cache
 from backend.app.database.session import get_db
 from backend.app.models.cross import Cross
 from backend.app.models.operator import Operator
@@ -33,7 +34,20 @@ async def api_cruise_list(
     ordering: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Cross).filter(Cross.is_active == True, Cross.is_approved == True)
+    cache_key = f"cruises_list:{q}:{destination}:{category}:{vessel_category}:{listing_type}:{city}:{duration}:{cabin}:{min_price}:{max_price}:{budget}:{guests}:{purpose}:{date}:{sort_by}:{ordering}"
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    query = db.query(Cross).filter(Cross.is_active == True, Cross.is_approved == True).options(
+        joinedload(Cross.operator),
+        joinedload(Cross.owner),
+        selectinload(Cross.extras),
+        selectinload(Cross.charter_rates),
+        selectinload(Cross.maintenance_periods),
+        selectinload(Cross.reviews),
+        selectinload(Cross.bookings)
+    )
 
     if q and q.strip():
         term = f"%{q.strip()}%"
@@ -264,11 +278,10 @@ async def api_cruise_list(
     serialized = [serialize_cruise(c) for c in cruises]
 
     # Aggregates for filter trays
-    all_active = db.query(Cross).filter(Cross.is_active == True).all()
-    destinations = sorted(list({c.destination for c in all_active if c.destination}))
-    categories = sorted(list({c.effective_category for c in all_active if c.effective_category}))
+    destinations = sorted(list({c.destination for c in cruises if c.destination}))
+    categories = sorted(list({c.effective_category for c in cruises if c.effective_category}))
 
-    return {
+    response_data = {
         "cruises": serialized,
         "total": len(serialized),
         "destinations": destinations,
@@ -279,6 +292,8 @@ async def api_cruise_list(
             "durations": [1, 2, 3, 5, 7]
         }
     }
+    cache.set(cache_key, response_data, ttl=60)
+    return response_data
 
 
 @router.post("/cruises/match/")
@@ -356,9 +371,22 @@ async def api_ship_match(
 
 @router.get("/cruises/{slug}/")
 async def api_cruise_detail(slug: str, db: Session = Depends(get_db)):
-    cruise = db.query(Cross).filter(Cross.slug == slug).first()
+    cached_detail = cache.get(f"cruise_detail:{slug}")
+    if cached_detail is not None:
+        return cached_detail
+
+    query = db.query(Cross).options(
+        joinedload(Cross.operator),
+        joinedload(Cross.owner),
+        selectinload(Cross.extras),
+        selectinload(Cross.charter_rates),
+        selectinload(Cross.maintenance_periods),
+        selectinload(Cross.reviews),
+        selectinload(Cross.gallery_images)
+    )
+    cruise = query.filter(Cross.slug == slug).first()
     if not cruise and slug.isdigit():
-        cruise = db.query(Cross).filter(Cross.id == int(slug)).first()
+        cruise = query.filter(Cross.id == int(slug)).first()
 
     if not cruise:
         raise HTTPException(
@@ -367,7 +395,9 @@ async def api_cruise_detail(slug: str, db: Session = Depends(get_db)):
         )
 
     data = serialize_cruise(cruise)
-    return {"cruise": data, **data}
+    resp = {"cruise": data, **data}
+    cache.set(f"cruise_detail:{slug}", resp, ttl=60)
+    return resp
 
 
 @router.get("/operators/")

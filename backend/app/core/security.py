@@ -8,7 +8,7 @@ import jwt
 from backend.app.core.config import settings
 
 ALGORITHM = "HS256"
-DEFAULT_ITERATIONS = 1200000
+DEFAULT_ITERATIONS = 100000
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

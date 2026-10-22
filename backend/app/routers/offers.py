@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from backend.app.core.cache import cache
 from backend.app.database.session import get_db
 from backend.app.models.offer import Offer
 
@@ -13,13 +14,19 @@ router = APIRouter(prefix="/offers", tags=["Offers & Coupons"])
 
 @router.get("/")
 async def api_offers_list(db: Session = Depends(get_db)):
+    cached_offers = cache.get("offers_list")
+    if cached_offers is not None:
+        return cached_offers
+
     today = date.today()
     offers = db.query(Offer).filter(
         Offer.is_active == True,
         Offer.valid_to >= today
     ).order_by(Offer.discount_value.desc()).all()
 
-    return {"offers": [o.to_dict() for o in offers]}
+    result = {"offers": [o.to_dict() for o in offers]}
+    cache.set("offers_list", result, ttl=60)
+    return result
 
 
 @router.post("/validate/")

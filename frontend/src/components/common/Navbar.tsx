@@ -29,8 +29,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           setUnreadCount(res.unread_count || 0);
         })
         .catch(() => {});
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
     }
-  }, [user, location.pathname]);
+  }, [user?.id]);
 
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {

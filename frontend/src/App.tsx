@@ -16,18 +16,21 @@ import { LoginRequiredModal } from './components/auth/LoginRequiredModal';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
-import { ExplorePage } from './pages/ExplorePage';
-import { CruiseDetailPage } from './pages/CruiseDetailPage';
-import { BookTourPage } from './pages/BookTourPage';
-import { ToursPage } from './pages/ToursPage';
-import { TourDetailPage } from './pages/TourDetailPage';
-import { BookPublicTourTicketPage } from './pages/BookPublicTourTicketPage';
-import { PrivateEventsPage } from './pages/PrivateEventsPage';
-import { UserDashboardPage } from './pages/UserDashboardPage';
-import { OperatorDashboardPage } from './pages/OperatorDashboardPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { TicketVerifyPage } from './pages/TicketVerifyPage';
-import { AuthPage } from './pages/AuthPages';
+
+// Code-split heavy routes to maximize initial loading speed & minimize bundle size
+const ExplorePage = React.lazy(() => import('./pages/ExplorePage').then((m) => ({ default: m.ExplorePage })));
+const CruiseDetailPage = React.lazy(() => import('./pages/CruiseDetailPage').then((m) => ({ default: m.CruiseDetailPage })));
+const BookTourPage = React.lazy(() => import('./pages/BookTourPage').then((m) => ({ default: m.BookTourPage })));
+const ToursPage = React.lazy(() => import('./pages/ToursPage').then((m) => ({ default: m.ToursPage })));
+const TourDetailPage = React.lazy(() => import('./pages/TourDetailPage').then((m) => ({ default: m.TourDetailPage })));
+const BookPublicTourTicketPage = React.lazy(() => import('./pages/BookPublicTourTicketPage').then((m) => ({ default: m.BookPublicTourTicketPage })));
+const PrivateEventsPage = React.lazy(() => import('./pages/PrivateEventsPage').then((m) => ({ default: m.PrivateEventsPage })));
+const UserDashboardPage = React.lazy(() => import('./pages/UserDashboardPage').then((m) => ({ default: m.UserDashboardPage })));
+const OperatorDashboardPage = React.lazy(() => import('./pages/OperatorDashboardPage').then((m) => ({ default: m.OperatorDashboardPage })));
+const AdminDashboardPage = React.lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const TicketVerifyPage = React.lazy(() => import('./pages/TicketVerifyPage').then((m) => ({ default: m.TicketVerifyPage })));
+const AuthPage = React.lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.AuthPage })));
+
 import { CrossHuntAiWidget } from './components/ai/CrossHuntAiWidget';
 import { Loader2, Lock, ArrowRight } from 'lucide-react';
 
@@ -243,7 +246,8 @@ const AppContent: React.FC = () => {
 
       {/* Primary Routes */}
       <main className="flex-1">
-        <Routes>
+        <React.Suspense fallback={<PageLoader />}>
+          <Routes>
           {/* Home View */}
           <Route
             path="/"
@@ -508,6 +512,7 @@ const AppContent: React.FC = () => {
           {/* Fallback to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </React.Suspense>
       </main>
 
       {/* Global Login Required Modal Window */}

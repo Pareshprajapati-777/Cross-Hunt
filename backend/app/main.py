@@ -80,14 +80,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Subclass StaticFiles to set long-lived Cache-Control headers for images, fonts, and assets
+class CachedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+        return response
+
+
 # Mount Static and Media file directories using robust settings paths
 media_path = settings.MEDIA_DIR
 if media_path.exists():
-    app.mount("/media", StaticFiles(directory=str(media_path)), name="media")
+    app.mount("/media", CachedStaticFiles(directory=str(media_path)), name="media")
 
 static_path = settings.STATIC_DIR
 if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+    app.mount("/static", CachedStaticFiles(directory=str(static_path)), name="static")
 
 # Mount Routers under /api
 api_prefix = "/api"

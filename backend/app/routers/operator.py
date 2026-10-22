@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, or_, and_, desc
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime, timedelta, time
@@ -30,15 +30,25 @@ def get_operator_dashboard(
     has_own_ships = db.query(Cross).filter(Cross.owner_id == current_user.id).first() is not None
     is_admin_mode = (current_user.role in ['ADMIN'] or current_user.is_superuser) and not has_own_ships
 
+    vessel_opts = (
+        joinedload(Cross.operator),
+        joinedload(Cross.owner),
+        selectinload(Cross.extras),
+        selectinload(Cross.charter_rates),
+        selectinload(Cross.maintenance_periods),
+        selectinload(Cross.reviews),
+        selectinload(Cross.bookings),
+    )
+
     if is_admin_mode:
-        vessels = db.query(Cross).order_by(desc(Cross.created_at), desc(Cross.id)).all()
+        vessels = db.query(Cross).options(*vessel_opts).order_by(desc(Cross.created_at), desc(Cross.id)).all()
         bookings_query = db.query(Booking).order_by(desc(Booking.created_at), desc(Booking.id))
-        tours = db.query(PublicTour).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
+        tours = db.query(PublicTour).options(joinedload(PublicTour.ship), joinedload(PublicTour.operator)).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
     else:
-        vessels = db.query(Cross).filter(Cross.owner_id == current_user.id).order_by(desc(Cross.created_at), desc(Cross.id)).all()
+        vessels = db.query(Cross).options(*vessel_opts).filter(Cross.owner_id == current_user.id).order_by(desc(Cross.created_at), desc(Cross.id)).all()
         vessel_ids = [v.id for v in vessels]
         bookings_query = db.query(Booking).filter(Booking.cross_id.in_(vessel_ids)).order_by(desc(Booking.created_at), desc(Booking.id))
-        tours = db.query(PublicTour).filter(PublicTour.ship_id.in_(vessel_ids)).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
+        tours = db.query(PublicTour).options(joinedload(PublicTour.ship), joinedload(PublicTour.operator)).filter(PublicTour.ship_id.in_(vessel_ids)).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
 
     all_bookings = bookings_query.all()
 
