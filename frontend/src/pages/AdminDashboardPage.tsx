@@ -679,7 +679,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <th className="py-3.5 px-5">Source URL</th>
                     <th className="py-3.5 px-5">Ships</th>
                     <th className="py-3.5 px-5">Status</th>
-                    <th className="py-3.5 px-5 text-right">Actions</th>
+                    <th className="py-3.5 px-5 text-right whitespace-nowrap min-w-[220px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#082F5B]/5">
@@ -730,19 +730,21 @@ export const AdminDashboardPage: React.FC = () => {
                           {op.verified ? 'Verified' : 'Pending Review'}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-right space-x-2">
-                        <button
-                          onClick={() => setSelectedOperatorForVessels(selectedOperatorForVessels?.id === op.id ? null : op)}
-                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 font-bold text-[11px] cursor-pointer hover:bg-[#1677C8] hover:text-white transition-all"
-                        >
-                          {selectedOperatorForVessels?.id === op.id ? 'Hide Fleet' : 'Inspect Fleet'}
-                        </button>
-                        <button
-                          onClick={() => handleToggleOperatorVerified(op)}
-                          className="px-3 py-1 rounded-full border border-[#082F5B]/20 text-[#102B46] font-bold text-[11px] cursor-pointer hover:bg-[#EAF4FB] transition-all"
-                        >
-                          {op.verified ? 'Revoke' : 'Verify'}
-                        </button>
+                      <td className="py-4 px-5 text-right whitespace-nowrap min-w-[220px]">
+                        <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedOperatorForVessels(selectedOperatorForVessels?.id === op.id ? null : op)}
+                            className="px-3.5 py-1.5 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 font-bold text-[11px] cursor-pointer hover:bg-[#1677C8] hover:text-white transition-all shadow-xs shrink-0"
+                          >
+                            {selectedOperatorForVessels?.id === op.id ? 'Hide Fleet' : 'Inspect Fleet'}
+                          </button>
+                          <button
+                            onClick={() => handleToggleOperatorVerified(op)}
+                            className="px-3.5 py-1.5 rounded-full border border-[#082F5B]/20 text-[#102B46] font-bold text-[11px] cursor-pointer hover:bg-[#EAF4FB] transition-all shadow-xs shrink-0"
+                          >
+                            {op.verified ? 'Revoke' : 'Verify'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -833,7 +835,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <th className="py-3.5 px-5">Vessels in Fleet</th>
                     <th className="py-3.5 px-5">Total Revenue Generated</th>
                     <th className="py-3.5 px-5">Approval Status</th>
-                    <th className="py-3.5 px-5 text-right">Actions</th>
+                    <th className="py-3.5 px-5 text-right whitespace-nowrap min-w-[220px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#082F5B]/5">
@@ -848,28 +850,30 @@ export const AdminDashboardPage: React.FC = () => {
                           {o.is_approved_owner ? 'Approved' : 'Pending Approval'}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-right space-x-2">
-                        {!o.is_approved_owner ? (
+                      <td className="py-4 px-5 text-right whitespace-nowrap min-w-[220px]">
+                        <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                          {!o.is_approved_owner ? (
+                            <button
+                              onClick={() => handleOwnerAction(o.id, 'approve')}
+                              className="px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer shadow-xs transition-all shrink-0"
+                            >
+                              Approve
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOwnerAction(o.id, 'reject')}
+                              className="px-3.5 py-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px] cursor-pointer hover:bg-amber-100 transition-all shadow-xs shrink-0"
+                            >
+                              Revoke
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleOwnerAction(o.id, 'approve')}
-                            className="px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer shadow-sm transition-all"
+                            onClick={() => handleOwnerAction(o.id, 'toggle_active')}
+                            className="px-3.5 py-1.5 rounded-full border border-[#082F5B]/20 text-[#102B46] font-bold text-[11px] cursor-pointer hover:bg-[#EAF4FB] transition-all shadow-xs shrink-0"
                           >
-                            Approve
+                            {o.is_active ? 'Suspend' : 'Unsuspend'}
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOwnerAction(o.id, 'reject')}
-                            className="px-3.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px] cursor-pointer hover:bg-amber-100 transition-all"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOwnerAction(o.id, 'toggle_active')}
-                          className="px-3.5 py-1 rounded-full border border-[#082F5B]/20 text-[#102B46] font-bold text-[11px] cursor-pointer hover:bg-[#EAF4FB] transition-all"
-                        >
-                          {o.is_active ? 'Suspend' : 'Unsuspend'}
-                        </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

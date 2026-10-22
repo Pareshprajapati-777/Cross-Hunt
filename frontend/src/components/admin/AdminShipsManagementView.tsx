@@ -307,11 +307,11 @@ export const AdminShipsManagementView: React.FC = () => {
                 <th className="py-3 px-4">Operator / Owner</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Home Port</th>
-                <th className="py-3 px-4">Capacity</th>
-                <th className="py-3 px-4">Charter Rate (₹)</th>
-                <th className="py-3 px-4">Approval</th>
-                <th className="py-3 px-4">Active</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 whitespace-nowrap">Capacity</th>
+                <th className="py-3 px-4 whitespace-nowrap">Charter Rate (₹)</th>
+                <th className="py-3 px-4 whitespace-nowrap">Approval</th>
+                <th className="py-3 px-4 whitespace-nowrap">Active</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap min-w-[260px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -403,60 +403,62 @@ export const AdminShipsManagementView: React.FC = () => {
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
-                      {/* Edit Specs */}
-                      <button
-                        onClick={() => setEditingShip({ ...s })}
-                        className="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[11px] cursor-pointer transition border border-sky-200"
-                        title="Edit Vessel Specifications"
-                      >
-                        <Edit3 className="w-3 h-3 inline mr-1" />
-                        Edit
-                      </button>
-
-                      {/* Approve / Revoke */}
-                      {!s.is_approved ? (
+                    <td className="py-3 px-4 text-right whitespace-nowrap min-w-[260px]">
+                      <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        {/* Edit Specs */}
                         <button
-                          onClick={() => handleRevokeOrApprove(s)}
-                          className="px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border bg-emerald-500 text-white hover:bg-emerald-600"
-                          title="Approve Vessel"
+                          onClick={() => setEditingShip({ ...s })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[11px] cursor-pointer transition border border-sky-200 shadow-xs shrink-0"
+                          title="Edit Vessel Specifications"
                         >
-                          Approve
+                          <Edit3 className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                          <span>Edit</span>
                         </button>
-                      ) : (
+
+                        {/* Approve / Revoke */}
+                        {!s.is_approved ? (
+                          <button
+                            onClick={() => handleRevokeOrApprove(s)}
+                            className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition border bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600 shadow-xs shrink-0"
+                            title="Approve Vessel"
+                          >
+                            <span>Approve</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRevokeOrApprove(s)}
+                            className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition border shadow-xs shrink-0 ${
+                              s.is_active
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                            }`}
+                            title={s.is_active ? 'Revoke Vessel (Set Inactive)' : 'Vessel Revoked (Inactive) - Click to Reactivate'}
+                          >
+                            <span>{s.is_active ? 'Revoke' : 'Revoked'}</span>
+                          </button>
+                        )}
+
+                        {/* Activate / Deactivate */}
                         <button
-                          onClick={() => handleRevokeOrApprove(s)}
-                          className={`px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border ${
+                          onClick={() => handleToggleActive(s)}
+                          className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition border shadow-xs shrink-0 ${
                             s.is_active
-                              ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                              : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                              ? 'border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 bg-white'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
                           }`}
-                          title={s.is_active ? 'Revoke Vessel (Set Inactive)' : 'Vessel Revoked (Inactive) - Click to Reactivate'}
                         >
-                          {s.is_active ? 'Revoke' : 'Revoked'}
+                          <span>{s.is_active ? 'Pause' : 'Activate'}</span>
                         </button>
-                      )}
 
-                      {/* Activate / Deactivate */}
-                      <button
-                        onClick={() => handleToggleActive(s)}
-                        className={`px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border ${
-                          s.is_active
-                            ? 'border-slate-300 text-slate-700 hover:bg-slate-100'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        }`}
-                      >
-                        {s.is_active ? 'Pause' : 'Activate'}
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDeleteShip(s.id, s.name)}
-                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 cursor-pointer transition"
-                        title="Delete Vessel"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 inline" />
-                      </button>
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDeleteShip(s.id, s.name)}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-rose-500 bg-rose-50/80 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 cursor-pointer transition shadow-xs shrink-0"
+                          title="Delete Vessel"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

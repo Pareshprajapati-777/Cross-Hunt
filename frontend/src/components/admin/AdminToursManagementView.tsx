@@ -398,25 +398,27 @@ export const AdminToursManagementView: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-5 text-right space-x-1.5 whitespace-nowrap">
-                        <button
-                          onClick={() => setSelectedTour(t)}
-                          className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-bold cursor-pointer transition shadow-sm inline-flex items-center gap-1"
-                        >
-                          <Eye className="w-3 h-3 text-[#0284c7]" />
-                          <span>Inspect</span>
-                        </button>
+                      <td className="py-4 px-5 text-right whitespace-nowrap min-w-[190px]">
+                        <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedTour(t)}
+                            className="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-bold cursor-pointer transition shadow-xs inline-flex items-center gap-1 shrink-0"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#0284c7]" />
+                            <span>Inspect</span>
+                          </button>
 
-                        <button
-                          onClick={() => handleTogglePublish(t.id)}
-                          className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition shadow-sm border ${
-                            t.is_published
-                              ? 'border-slate-300 text-slate-600 hover:bg-slate-100'
-                              : 'bg-[#0284c7] hover:bg-[#0369a1] text-white border-[#0284c7]'
-                          }`}
-                        >
-                          {t.is_published ? 'Unpublish' : 'Publish'}
-                        </button>
+                          <button
+                            onClick={() => handleTogglePublish(t.id)}
+                            className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition shadow-xs border shrink-0 ${
+                              t.is_published
+                                ? 'border-slate-300 text-slate-600 hover:bg-slate-100'
+                                : 'bg-[#0284c7] hover:bg-[#0369a1] text-white border-[#0284c7]'
+                            }`}
+                          >
+                            <span>{t.is_published ? 'Unpublish' : 'Publish'}</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
