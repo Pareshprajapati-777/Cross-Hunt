@@ -45,7 +45,8 @@ import {
   Award,
   Heart,
   Eye,
-  EyeOff
+  EyeOff,
+  XCircle
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -970,89 +971,103 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 return (
                   <div
                     key={b.id}
-                    className={`bg-[#F8FCFF] rounded-3xl border shadow-sm p-6 sm:p-7 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between transition group hover:border-[#63B8F0] ${
+                    className={`bg-[#F8FCFF] rounded-3xl border shadow-sm p-6 sm:p-7 space-y-5 transition group hover:border-[#63B8F0] ${
                       isTarget
                         ? 'border-[#1677C8] ring-2 ring-[#63B8F0]/50 shadow-[#1677C8]/10'
                         : 'border-[#082F5B]/10'
                     }`}
                   >
-                    <div className="flex gap-4 sm:gap-5 items-center">
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 border border-[#082F5B]/10 bg-[#EAF4FB]">
-                        <img
-                          src={b.cruise_image || '/static/images/vessels/cordelia_empress.jpg'}
-                          alt={b.cruise_name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            if (!target.src.includes('placeholder.png')) {
-                              target.src = '/static/images/placeholder.png';
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-[#082F5B] bg-[#EAF4FB] border border-[#082F5B]/10 px-2.5 py-0.5 rounded-full">
-                            #{b.booking_id}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                              b.status === 'CONFIRMED'
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                : b.status === 'COMPLETED'
-                                ? 'bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15'
-                                : b.status === 'CANCELLED'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}
-                          >
-                            {b.status}
-                          </span>
-                          <span className="text-[10px] font-bold text-[#102B46]/70 bg-[#EAF4FB] px-2.5 py-0.5 rounded-full uppercase border border-[#082F5B]/10">
-                            {b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
-                          </span>
-                          {b.ticket_code && (
-                            <span className="text-[10px] font-mono font-bold text-[#082F5B] bg-[#63B8F0]/20 px-2.5 py-0.5 rounded-full border border-[#63B8F0]/30">
-                              {b.ticket_code}
+                    {/* TOP SECTION: Vessel info on left, Total Paid & status on right */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      <div className="flex gap-4 sm:gap-5 items-center min-w-0">
+                        <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 border border-[#082F5B]/10 bg-[#EAF4FB]">
+                          <img
+                            src={b.cruise_image || '/static/images/vessels/cordelia_empress.jpg'}
+                            alt={b.cruise_name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (!target.src.includes('placeholder.png')) {
+                                target.src = '/static/images/placeholder.png';
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-[#082F5B] bg-[#EAF4FB] border border-[#082F5B]/10 px-2.5 py-0.5 rounded-full">
+                              #{b.booking_id}
                             </span>
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                                b.status === 'CONFIRMED'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : b.status === 'COMPLETED'
+                                  ? 'bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15'
+                                  : b.status === 'CANCELLED'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}
+                            >
+                              {b.status}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#102B46]/70 bg-[#EAF4FB] px-2.5 py-0.5 rounded-full uppercase border border-[#082F5B]/10">
+                              {b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
+                            </span>
+                            {b.ticket_code && (
+                              <span className="text-[10px] font-mono font-bold text-[#082F5B] bg-[#63B8F0]/20 px-2.5 py-0.5 rounded-full border border-[#63B8F0]/30">
+                                {b.ticket_code}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-lg font-bold text-[#102B46] truncate">{b.cruise_title || b.cruise_name}</h3>
+
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/60 pt-0.5">
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
+                              {b.departure_port} → {b.destination}
+                            </span>
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
+                              <span>{b.booking_date}</span>
+                              {b.return_date && b.return_date !== b.booking_date && (
+                                <span>- {b.return_date}</span>
+                              )}
+                            </span>
+                            <span className="flex items-center gap-1 font-semibold text-[#1677C8] whitespace-nowrap">
+                              <Anchor className="w-3.5 h-3.5 text-[#1677C8]" />
+                              <span>{b.duration_display || (b.duration_days ? `${b.duration_days} Days` : `${b.duration_hours || 4}h`)}</span>
+                            </span>
+                            <span className="font-semibold text-[#102B46] whitespace-nowrap">
+                              {b.cabin_name || b.cabin_type || 'Cabin'} • {b.passengers_count || b.number_of_people} Guests
+                            </span>
+                          </div>
+
+                          {b.tracking_status && b.status !== 'CANCELLED' && (
+                            <div className="pt-1 flex items-center gap-2 text-[11px] text-[#102B46]/70 font-semibold">
+                              <Compass className="w-3.5 h-3.5 text-[#1677C8] animate-spin" />
+                              <span>Trip Status:</span>
+                              <span className="text-[#1677C8] font-bold uppercase tracking-wider">{b.tracking_status}</span>
+                            </div>
                           )}
                         </div>
+                      </div>
 
-                        <h3 className="text-lg font-bold text-[#102B46]">{b.cruise_title || b.cruise_name}</h3>
+                      {/* Total Paid block - anchored cleanly on top right */}
+                      <div className="text-left lg:text-right shrink-0 lg:pl-6 lg:border-l lg:border-[#082F5B]/10">
+                        <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">Total Paid</span>
+                        <span className="text-2xl sm:text-3xl font-black text-[#102B46] font-mono-numbers">{formatINR(b.total_price)}</span>
+                      </div>
+                    </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/60 pt-0.5">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
-                            {b.departure_port} → {b.destination}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
-                            <span>{b.booking_date}</span>
-                            {b.return_date && b.return_date !== b.booking_date && (
-                              <span>- {b.return_date}</span>
-                            )}
-                          </span>
-                          <span className="flex items-center gap-1 font-semibold text-[#1677C8]">
-                            <Anchor className="w-3.5 h-3.5 text-[#1677C8]" />
-                            <span>{b.duration_display || (b.duration_days ? `${b.duration_days} Days` : `${b.duration_hours || 4}h`)}</span>
-                          </span>
-                          <span className="font-semibold text-[#102B46]">
-                            {b.cabin_name || b.cabin_type || 'Cabin'} • {b.passengers_count || b.number_of_people} Guests
-                          </span>
-                        </div>
-
-                        {b.tracking_status && b.status !== 'CANCELLED' && (
-                          <div className="pt-1 flex items-center gap-2 text-[11px] text-[#102B46]/70 font-semibold">
-                            <Compass className="w-3.5 h-3.5 text-[#1677C8] animate-spin" />
-                            <span>Trip Status:</span>
-                            <span className="text-[#1677C8] font-bold uppercase tracking-wider">{b.tracking_status}</span>
-                          </div>
-                        )}
-
-                        {/* WhatsApp 24h Tour Reminder Status & Controls */}
-                        {b.status !== 'CANCELLED' && (
-                          <div className="pt-2 mt-2 border-t border-[#082F5B]/10 flex flex-wrap items-center gap-2 text-xs">
-                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF4FB] border border-[#082F5B]/10 text-[#082F5B]">
+                    {/* BOTTOM ACTION BAR: WhatsApp reminder on left, perfectly aligned buttons on right */}
+                    <div className="pt-4 border-t border-[#082F5B]/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      {/* Left: WhatsApp 24h Tour Reminder Status & Controls */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {b.status !== 'CANCELLED' ? (
+                          <>
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EAF4FB] border border-[#082F5B]/10 text-[#082F5B]">
                               <MessageSquare className="w-3.5 h-3.5 text-[#1677C8] shrink-0" />
                               {b.whatsapp_reminder_sent ? (
                                 <span className="font-bold flex items-center gap-1 text-[11px]">
@@ -1079,41 +1094,43 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleToggleWhatsAppOpt(b)}
-                                className="px-3 py-1 rounded-full bg-[#F8FCFF] border border-[#082F5B]/15 hover:bg-[#EAF4FB] text-[11px] font-bold text-[#102B46] transition cursor-pointer"
+                                className="px-3 py-1.5 rounded-full bg-[#F8FCFF] border border-[#082F5B]/15 hover:bg-[#EAF4FB] text-[11px] font-bold text-[#102B46] transition cursor-pointer"
                               >
                                 {b.whatsapp_reminder_opt_in ? 'Opt Out' : 'Opt In'}
                               </button>
                             )}
-                          </div>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-rose-600 font-semibold flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            This reservation was cancelled
+                          </span>
                         )}
                       </div>
-                    </div>
 
-                    <div className="w-full md:w-auto flex md:flex-col justify-between md:items-end gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-[#082F5B]/10">
-                      <div className="text-left md:text-right">
-                        <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">Total Paid</span>
-                        <span className="text-2xl font-black text-[#102B46]">{formatINR(b.total_price)}</span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
+                      {/* Right: Perfectly Aligned Ordered Buttons */}
+                      <div className="flex flex-wrap items-center gap-2.5 md:justify-end ml-auto">
+                        {/* 1. Boarding Pass (QR) */}
                         <button
                           type="button"
                           onClick={() => setSelectedTicketBooking(b)}
-                          className="px-4 py-2 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#051833]/20"
+                          className="h-9 px-4 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md active:translate-y-0.5 whitespace-nowrap"
                         >
                           <Ticket className="w-3.5 h-3.5 text-[#fff8dc]" />
                           <span>Boarding Pass (QR)</span>
                         </button>
 
+                        {/* 2. Invoice */}
                         <button
                           type="button"
                           onClick={() => setSelectedInvoiceId(b.booking_id)}
-                          className="px-4 py-2 rounded-full bg-white hover:bg-slate-50 text-[#051833] border border-black/80 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          className="h-9 px-4 rounded-full bg-white hover:bg-slate-50 text-[#051833] border border-slate-300 hover:border-slate-400 text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                         >
                           <FileText className="w-3.5 h-3.5 text-[#0284c7]" />
                           <span>Invoice</span>
                         </button>
 
+                        {/* 3. Review / Complaint */}
                         {(b.can_review || ((b.status === 'CONFIRMED' || b.status === 'COMPLETED') && !b.review)) && (
                           <button
                             type="button"
@@ -1125,7 +1142,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                               setComplaintCategory('Cleanliness & Hygiene');
                               setComplaintText('');
                             }}
-                            className="px-3.5 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            className="h-9 px-4 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                             title="Rate voyage or report passenger grievance"
                           >
                             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
@@ -1134,33 +1151,35 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                         )}
 
                         {b.review && (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <div className="h-9 inline-flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 inline-flex items-center gap-1 whitespace-nowrap">
                               <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" />
                               {b.review.rating}★ Reviewed
                             </span>
                             {b.review.has_complaint && (
-                              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1 ${
+                              <span className={`text-[10px] font-bold px-2.5 py-1.5 rounded-full border inline-flex items-center gap-1 whitespace-nowrap ${
                                 b.review.complaint_status === 'WARNING_SENT'
                                   ? 'bg-amber-50 text-amber-900 border-amber-300'
                                   : 'bg-rose-50 text-rose-800 border-rose-200'
                               }`}>
                                 <AlertTriangle className="w-3 h-3 text-rose-600" />
                                 {b.review.complaint_status === 'WARNING_SENT'
-                                  ? 'Owner Warned by Admin'
-                                  : 'Complaint Under Review'}
+                                  ? 'Owner Warned'
+                                  : 'Under Review'}
                               </span>
                             )}
                           </div>
                         )}
 
+                        {/* 4. Cancel Booking (Clean matching outline pill button) */}
                         {b.is_cancellable && (
                           <button
                             type="button"
                             onClick={() => handleCancelBooking(b.booking_id)}
-                            className="px-3.5 py-2 rounded-full text-rose-600 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
+                            className="h-9 px-4 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 hover:border-rose-400 text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                           >
-                            Cancel
+                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Cancel</span>
                           </button>
                         )}
                       </div>
