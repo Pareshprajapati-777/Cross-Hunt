@@ -39,6 +39,23 @@ export class ApiError extends Error {
   }
 }
 
+export const API_BASE_URL = (
+  (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
+  ''
+).trim().replace(/\/+$/, '');
+
+export function getFullApiUrl(endpoint: string): string {
+  if (!endpoint) return '';
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  if (!API_BASE_URL) {
+    return endpoint;
+  }
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanEndpoint}`;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
@@ -50,15 +67,16 @@ export async function apiRequest<T = any>(
     headers.set('Content-Type', 'application/json');
   }
 
-  // Include Django CSRF token for mutating requests
+  // Include Django/FastAPI CSRF token for mutating requests
   const csrfToken = getCookie('csrftoken');
   if (csrfToken && !headers.has('X-CSRFToken')) {
     headers.set('X-CSRFToken', csrfToken);
   }
 
+  const targetUrl = getFullApiUrl(endpoint);
   let response: Response;
   try {
-    response = await fetch(endpoint, {
+    response = await fetch(targetUrl, {
       ...options,
       headers,
       credentials: 'include', // vital for session cookies
