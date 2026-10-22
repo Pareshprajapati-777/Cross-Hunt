@@ -762,12 +762,34 @@ export const OperatorDashboardPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
-              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Guests Hosted</span>
-              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{totalFleetGuests} Guests</span>
+            <div
+              onClick={() => setActiveTab('requests')}
+              className={`rounded-2xl p-5 border shadow-sm space-y-1.5 transition cursor-pointer ${
+                (pendingRequests.length || stats.pending_bookings || 0) > 0
+                  ? 'bg-white border-amber-300 hover:border-amber-400 hover:shadow-md ring-1 ring-amber-300/40'
+                  : 'bg-white border-[#0284c7]/20 hover:border-[#0284c7]/50 hover:shadow-md'
+              }`}
+              title="Click to view pending booking requests"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Pending Bookings</span>
+                {(pendingRequests.length || stats.pending_bookings || 0) > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    Action Required
+                  </span>
+                )}
+              </div>
+              <span className={`font-mono-numbers text-2xl sm:text-3xl font-black ${
+                (pendingRequests.length || stats.pending_bookings || 0) > 0 ? 'text-amber-600' : 'text-[#051833]'
+              }`}>
+                {pendingRequests.length || stats.pending_bookings || 0}
+              </span>
               <p className="text-[11px] text-slate-500 font-medium">
-                {(stats.pending_bookings || 0) > 0 ? (
-                  <span className="text-amber-600 font-bold">{stats.pending_bookings} Pending Actions</span>
+                {(pendingRequests.length || stats.pending_bookings || 0) > 0 ? (
+                  <span className="text-amber-600 font-bold">
+                    {pendingRequests.length || stats.pending_bookings} Pending Actions
+                  </span>
                 ) : (
                   'All requests up to date'
                 )}
