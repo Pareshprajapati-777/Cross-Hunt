@@ -190,6 +190,18 @@ export async function createAdminOffer(payload: Partial<Offer>): Promise<{ succe
   });
 }
 
+export async function toggleAdminOfferActive(offerId: number): Promise<{ success: boolean; offer: Offer; message?: string }> {
+  return apiRequest(`/api/admin/offers/${offerId}/toggle-active/`, {
+    method: 'POST',
+  });
+}
+
+export async function deleteAdminOffer(offerId: number): Promise<{ success: boolean; message?: string }> {
+  return apiRequest(`/api/admin/offers/${offerId}/`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getOperatorExtras(shipId?: number): Promise<{ extras: any[] }> {
   return apiRequest(`/api/operator/extras/${shipId ? `?ship_id=${shipId}` : ''}`);
 }

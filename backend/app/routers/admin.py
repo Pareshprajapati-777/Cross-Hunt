@@ -28,6 +28,7 @@ from backend.app.services.whatsapp_service import (
     normalize_whatsapp_number
 )
 from backend.app.core.config import settings
+from backend.app.core.cache import cache
 from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -589,7 +590,55 @@ async def create_admin_offer(
     db.add(offer)
     db.commit()
     db.refresh(offer)
+    cache.invalidate("offers")
     return {'success': True, 'offer': serialize_offer(offer)}
+
+
+@router.post("/offers/{offer_id}/toggle-active/")
+@router.post("/offers/{offer_id}/toggle-active")
+@router.put("/offers/{offer_id}/toggle-active/")
+@router.put("/offers/{offer_id}/toggle-active")
+def toggle_admin_offer_active(
+    offer_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found.")
+
+    offer.is_active = not bool(offer.is_active)
+    db.commit()
+    db.refresh(offer)
+    cache.invalidate("offers")
+
+    return {
+        "success": True,
+        "offer": serialize_offer(offer),
+        "message": f"Promo code '{offer.code}' is now {'activated' if offer.is_active else 'deactivated'}."
+    }
+
+
+@router.delete("/offers/{offer_id}/")
+@router.delete("/offers/{offer_id}")
+def delete_admin_offer(
+    offer_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found.")
+
+    code = offer.code
+    db.delete(offer)
+    db.commit()
+    cache.invalidate("offers")
+
+    return {
+        "success": True,
+        "message": f"Promo voucher '{code}' deleted successfully."
+    }
 
 
 @router.get("/users/")

@@ -3,6 +3,8 @@ import {
   getAdminDashboard,
   getAdminOffers,
   createAdminOffer,
+  toggleAdminOfferActive,
+  deleteAdminOffer,
   getAdminUsers,
   toggleAdminUserActive,
   getAdminOwners,
@@ -56,7 +58,8 @@ import {
   Send,
   AlertTriangle,
   AlertCircle,
-  ShieldAlert
+  ShieldAlert,
+  PowerOff
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
@@ -115,6 +118,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [toursList, setToursList] = useState<PublicTour[]>([]);
   const [offersList, setOffersList] = useState<Offer[]>([]);
+  const [togglingOfferId, setTogglingOfferId] = useState<number | null>(null);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [reviewFilterTab, setReviewFilterTab] = useState<'all' | 'complaints' | 'reviews'>('all');
   const [warningModalReview, setWarningModalReview] = useState<any | null>(null);
@@ -342,6 +346,30 @@ export const AdminDashboardPage: React.FC = () => {
       getAdminOffers().then((res) => setOffersList(res.offers || []));
     } catch (err: any) {
       alert(err.message || 'Failed to create promo coupon');
+    }
+  };
+
+  const handleToggleOfferActive = async (offer: Offer) => {
+    try {
+      setTogglingOfferId(offer.id);
+      const res = await toggleAdminOfferActive(offer.id);
+      setOffersList((prev) =>
+        prev.map((o) => (o.id === offer.id ? { ...o, is_active: res.offer?.is_active ?? !o.is_active } : o))
+      );
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle promo voucher status');
+    } finally {
+      setTogglingOfferId(null);
+    }
+  };
+
+  const handleDeleteOffer = async (offer: Offer) => {
+    if (!window.confirm(`Are you sure you want to permanently delete promo voucher "${offer.code}"?`)) return;
+    try {
+      await deleteAdminOffer(offer.id);
+      setOffersList((prev) => prev.filter((o) => o.id !== offer.id));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete promo voucher');
     }
   };
 
@@ -1003,22 +1031,82 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {offersList.map((offer) => (
-              <div key={offer.id} className="bg-[#F8FCFF] rounded-3xl p-6 border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 text-[10px] font-black uppercase tracking-wider">
-                    {offer.discount_type === 'PERCENTAGE' ? `${offer.discount_value}% OFF` : `₹${offer.discount_value} OFF`}
-                  </span>
-                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">Active</span>
+            {offersList.map((offer) => {
+              const isActive = offer.is_active !== false;
+              return (
+                <div
+                  key={offer.id}
+                  className={`bg-[#F8FCFF] rounded-3xl p-6 border shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all flex flex-col justify-between space-y-4 ${
+                    !isActive ? 'opacity-75 bg-slate-50/90 border-slate-300' : 'border-[#082F5B]/10'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 text-[10px] font-black uppercase tracking-wider">
+                        {offer.discount_type === 'PERCENTAGE' ? `${offer.discount_value}% OFF` : `₹${offer.discount_value} OFF`}
+                      </span>
+                      {isActive ? (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-600 bg-slate-200/90 border border-slate-300 px-2.5 py-0.5 rounded-full">
+                          Deactivated
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-heading font-black text-lg text-[#102B46]">{offer.title}</h3>
+                    <p className="text-xs text-[#102B46]/70 font-medium">{offer.description}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#082F5B]/10 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <code className="font-mono font-bold text-[#1677C8] bg-[#EAF4FB] px-3 py-1 rounded-full border border-[#1677C8]/20">
+                        {offer.code}
+                      </code>
+                      <span className="text-[11px] text-[#102B46]/60 font-medium">Min: {formatINR(offer.min_booking_amount)}</span>
+                    </div>
+
+                    {/* ACTION CONTROLS: DEACTIVATE / ACTIVATE & DELETE */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => handleToggleOfferActive(offer)}
+                        disabled={togglingOfferId === offer.id}
+                        className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs inline-flex items-center justify-center gap-1.5 border ${
+                          isActive
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                            : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                        }`}
+                        title={isActive ? 'Deactivate this promo voucher' : 'Re-activate this promo voucher'}
+                      >
+                        {togglingOfferId === offer.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : isActive ? (
+                          <>
+                            <PowerOff className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Deactivate</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                            <span>Activate Promo</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteOffer(offer)}
+                        className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition cursor-pointer shrink-0"
+                        title="Delete Voucher"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="font-heading font-black text-lg text-[#102B46]">{offer.title}</h3>
-                <p className="text-xs text-[#102B46]/70 font-medium">{offer.description}</p>
-                <div className="pt-3 border-t border-[#082F5B]/10 flex items-center justify-between text-xs">
-                  <code className="font-mono font-bold text-[#1677C8] bg-[#EAF4FB] px-3 py-1 rounded-full border border-[#1677C8]/20">{offer.code}</code>
-                  <span className="text-[11px] text-[#102B46]/60 font-medium">Min: {formatINR(offer.min_booking_amount)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
