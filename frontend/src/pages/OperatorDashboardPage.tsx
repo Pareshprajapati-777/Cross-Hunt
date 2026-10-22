@@ -38,11 +38,14 @@ import {
   Receipt,
   Upload,
   Link as LinkIcon,
-  Loader2
+  Loader2,
+  User
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
 import { Link } from 'react-router-dom';
+import { updateUserProfile } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
 
 type OperatorTab =
   | 'overview'
@@ -51,14 +54,60 @@ type OperatorTab =
   | 'availability'
   | 'requests'
   | 'tours'
-  | 'passengers';
+  | 'passengers'
+  | 'profile';
 
 export const OperatorDashboardPage: React.FC = () => {
+  const { user, refreshUser } = useAuth();
   const [data, setData] = useState<OperatorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OperatorTab>('overview');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Profile Form state
+  const [profileFirstName, setProfileFirstName] = useState(user?.first_name || '');
+  const [profileLastName, setProfileLastName] = useState(user?.last_name || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [profileAddress, setProfileAddress] = useState(user?.address || '');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profileMsg, setProfileMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  // Sync authenticated operator details to form
+  useEffect(() => {
+    if (user) {
+      setProfileFirstName(user.first_name || '');
+      setProfileLastName(user.last_name || '');
+      setProfileEmail(user.email || '');
+      setProfilePhone(user.phone || '');
+      setProfileAddress(user.address || '');
+    }
+  }, [user]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileMsg(null);
+    try {
+      const res = await updateUserProfile({
+        first_name: profileFirstName,
+        last_name: profileLastName,
+        email: profileEmail,
+        phone: profilePhone,
+        address: profileAddress,
+        password: profilePassword || undefined,
+      });
+      setProfileMsg({ text: res.message || 'Profile saved successfully!' });
+      setProfilePassword('');
+      await refreshUser();
+    } catch (err: any) {
+      setProfileMsg({ text: err.message || 'Failed to update profile.', isError: true });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   // Modals
   const [showAddShipModal, setShowAddShipModal] = useState(false);
@@ -632,6 +681,7 @@ export const OperatorDashboardPage: React.FC = () => {
           { id: 'requests', label: `Booking Requests (${data?.recent_bookings?.length || 0})`, icon: Clock },
           { id: 'tours', label: `Public Tours (${data?.my_tours?.length || 0})`, icon: Anchor },
           { id: 'passengers', label: 'Tour Passengers', icon: Users },
+          { id: 'profile', label: 'Owner Profile', icon: User },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1692,6 +1742,174 @@ export const OperatorDashboardPage: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 8. SHIP OWNER / OPERATOR PROFILE TAB */}
+      {activeTab === 'profile' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#0284c7]/20 shadow-xl shadow-[#051833]/5 max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/20">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0284c7]" />
+              Verified Fleet Partner
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black font-serif text-[#051833] tracking-tight">
+              Ship Owner Profile & Business Details
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
+              Update your operator contact details, representative name, registered office address, and security credentials.
+            </p>
+          </div>
+
+          {/* Account Meta Badges */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-50/70 to-slate-50 border border-[#0284c7]/15 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-[#0284c7]/20 flex items-center justify-center font-black text-[#0284c7] shadow-xs">
+                @
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Operator Username</span>
+                <span className="font-bold text-[#051833] font-mono">{user?.username || 'owner'}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-[#0284c7]/20 flex items-center justify-center text-emerald-600 shadow-xs">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Partner Status</span>
+                <span className="font-bold text-emerald-700">Verified & Approved</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-[#0284c7]/20 flex items-center justify-center text-[#0284c7] shadow-xs">
+                <Ship className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Fleet</span>
+                <span className="font-bold text-[#051833]">{data?.my_ships?.length || 0} Ships Registered</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Feedback Message Banner */}
+          {profileMsg && (
+            <div
+              className={`p-4 rounded-2xl text-xs font-bold border flex items-center gap-2.5 ${
+                profileMsg.isError
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              }`}
+            >
+              {profileMsg.isError ? (
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              )}
+              <span>{profileMsg.text}</span>
+            </div>
+          )}
+
+          {/* Profile Form */}
+          <form onSubmit={handleSaveProfile} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                  First Name / Representative Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Paresh"
+                  value={profileFirstName}
+                  onChange={(e) => setProfileFirstName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Prajapati"
+                  value={profileLastName}
+                  onChange={(e) => setProfileLastName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                Business / Operator Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="operator@crosshunt.com"
+                value={profileEmail}
+                onChange={(e) => setProfileEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                Contact / WhatsApp Phone Number
+              </label>
+              <input
+                type="text"
+                placeholder="+91 98765 43210"
+                value={profilePhone}
+                onChange={(e) => setProfilePhone(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                Billing / Registered Business Address
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Marine Drive, Port Office, City, State, PIN Code"
+                value={profileAddress}
+                onChange={(e) => setProfileAddress(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-200/80">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#051833]/80 block mb-1.5">
+                Change Password (Leave blank to keep current)
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={profilePassword}
+                onChange={(e) => setProfilePassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"
+              />
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={profileSaving}
+                className="px-8 py-3.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-md shadow-[#051833]/20 disabled:opacity-50"
+              >
+                {profileSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Saving Changes...</span>
+                  </>
+                ) : (
+                  <span>Save Profile Changes</span>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
