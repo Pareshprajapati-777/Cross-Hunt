@@ -1,9 +1,20 @@
+import sys
+import os
+from pathlib import Path
+
+# Ensure project root and backend dir are in sys.path so 'backend.app' works in any environment (e.g. Render)
+_app_dir = Path(__file__).resolve().parent
+_backend_dir = _app_dir.parent
+_project_root = _backend_dir.parent
+
+for _p in [str(_project_root), str(_backend_dir)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
-from pathlib import Path
-import os
 
 from backend.app.core.config import settings
 from backend.app.routers import (
@@ -38,12 +49,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Static and Media file directories
-media_path = Path("media")
+# Mount Static and Media file directories using robust settings paths
+media_path = settings.MEDIA_DIR
 if media_path.exists():
     app.mount("/media", StaticFiles(directory=str(media_path)), name="media")
 
-static_path = Path("static")
+static_path = settings.STATIC_DIR
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
