@@ -131,6 +131,7 @@ export const OperatorDashboardPage: React.FC = () => {
   const [selectedShipIdForTimeline, setSelectedShipIdForTimeline] = useState<number | null>(null);
   const [availabilityTimeline, setAvailabilityTimeline] = useState<any[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [selectedDayDetail, setSelectedDayDetail] = useState<any | null>(null);
 
   // Tour Passengers Manifest State
   const [selectedTourIdForManifest, setSelectedTourIdForManifest] = useState<number | null>(null);
@@ -1362,9 +1363,13 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-1 border border-[#0284c7]/25">
+                <Calendar className="w-3.5 h-3.5" />
+                Live Operational Schedule
+              </div>
               <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">Ship Availability Timeline</h2>
               <p className="text-xs text-[#102B46]/60 mt-0.5">
-                30-day chronological operational status derived directly from live database bookings and tour schedules.
+                30-day chronological operational status derived directly from live database bookings, charter schedules, and 4-hour turnaround maintenance windows.
               </p>
             </div>
 
@@ -1373,7 +1378,7 @@ export const OperatorDashboardPage: React.FC = () => {
               <select
                 value={selectedShipIdForTimeline || ''}
                 onChange={(e) => setSelectedShipIdForTimeline(Number(e.target.value))}
-                className="px-4 py-2 rounded-full border border-[#082F5B]/15 text-xs font-bold bg-[#F8FCFF] text-[#102B46] focus:outline-none focus:border-[#1677C8]"
+                className="px-4 py-2 rounded-full border border-[#082F5B]/15 text-xs font-bold bg-[#F8FCFF] text-[#102B46] focus:outline-none focus:border-[#1677C8] shadow-sm cursor-pointer"
               >
                 {(data?.my_ships || []).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -1382,36 +1387,115 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Operational Policy & Legend Banner */}
+          <div className="p-4 rounded-2xl bg-white border border-[#082F5B]/10 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-slate-700 font-semibold">
+              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Status Rules:</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-sky-500"></span> Public Tour: Whole Day Booked
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-[#1677C8]"></span> Private Charter: Booked Time Slot
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span> 4-Hour Turnaround Break
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Ready for Booking
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-500 italic">
+              * Click any date card to view detailed hour-by-hour operational breakdown.
+            </div>
+          </div>
+
           {timelineLoading ? (
             <div className="py-20 text-center">
               <div className="w-10 h-10 mx-auto border-4 border-[#1677C8] border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Ship Availability...</p>
             </div>
           ) : (
-            <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-6 sm:p-7 shadow-sm">
-              <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 gap-3">
+            <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-5 sm:p-7 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
                 {availabilityTimeline.map((item, idx) => {
-                  const isAvailable = item.status === 'Available';
-                  const isCharter = item.status === 'Private Booking';
+                  const isAvailable = item.status === 'Available' || item.status_type === 'AVAILABLE';
+                  const isPublicTour = item.status === 'Whole Day Booked' || item.status === 'Public Tour' || item.status_type === 'PUBLIC_TOUR';
+                  const isCharter = item.status === 'Private Booking' || item.status_type === 'PRIVATE_BOOKING';
+
                   return (
                     <div
                       key={idx}
-                      className={`p-4 rounded-2xl border text-center transition ${
+                      onClick={() => setSelectedDayDetail(item)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[145px] group ${
                         isAvailable
-                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-                          : isCharter
-                          ? 'bg-[#EAF4FB] border-[#082F5B]/15 text-[#082F5B]'
-                          : 'bg-[#F8FCFF] border-[#63B8F0]/30 text-[#1677C8]'
+                          ? 'bg-emerald-50/70 border-emerald-200/90 hover:border-emerald-400 hover:bg-emerald-50'
+                          : isPublicTour
+                          ? 'bg-sky-50/70 border-sky-200 hover:border-sky-400 hover:bg-sky-50'
+                          : 'bg-indigo-50/60 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-bold text-[#102B46]/50 block">{item.day_name}</span>
-                      <span className="text-sm font-black block mt-0.5">{item.date.slice(5)}</span>
-                      <span
-                        className={`text-[9px] font-bold uppercase tracking-wider block mt-1.5 px-2 py-0.5 rounded-full ${
-                          isAvailable ? 'bg-emerald-100 text-emerald-800' : isCharter ? 'bg-[#1677C8] text-white' : 'bg-[#EAF4FB] text-[#082F5B]'
-                        }`}
-                      >
-                        {item.status}
-                      </span>
+                      {/* Top Bar: Day Name & Formatted Date */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[10px] uppercase font-black tracking-wider text-[#082F5B]/60">
+                            {item.day_name}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-600 transition">
+                            {item.year || item.date.slice(0, 4)}
+                          </span>
+                        </div>
+                        <div className="font-display font-black text-base text-[#082F5B] leading-tight">
+                          {item.formatted_date || `${item.day_number || item.date.slice(8)} ${item.month_name || ''}`}
+                        </div>
+                      </div>
+
+                      {/* Middle & Bottom: Status, Time Slot, and 4h Break */}
+                      <div className="mt-2.5 space-y-1.5">
+                        {isPublicTour ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-600 text-white shadow-xs">
+                              <Anchor className="w-2.5 h-2.5" /> Whole Day Booked
+                            </span>
+                            <div className="text-[11px] font-bold text-sky-950 leading-tight truncate" title={item.details?.tour_title || 'Public Tour'}>
+                              {item.details?.tour_title || 'Public Cruise Tour'}
+                            </div>
+                            <div className="text-[9px] font-semibold text-sky-700">
+                              All Day Sailing (00:00 - 23:59)
+                            </div>
+                          </>
+                        ) : isCharter ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1677C8] text-white shadow-xs">
+                              <Clock className="w-2.5 h-2.5" /> Private Booking
+                            </span>
+                            <div className="text-[10px] font-bold text-indigo-950 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#1677C8] shrink-0"></span>
+                              <span className="truncate">Booked: {item.booked_time || 'Charter'}</span>
+                            </div>
+                            <div className="text-[9px] font-bold text-amber-800 flex items-center gap-1 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-300/80">
+                              <Clock className="w-2.5 h-2.5 shrink-0 text-amber-700" />
+                              <span className="truncate">4h Break: {item.break_time}</span>
+                            </div>
+                            <div className="text-[9px] font-black text-emerald-800 flex items-center gap-1 pt-0.5">
+                              <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-emerald-600" />
+                              <span className="truncate">{item.ready_time}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Available
+                            </span>
+                            <div className="text-[10px] font-bold text-emerald-900 flex items-center gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              <span>Ready for Booking</span>
+                            </div>
+                            <div className="text-[9px] font-semibold text-emerald-700">
+                              All Day Open (24 Hours)
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -2490,6 +2574,140 @@ export const OperatorDashboardPage: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Schedule Detail Modal */}
+      {selectedDayDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#051833]/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 relative space-y-5">
+            <button
+              type="button"
+              onClick={() => setSelectedDayDetail(null)}
+              className="absolute top-5 right-5 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-sky-200">
+                <Calendar className="w-3.5 h-3.5" />
+                Operational Schedule Detail
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-[#051833] font-display">
+                {selectedDayDetail.full_date_label || selectedDayDetail.formatted_date || selectedDayDetail.date}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Vessel: <span className="font-bold text-[#0284c7]">{(data?.my_ships || []).find((s) => s.id === selectedShipIdForTimeline)?.name || 'Vessel'}</span>
+              </p>
+            </div>
+
+            {/* 24-Hour Visual Schedule Bar */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
+                24-Hour Timeline Distribution (00:00 - 23:59)
+              </span>
+
+              {selectedDayDetail.status === 'Whole Day Booked' || selectedDayDetail.status_type === 'PUBLIC_TOUR' ? (
+                <div className="space-y-2">
+                  <div className="h-9 rounded-xl bg-sky-500 text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    Whole Day Booked • Public Tour Sailing (00:00 - 23:59)
+                  </div>
+                  <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-950 space-y-1">
+                    <p className="font-bold">{selectedDayDetail.details?.tour_title || 'Public Tour'}</p>
+                    <p className="text-[11px] text-sky-800">
+                      Route: {selectedDayDetail.details?.departure_port} → {selectedDayDetail.details?.destination}
+                    </p>
+                    <p className="text-[11px] text-slate-500 italic">
+                      Whole vessel is fully booked with scheduled public tour passenger cabins for the entire date.
+                    </p>
+                  </div>
+                </div>
+              ) : selectedDayDetail.status === 'Private Booking' || selectedDayDetail.status_type === 'PRIVATE_BOOKING' ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-12 gap-1 h-9 rounded-xl overflow-hidden text-[10px] font-bold text-white shadow-xs">
+                    <div className="col-span-3 bg-emerald-500 flex items-center justify-center truncate px-1" title="Available before charter">
+                      Open
+                    </div>
+                    <div className="col-span-5 bg-indigo-600 flex items-center justify-center truncate px-1" title={selectedDayDetail.booked_time}>
+                      Booked ({selectedDayDetail.booked_time})
+                    </div>
+                    <div className="col-span-2 bg-amber-500 flex items-center justify-center truncate px-1" title="4h Turnaround & Maintenance Break">
+                      4h Break
+                    </div>
+                    <div className="col-span-2 bg-emerald-600 flex items-center justify-center truncate px-1" title={selectedDayDetail.ready_time}>
+                      Ready
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-950 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-indigo-600" />
+                        <div>
+                          <p className="font-bold">Private Charter Booked</p>
+                          <p className="text-[11px] text-indigo-800">
+                            {selectedDayDetail.details?.customer ? `Customer: ${selectedDayDetail.details.customer}` : ''} {selectedDayDetail.details?.booking_id ? `(#${selectedDayDetail.details.booking_id})` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-bold font-mono px-2 py-1 rounded bg-indigo-100 text-indigo-900 text-[11px]">
+                        {selectedDayDetail.booked_time}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <div>
+                          <p className="font-bold">Mandatory Turnaround & Prep Break (4 Hours)</p>
+                          <p className="text-[11px] text-amber-800">Deck cleaning, sanitation, fueling, & crew rest</p>
+                        </div>
+                      </div>
+                      <span className="font-bold font-mono px-2 py-1 rounded bg-amber-100 text-amber-900 text-[11px]">
+                        {selectedDayDetail.break_time}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <div>
+                          <p className="font-bold">Ready for Next Booking</p>
+                          <p className="text-[11px] text-emerald-800">Vessel 100% prepared and sanitized for next charter departure</p>
+                        </div>
+                      </div>
+                      <span className="font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-900 text-[11px]">
+                        {selectedDayDetail.ready_time}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="h-9 rounded-xl bg-emerald-500 text-white text-xs font-bold flex items-center justify-center shadow-xs">
+                    100% Available • All Day Open (00:00 - 23:59)
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
+                    <p className="font-bold">No Bookings or Tours Scheduled</p>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Vessel is completely ready for immediate charter bookings, custom event packages, or public tour assignments.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                type="button"
+                onClick={() => setSelectedDayDetail(null)}
+                className="px-5 py-2 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white text-xs font-bold transition cursor-pointer"
+              >
+                Close Schedule
+              </button>
             </div>
           </div>
         </div>

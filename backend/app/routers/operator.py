@@ -394,7 +394,14 @@ def get_operator_ship_availability(
         Booking.booking_date <= end_date,
         Booking.status.in_(['CONFIRMED', 'PENDING'])
     ).all()
-    booked_dates = {b.booking_date.strftime('%Y-%m-%d'): b for b in bookings if b.booking_date}
+
+    bookings_by_date = {}
+    for b in bookings:
+        if b.booking_date:
+            d_key = b.booking_date.strftime('%Y-%m-%d')
+            if d_key not in bookings_by_date:
+                bookings_by_date[d_key] = []
+            bookings_by_date[d_key].append(b)
 
     tours = db.query(PublicTour).filter(
         PublicTour.ship_id == ship.id,
@@ -407,26 +414,127 @@ def get_operator_ship_availability(
     for i in range(30):
         current_day = start_date + timedelta(days=i)
         day_str = current_day.strftime('%Y-%m-%d')
-        status_text = 'Available'
-        booking_info = None
+        formatted_date = current_day.strftime('%d %b %Y')  # e.g. "22 Oct 2026"
+        day_number = current_day.strftime('%d')
+        month_name = current_day.strftime('%b')
+        year_str = current_day.strftime('%Y')
+        full_date_label = current_day.strftime('%A, %d %B %Y')
 
-        if day_str in booked_dates:
-            b = booked_dates[day_str]
-            status_text = 'Private Booking' if b.booking_type == 'EVENT' else 'Tour Booking'
-            u_name = b.user.full_name or b.user.username if b.user else 'Guest'
-            booking_info = {'id': b.booking_id, 'customer': u_name}
-        else:
-            for t in tours:
-                if t.departure_date <= current_day <= t.return_date:
-                    status_text = 'Public Tour'
-                    booking_info = {'tour': t.tour_title, 'departure': t.departure_date.strftime('%Y-%m-%d')}
-                    break
+        # 1. Public Tour check: Whole day booked for public passenger sailing
+        tour_on_day = None
+        for t in tours:
+            if t.departure_date <= current_day <= t.return_date:
+                tour_on_day = t
+                break
 
+        if tour_on_day:
+            days.append({
+                'date': day_str,
+                'day_name': current_day.strftime('%a'),
+                'day_number': day_number,
+                'month_name': month_name,
+                'year': year_str,
+                'formatted_date': formatted_date,
+                'full_date_label': full_date_label,
+                'status': 'Whole Day Booked',
+                'status_type': 'PUBLIC_TOUR',
+                'is_whole_day': True,
+                'is_available': False,
+                'booked_time': 'Whole Day (00:00 - 23:59)',
+                'break_time': None,
+                'ready_time': f"Available after tour completion on {tour_on_day.return_date.strftime('%d %b %Y')}",
+                'details': {
+                    'tour_title': tour_on_day.tour_title,
+                    'is_whole_day': True,
+                    'time_display': 'All Day Sailing (00:00 - 23:59)',
+                    'departure_port': tour_on_day.departure_port or ship.departure_port or 'Port Gateway',
+                    'destination': tour_on_day.destination or ship.destination or 'Coastal Route',
+                    'status_note': 'Full Day Public Cruise Tour • Entire Vessel Reserved'
+                }
+            })
+            continue
+
+        # 2. Private Booking check: Exact booked time + mandatory 4-hour turnaround maintenance break + ready time
+        day_charters = bookings_by_date.get(day_str, [])
+        if day_charters:
+            day_charters.sort(key=lambda x: x.start_time or time(10, 0))
+            primary_booking = day_charters[0]
+
+            b_start = primary_booking.start_time or time(10, 0)
+            b_end = primary_booking.end_time or time(14, 0)
+
+            b_start_str = b_start.strftime('%I:%M %p')
+            b_end_str = b_end.strftime('%I:%M %p')
+            booked_time_slot = f"{b_start_str} - {b_end_str}"
+
+            # Calculate mandatory 4-hour turnaround & maintenance break
+            break_start_dt = datetime.combine(current_day, b_end)
+            break_end_dt = break_start_dt + timedelta(hours=4)
+            break_start_str = b_end_str
+            break_end_str = break_end_dt.strftime('%I:%M %p')
+            break_time_slot = f"{break_start_str} - {break_end_str}"
+
+            ready_str = f"Ready: {break_end_str} onward"
+            ready_full = f"Ready for Next Booking from {break_end_str} onward"
+
+            u_name = (primary_booking.user.full_name or primary_booking.user.username) if primary_booking.user else 'Guest'
+
+            days.append({
+                'date': day_str,
+                'day_name': current_day.strftime('%a'),
+                'day_number': day_number,
+                'month_name': month_name,
+                'year': year_str,
+                'formatted_date': formatted_date,
+                'full_date_label': full_date_label,
+                'status': 'Private Booking',
+                'status_type': 'PRIVATE_BOOKING',
+                'is_whole_day': False,
+                'is_available': False,
+                'booked_time': booked_time_slot,
+                'break_time': break_time_slot,
+                'break_hours': 4,
+                'ready_time': ready_str,
+                'details': {
+                    'booking_id': primary_booking.booking_id,
+                    'customer': u_name,
+                    'event_type': primary_booking.event_type or 'Private Charter',
+                    'start_time': b_start_str,
+                    'end_time': b_end_str,
+                    'booked_time': booked_time_slot,
+                    'break_start': break_start_str,
+                    'break_end': break_end_str,
+                    'break_time': break_time_slot,
+                    'break_hours': 4,
+                    'ready_time': ready_full,
+                    'status_note': f"Booked: {booked_time_slot} • 4h Break ({break_time_slot}) • {ready_full}",
+                    'all_bookings_count': len(day_charters)
+                }
+            })
+            continue
+
+        # 3. Available: Ready for booking all day
         days.append({
             'date': day_str,
             'day_name': current_day.strftime('%a'),
-            'status': status_text,
-            'details': booking_info
+            'day_number': day_number,
+            'month_name': month_name,
+            'year': year_str,
+            'formatted_date': formatted_date,
+            'full_date_label': full_date_label,
+            'status': 'Available',
+            'status_type': 'AVAILABLE',
+            'is_whole_day': False,
+            'is_available': True,
+            'booked_time': None,
+            'break_time': None,
+            'ready_time': 'Ready for Booking (All Day Open)',
+            'details': {
+                'is_available': True,
+                'ready_time': '100% Available for Charter & Tour Bookings',
+                'time_display': 'All Day Open (00:00 - 23:59)',
+                'status_note': 'No bookings or tours scheduled • Entire vessel open for reservation'
+            }
         })
 
     return {'ship_id': ship.id, 'ship_name': ship.name, 'timeline': days}

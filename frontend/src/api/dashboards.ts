@@ -214,7 +214,30 @@ export async function deleteOperatorExtra(id: number): Promise<{ success: boolea
   });
 }
 
-export async function getOperatorAvailability(shipId: number): Promise<{ ship_id: number; ship_name: string; timeline: Array<{ date: string; day_name: string; status: string; details?: any }> }> {
+export interface TimelineItem {
+  date: string;
+  day_name: string;
+  day_number?: string;
+  month_name?: string;
+  year?: string;
+  formatted_date?: string;
+  full_date_label?: string;
+  status: string;
+  status_type?: string;
+  is_whole_day?: boolean;
+  is_available?: boolean;
+  booked_time?: string | null;
+  break_time?: string | null;
+  break_hours?: number;
+  ready_time?: string;
+  details?: any;
+}
+
+export async function getOperatorAvailability(shipId: number): Promise<{
+  ship_id: number;
+  ship_name: string;
+  timeline: TimelineItem[];
+}> {
   return apiRequest(`/api/operator/ships/${shipId}/availability/`);
 }
 

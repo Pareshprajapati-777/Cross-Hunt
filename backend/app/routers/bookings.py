@@ -199,7 +199,7 @@ async def api_create_booking(
                 detail=f"This vessel is scheduled on an active public cruise tour on {booking_date} and is not available for private charter."
             )
 
-        # Overlapping booking check
+        # Overlapping booking check with mandatory 4-hour turnaround & maintenance buffer
         existing_bookings = db.query(Booking).filter(
             Booking.cross_id == cruise.id,
             Booking.booking_date == booking_date,
@@ -209,17 +209,29 @@ async def api_create_booking(
         for eb in existing_bookings:
             eb_start = eb.start_time
             eb_end = eb.end_time
+
+            # 1. Direct charter overlap check
             if not is_overnight:
                 if eb_start < end_time and eb_end > start_time:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="This vessel is already booked for the selected schedule. Please select another date or time slot."
+                        detail=f"This vessel is already booked from {eb_start.strftime('%I:%M %p')} to {eb_end.strftime('%I:%M %p')}. Please select another date or time slot."
                     )
             else:
                 if eb_start < time(23, 59, 59) and eb_end > start_time:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="This vessel is already booked for the selected schedule. Please select another date or time slot."
+                    )
+
+            # 2. Mandatory 4-hour post-charter turnaround & maintenance break
+            eb_break_end_dt = datetime.combine(booking_date, eb_end) + timedelta(hours=4)
+            if eb_break_end_dt.date() == booking_date:
+                eb_break_end = eb_break_end_dt.time()
+                if eb_end <= start_time < eb_break_end:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Vessel is undergoing mandatory 4-hour turnaround & maintenance break ({eb_end.strftime('%I:%M %p')} - {eb_break_end.strftime('%I:%M %p')}). Ready for next booking from {eb_break_end.strftime('%I:%M %p')} onward."
                     )
 
         # Base pricing
