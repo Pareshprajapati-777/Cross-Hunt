@@ -671,16 +671,24 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 </p>
               </div>
 
-              <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <div
+                onClick={() => {
+                  setActiveSubTab('bookings');
+                  setBookingFilter('UPCOMING');
+                }}
+                className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer group"
+              >
                 <div className="flex items-center justify-between text-slate-500">
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Sea Milestones</span>
-                  <Award className="w-4 h-4 text-[#0284c7]" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider group-hover:text-[#0284c7]">Upcoming Trips</span>
+                  <Compass className="w-4 h-4 text-[#0284c7]" />
                 </div>
                 <div className="font-mono-numbers text-3xl font-black text-[#051833]">
-                  {analyticsData.totalDaysOnWater} Days
+                  {upcomingBookings.length}
                 </div>
-                <p className="text-[11px] text-slate-600 font-semibold">
-                  {analyticsData.totalGuests} passenger guests hosted
+                <p className="text-[11px] text-[#0284c7] font-semibold">
+                  {upcomingBookings.length > 0
+                    ? `${upcomingBookings.length} scheduled & confirmed`
+                    : 'No upcoming journeys'}
                 </p>
               </div>
             </div>
