@@ -16,6 +16,7 @@ from backend.app.models.cross import Cross, ShipExtra
 from backend.app.models.tour import PublicTour
 from backend.app.models.booking import Booking
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
+from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
 router = APIRouter(prefix="/operator", tags=["operator"])
 
@@ -26,6 +27,8 @@ def get_operator_dashboard(
     current_user: User = Depends(require_operator),
     db: Session = Depends(get_db)
 ):
+    run_lifecycle_check_throttled(db)
+
     # Check if admin mode (admin with no personal ships)
     has_own_ships = db.query(Cross).filter(Cross.owner_id == current_user.id).first() is not None
     is_admin_mode = (current_user.role in ['ADMIN'] or current_user.is_superuser) and not has_own_ships

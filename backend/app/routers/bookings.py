@@ -22,6 +22,7 @@ from backend.app.services.serializers import serialize_booking, serialize_invoic
 from backend.app.services.whatsapp_service import (
     normalize_whatsapp_number, mask_whatsapp_number, build_tour_reminder_text, send_whatsapp_api_message
 )
+from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled, auto_complete_trips
 
 router = APIRouter(tags=["Bookings & Tickets"])
 
@@ -402,11 +403,23 @@ async def api_create_booking(
     }
 
 
+@router.post("/bookings/sync-lifecycle/")
+@router.get("/bookings/sync-lifecycle/")
+async def api_sync_lifecycle(db: Session = Depends(get_db)):
+    """
+    Explicit endpoint to synchronize real-time lifecycle status for all tours and bookings.
+    """
+    res = auto_complete_trips(db, force=True)
+    return {"success": True, **res}
+
+
 @router.get("/bookings/my-bookings/")
 async def api_my_bookings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    run_lifecycle_check_throttled(db)
+
     bookings = db.query(Booking).filter(Booking.user_id == user.id).order_by(
         desc(Booking.created_at), desc(Booking.id)
     ).all()
@@ -422,6 +435,7 @@ async def api_booking_detail(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    run_lifecycle_check_throttled(db)
     booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
     if not booking:
         raise HTTPException(

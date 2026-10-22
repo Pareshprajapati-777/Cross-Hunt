@@ -10,6 +10,7 @@ from backend.app.models.cross import Cross
 from backend.app.models.operator import Operator
 from backend.app.schemas.cruise import MatchEnginePayload
 from backend.app.services.serializers import serialize_cruise
+from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
 router = APIRouter(tags=["Cruises & Vessels"])
 
@@ -34,6 +35,8 @@ async def api_cruise_list(
     ordering: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    run_lifecycle_check_throttled(db)
+
     cache_key = f"cruises_list:{q}:{destination}:{category}:{vessel_category}:{listing_type}:{city}:{duration}:{cabin}:{min_price}:{max_price}:{budget}:{guests}:{purpose}:{date}:{sort_by}:{ordering}"
     cached_data = cache.get(cache_key)
     if cached_data is not None:

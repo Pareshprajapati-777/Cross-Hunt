@@ -28,6 +28,7 @@ from backend.app.services.whatsapp_service import (
     normalize_whatsapp_number
 )
 from backend.app.core.config import settings
+from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -39,6 +40,7 @@ def get_admin_analytics_data(
     custom_end: Optional[date] = None,
     granularity: str = 'auto'
 ) -> Dict[str, Any]:
+    run_lifecycle_check_throttled(db)
     today = date.today()
 
     if range_param == '7d':

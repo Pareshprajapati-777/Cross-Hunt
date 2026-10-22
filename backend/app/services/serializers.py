@@ -101,12 +101,13 @@ def serialize_cruise(cruise) -> Dict[str, Any]:
         m.is_active and m.start_date <= today <= m.end_date
         for m in getattr(cruise, "maintenance_periods", [])
     )
+    now_time = datetime.now().time()
     is_booked_today = any(
-        b.status == "CONFIRMED" and b.booking_date == today
+        b.status == "CONFIRMED" and b.booking_date == today and (b.end_time is None or b.end_time > now_time)
         for b in getattr(cruise, "bookings", [])
     )
     is_on_tour_today = any(
-        t.is_published and t.departure_date <= today <= t.return_date
+        t.is_published and t.status in ("SCHEDULED", "BOARDING", "DEPARTED", "ON_TOUR") and t.departure_date <= today <= t.return_date
         for t in getattr(cruise, "public_tours", [])
     )
 

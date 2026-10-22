@@ -61,6 +61,15 @@ def ensure_db_migrations():
 
 ensure_db_migrations()
 
+# Synchronize real-time trip lifecycles on application boot
+try:
+    from backend.app.database.session import SessionLocal
+    from backend.app.services.trip_lifecycle_service import auto_complete_trips
+    with SessionLocal() as _db:
+        auto_complete_trips(_db)
+except Exception:
+    pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Cross-Hunt India Ship & Cruise Rental Marketplace REST API (FastAPI + SQLAlchemy)",

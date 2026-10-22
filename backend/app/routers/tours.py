@@ -7,6 +7,7 @@ from backend.app.core.cache import cache
 from backend.app.database.session import get_db
 from backend.app.models.tour import PublicTour
 from backend.app.services.serializers import serialize_tour
+from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
 router = APIRouter(prefix="/tours", tags=["Public Tours"])
 
@@ -20,6 +21,8 @@ async def api_tour_list(
     sort_by: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    run_lifecycle_check_throttled(db)
+
     cache_key = f"tours_list:{destination}:{departure_port}:{date}:{q}:{sort_by}"
     cached_data = cache.get(cache_key)
     if cached_data is not None:
