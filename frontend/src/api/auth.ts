@@ -69,3 +69,30 @@ export async function updateUserProfile(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export async function forgotPassword(username_or_email: string): Promise<{
+  success: boolean;
+  message: string;
+  username: string;
+  masked_email: string;
+}> {
+  return apiRequest('/api/auth/forgot-password/', {
+    method: 'POST',
+    body: JSON.stringify({ username_or_email }),
+  });
+}
+
+export async function resetPassword(
+  username_or_email: string,
+  new_password: string
+): Promise<{
+  success: boolean;
+  message: string;
+  username: string;
+}> {
+  return apiRequest('/api/auth/reset-password/', {
+    method: 'POST',
+    body: JSON.stringify({ username_or_email, new_password }),
+  });
+}
+

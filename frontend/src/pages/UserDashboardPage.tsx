@@ -42,7 +42,9 @@ import {
   PieChart,
   Activity,
   Award,
-  Heart
+  Heart,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -106,6 +108,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const [profilePhone, setProfilePhone] = useState(user?.phone || '');
   const [profileAddress, setProfileAddress] = useState(user?.address || '');
   const [profilePassword, setProfilePassword] = useState('');
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
 
@@ -1282,13 +1285,24 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
               <label className="text-xs font-bold uppercase tracking-wider text-[#102B46]/80 block mb-1">
                 Change Password (Leave blank to keep current)
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={profilePassword}
-                onChange={(e) => setProfilePassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-white border border-[#082F5B]/15 text-sm text-[#102B46] focus:outline-none focus:border-[#1677C8] transition"
-              />
+              <div className="relative">
+                <input
+                  type={showProfilePassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  className="w-full pl-4 pr-10 py-2.5 rounded-2xl bg-white border border-[#082F5B]/15 text-sm text-[#102B46] focus:outline-none focus:border-[#1677C8] transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowProfilePassword(!showProfilePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                  title={showProfilePassword ? 'Hide password' : 'Show password'}
+                  aria-label={showProfilePassword ? 'Hide password' : 'Show password'}
+                >
+                  {showProfilePassword ? <EyeOff className="w-4 h-4 text-[#1677C8]" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="pt-3">

@@ -94,3 +94,71 @@ def test_register_and_profile_update(client):
         db.delete(u)
         db.commit()
     db.close()
+
+
+def test_forgot_and_reset_password(client):
+    import uuid
+    test_user = f"reset_{uuid.uuid4().hex[:8]}"
+    test_email = f"{test_user}@testcruise.com"
+
+    # Register user
+    reg = client.post("/api/auth/register/", json={
+        "username": test_user,
+        "email": test_email,
+        "password": "OldPassword@123",
+        "first_name": "Reset",
+        "last_name": "User",
+        "role": "USER"
+    })
+    assert reg.status_code == 200
+
+    # Forgot password check (404 for non-existent)
+    f_bad = client.post("/api/auth/forgot-password/", json={"username_or_email": "non_existent_xyz"})
+    assert f_bad.status_code == 404
+
+    # Forgot password check (valid user)
+    f_ok = client.post("/api/auth/forgot-password/", json={"username_or_email": test_user})
+    assert f_ok.status_code == 200
+    assert f_ok.json()["success"] is True
+    assert f_ok.json()["username"] == test_user
+
+    # Reset password with short password (< 6 chars) -> 400
+    r_short = client.post("/api/auth/reset-password/", json={
+        "username_or_email": test_user,
+        "new_password": "123"
+    })
+    assert r_short.status_code == 400
+
+    # Reset password successfully
+    r_ok = client.post("/api/auth/reset-password/", json={
+        "username_or_email": test_user,
+        "new_password": "NewSecurePassword@999"
+    })
+    assert r_ok.status_code == 200
+    assert r_ok.json()["success"] is True
+
+    # Try logging in with old password -> should fail
+    login_old = client.post("/api/auth/login/", json={
+        "username": test_user,
+        "password": "OldPassword@123"
+    })
+    assert login_old.status_code == 400
+
+    # Login with new password -> should succeed
+    login_new = client.post("/api/auth/login/", json={
+        "username": test_user,
+        "password": "NewSecurePassword@999"
+    })
+    assert login_new.status_code == 200
+    assert login_new.json()["user"]["username"] == test_user
+
+    # Clean up
+    from backend.app.database.session import SessionLocal
+    from backend.app.models.user import User
+    db = SessionLocal()
+    u = db.query(User).filter(User.username == test_user).first()
+    if u:
+        db.delete(u)
+        db.commit()
+    db.close()
+

@@ -9,7 +9,13 @@ from backend.app.core.security import verify_password, get_password_hash, create
 from backend.app.database.session import get_db
 from backend.app.models.user import User
 from backend.app.dependencies.auth import get_optional_user, get_current_user
-from backend.app.schemas.auth import LoginPayload, RegisterPayload, ProfileUpdatePayload
+from backend.app.schemas.auth import (
+    LoginPayload,
+    RegisterPayload,
+    ProfileUpdatePayload,
+    ForgotPasswordPayload,
+    ResetPasswordPayload,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -254,3 +260,92 @@ async def update_profile(
         "message": "Profile updated successfully.",
         "user": user.to_dict()
     }
+
+
+@router.post("/forgot-password/")
+@router.post("/forgot-password")
+async def forgot_password(
+    payload: ForgotPasswordPayload,
+    db: Session = Depends(get_db)
+):
+    query = payload.username_or_email.strip()
+    if not query:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide your username or email."
+        )
+
+    user = db.query(User).filter(
+        or_(
+            User.username.ilike(query),
+            User.email.ilike(query)
+        )
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this username or email address."
+        )
+
+    email = user.email or ""
+    masked_email = email
+    if "@" in email:
+        parts = email.split("@")
+        if len(parts[0]) > 2:
+            masked_email = f"{parts[0][0]}***{parts[0][-1]}@{parts[1]}"
+        else:
+            masked_email = f"{parts[0][0]}***@{parts[1]}"
+
+    return {
+        "success": True,
+        "message": "Account verified. You can now set your new password.",
+        "username": user.username,
+        "masked_email": masked_email,
+    }
+
+
+@router.post("/reset-password/")
+@router.post("/reset-password")
+async def reset_password(
+    payload: ResetPasswordPayload,
+    db: Session = Depends(get_db)
+):
+    query = payload.username_or_email.strip()
+    new_pass = payload.new_password.strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email is required."
+        )
+
+    if len(new_pass) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters in length."
+        )
+
+    user = db.query(User).filter(
+        or_(
+            User.username.ilike(query),
+            User.email.ilike(query)
+        )
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this username or email address."
+        )
+
+    user.password = get_password_hash(new_pass)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "success": True,
+        "message": "Password successfully reset! Please sign in with your new password.",
+        "username": user.username
+    }
+

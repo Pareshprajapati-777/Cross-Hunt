@@ -25,3 +25,14 @@ class ProfileUpdatePayload(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     password: Optional[str] = None
+
+
+class ForgotPasswordPayload(BaseModel):
+    username_or_email: str
+
+
+class ResetPasswordPayload(BaseModel):
+    username_or_email: str
+    new_password: str
+    reset_code: Optional[str] = None
+
