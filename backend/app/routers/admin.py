@@ -591,6 +591,36 @@ async def create_admin_offer(
     db.commit()
     db.refresh(offer)
     cache.invalidate("offers")
+
+    # Automatically broadcast an OFFER platform notification to ALL_USERS so it immediately appears in the notification bell
+    if offer.is_active:
+        discount_str = f"{float(offer.discount_value)}% OFF" if offer.discount_type == 'PERCENTAGE' else f"₹{float(offer.discount_value):,.0f} OFF"
+        min_spend_str = f" on bookings of ₹{float(offer.min_booking_amount):,.0f}+" if offer.min_booking_amount and offer.min_booking_amount > 0 else ""
+
+        custom_desc = offer.description.strip() if offer.description else ""
+        if custom_desc:
+            if offer.code not in custom_desc.upper():
+                notif_msg = f"Use coupon code {offer.code} to claim {discount_str} instant discount{min_spend_str}! {custom_desc}"
+            else:
+                notif_msg = custom_desc
+        else:
+            notif_msg = f"Use promo coupon code {offer.code} at checkout to claim {discount_str} instant discount on luxury yacht private charters and public tours{min_spend_str}."
+
+        notif = PlatformNotification(
+            title=offer.title[:200],
+            message=notif_msg,
+            notification_type="OFFER",
+            target_audience="ALL_USERS",
+            target_user_id=None,
+            action_link="/explore",
+            sender_name="Marketing Director",
+            is_read=False,
+            recipients_count=max(1, db.query(User).count()),
+            created_at=datetime.utcnow()
+        )
+        db.add(notif)
+        db.commit()
+
     return {'success': True, 'offer': serialize_offer(offer)}
 
 
@@ -611,6 +641,37 @@ def toggle_admin_offer_active(
     db.commit()
     db.refresh(offer)
     cache.invalidate("offers")
+
+    if offer.is_active:
+        # Check if notification exists; if not, create it
+        existing_n = db.query(PlatformNotification).filter(
+            PlatformNotification.notification_type == 'OFFER',
+            PlatformNotification.message.ilike(f"%{offer.code}%")
+        ).first()
+        if not existing_n:
+            discount_str = f"{float(offer.discount_value)}% OFF" if offer.discount_type == 'PERCENTAGE' else f"₹{float(offer.discount_value):,.0f} OFF"
+            min_spend_str = f" on bookings of ₹{float(offer.min_booking_amount):,.0f}+" if offer.min_booking_amount and offer.min_booking_amount > 0 else ""
+            notif = PlatformNotification(
+                title=offer.title[:200],
+                message=f"Use promo coupon code {offer.code} to claim {discount_str} discount{min_spend_str}! {offer.description or ''}".strip(),
+                notification_type="OFFER",
+                target_audience="ALL_USERS",
+                target_user_id=None,
+                action_link="/explore",
+                sender_name="Marketing Director",
+                is_read=False,
+                recipients_count=max(1, db.query(User).count()),
+                created_at=datetime.utcnow()
+            )
+            db.add(notif)
+            db.commit()
+    else:
+        # Deactivated: remove notification so users don't see inactive coupon
+        db.query(PlatformNotification).filter(
+            PlatformNotification.notification_type == 'OFFER',
+            PlatformNotification.message.ilike(f"%{offer.code}%")
+        ).delete(synchronize_session=False)
+        db.commit()
 
     return {
         "success": True,
@@ -634,6 +695,13 @@ def delete_admin_offer(
     db.delete(offer)
     db.commit()
     cache.invalidate("offers")
+
+    # Clean up corresponding notification
+    db.query(PlatformNotification).filter(
+        PlatformNotification.notification_type == 'OFFER',
+        PlatformNotification.message.ilike(f"%{code}%")
+    ).delete(synchronize_session=False)
+    db.commit()
 
     return {
         "success": True,

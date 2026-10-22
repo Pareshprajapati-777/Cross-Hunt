@@ -344,6 +344,7 @@ export const AdminDashboardPage: React.FC = () => {
         valid_to: '2026-12-31',
       });
       getAdminOffers().then((res) => setOffersList(res.offers || []));
+      window.dispatchEvent(new Event('notification-updated'));
     } catch (err: any) {
       alert(err.message || 'Failed to create promo coupon');
     }
@@ -356,6 +357,7 @@ export const AdminDashboardPage: React.FC = () => {
       setOffersList((prev) =>
         prev.map((o) => (o.id === offer.id ? { ...o, is_active: res.offer?.is_active ?? !o.is_active } : o))
       );
+      window.dispatchEvent(new Event('notification-updated'));
     } catch (err: any) {
       alert(err.message || 'Failed to toggle promo voucher status');
     } finally {
@@ -368,6 +370,7 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       await deleteAdminOffer(offer.id);
       setOffersList((prev) => prev.filter((o) => o.id !== offer.id));
+      window.dispatchEvent(new Event('notification-updated'));
     } catch (err: any) {
       alert(err.message || 'Failed to delete promo voucher');
     }

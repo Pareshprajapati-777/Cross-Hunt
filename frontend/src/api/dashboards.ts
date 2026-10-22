@@ -584,7 +584,7 @@ export async function getUserNotifications(): Promise<{
   }>;
   unread_count: number;
 }> {
-  return apiRequest('/api/notifications/my-notifications/');
+  return apiRequest('/api/notifications/my-notifications/', { bypassCache: true });
 }
 
 export async function markNotificationRead(notificationId: number): Promise<{ success: boolean }> {

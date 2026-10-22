@@ -22,18 +22,40 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    const refreshNotifs = () => {
       getUserNotifications()
         .then((res) => {
           setNotifications(res.notifications || []);
           setUnreadCount(res.unread_count || 0);
         })
         .catch(() => {});
-    } else {
-      setNotifications([]);
-      setUnreadCount(0);
-    }
+    };
+
+    refreshNotifs();
+    window.addEventListener('notification-updated', refreshNotifs);
+    const interval = setInterval(refreshNotifs, 25000);
+    return () => {
+      window.removeEventListener('notification-updated', refreshNotifs);
+      clearInterval(interval);
+    };
   }, [user?.id]);
+
+  const formatNotifDate = (dateVal: string) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return dateVal;
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+      return `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
@@ -170,8 +192,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                 <div className="relative">
                   <button
                     onClick={() => {
-                      setNotificationsOpen(!notificationsOpen);
+                      const next = !notificationsOpen;
+                      setNotificationsOpen(next);
                       setUserDropdownOpen(false);
+                      if (next && user) {
+                        getUserNotifications()
+                          .then((res) => {
+                            setNotifications(res.notifications || []);
+                            setUnreadCount(res.unread_count || 0);
+                          })
+                          .catch(() => {});
+                      }
                     }}
                     className="relative p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                     title="Platform Notifications"
@@ -284,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                                     )}
 
                                     <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
-                                      <span>{new Date(notif.created_at).toLocaleDateString()}</span>
+                                      <span>{formatNotifDate(notif.created_at)}</span>
                                       {notif.sender_name && <span>{notif.sender_name}</span>}
                                     </div>
                                   </div>

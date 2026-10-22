@@ -47,7 +47,7 @@ def get_user_notifications(
             'sender_name': n.sender_name,
             'is_read': n.is_read,
             'promo_code': p_code,
-            'created_at': n.created_at.strftime('%d %b, %H:%M') if n.created_at else ''
+            'created_at': n.created_at.isoformat() if n.created_at else ''
         })
 
     return {'notifications': data, 'unread_count': unread_count}
