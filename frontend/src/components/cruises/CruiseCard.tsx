@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Users, MapPin, Anchor, ArrowRight, ShieldCheck, Clock, Building2, Heart } from 'lucide-react';
+import { Star, Users, MapPin, Anchor, ArrowRight, Clock, Building2, Heart } from 'lucide-react';
 import { Cruise } from '../../api/types';
 import { formatINR } from '../../utils/currency';
 import { useFavorites } from '../../context/FavoritesContext';
@@ -95,8 +95,8 @@ export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBook
         <div className="absolute inset-0 bg-gradient-to-t from-[#051833]/90 via-[#051833]/20 to-transparent" />
 
         {/* Top Badges */}
-        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-start justify-between gap-2 pointer-events-none">
+          <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto min-w-0">
             {/* Private vs Public Badge */}
             <span className={`px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-black uppercase tracking-wider shadow-sm border ${
               isPrivate
@@ -123,18 +123,10 @@ export const CruiseCard: React.FC<CruiseCardProps> = ({ cruise, onSelect, onBook
               <Anchor className="w-3 h-3 text-[#0284c7]" />
               {cruise.vessel_category || cruise.category || 'Vessel'}
             </span>
-
-            {/* Verified Trust Badge */}
-            {cruise.source_checked && (
-              <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 text-[#0284c7] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                <ShieldCheck className="w-3 h-3 text-[#0284c7]" />
-                VERIFIED
-              </span>
-            )}
           </div>
 
-          {/* Rating & Favorite Button */}
-          <div className="flex items-center gap-1.5 ml-auto">
+          {/* Rating & Favorite Button in Top Right Corner */}
+          <div className="flex items-center gap-1.5 shrink-0 pointer-events-auto">
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 text-[#051833] text-xs font-bold shadow-sm">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               <span>{cruise.average_rating > 0 ? cruise.average_rating.toFixed(1) : '5.0'}</span>
