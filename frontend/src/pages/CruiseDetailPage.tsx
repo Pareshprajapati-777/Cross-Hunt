@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 import { ShipContactCard } from '../components/ship/ShipContactCard';
+import { useAuth } from '../context/AuthContext';
 
 interface CruiseDetailPageProps {
   cruise?: Cruise | null;
@@ -38,6 +39,7 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
   onBookTour,
   onBookEvent,
 }) => {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [cruise, setCruise] = useState<Cruise | null>(initialCruise || null);
@@ -78,7 +80,12 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
   const handleBook = () => {
     const targetId = cruise?.slug || cruise?.id;
     const rateQuery = selectedRateId ? `?rate_id=${selectedRateId}` : '';
-    navigate(`/book-cruise/${targetId}${rateQuery}`);
+    const bookUrl = `/book-cruise/${targetId}${rateQuery}`;
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(bookUrl)}`, { state: { from: bookUrl, reason: 'booking' } });
+      return;
+    }
+    navigate(bookUrl);
   };
 
   if (loading) {
@@ -399,11 +406,20 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
             <div className="space-y-3 pt-2">
               <button
                 onClick={handleBook}
-                className="w-full py-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm tracking-wide shadow-lg shadow-sky-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
+                className={`w-full py-4 rounded-2xl text-white font-bold text-sm tracking-wide shadow-lg flex items-center justify-center gap-2 transition cursor-pointer ${
+                  !user
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                    : 'bg-sky-600 hover:bg-sky-700 shadow-sky-600/25'
+                }`}
               >
-                <span>{isQuoteBased ? 'REQUEST FORMAL QUOTATION' : 'RESERVE THIS CHARTER'}</span>
+                <span>{isQuoteBased ? 'REQUEST FORMAL QUOTATION' : !user ? 'SIGN IN TO RESERVE CHARTER' : 'RESERVE THIS CHARTER'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+              {!user && (
+                <p className="text-[11px] text-center text-slate-500 font-medium">
+                  🔒 User account login is required to reserve this vessel
+                </p>
+              )}
             </div>
 
             {/* Quick Contact & WhatsApp in Sidebar */}

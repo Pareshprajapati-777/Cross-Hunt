@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Anchor, AlertCircle, ArrowRight } from 'lucide-react';
+import { Anchor, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -14,7 +15,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   onSwitchMode,
 }) => {
   const { login, register } = useAuth();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+
+  const fromState = (location.state as any)?.from;
+  const redirectParam = searchParams.get('redirect');
+  const isBookingRedirect =
+    (location.state as any)?.reason === 'booking' ||
+    (typeof fromState === 'string' && (fromState.includes('book-cruise') || fromState.includes('book-tour') || fromState.includes('events'))) ||
+    (fromState?.pathname && (fromState.pathname.includes('book-cruise') || fromState.pathname.includes('book-tour') || fromState.pathname.includes('events'))) ||
+    (redirectParam && (redirectParam.includes('book-cruise') || redirectParam.includes('book-tour') || redirectParam.includes('events')));
 
   // Form Fields
   const [username, setUsername] = useState('');
@@ -97,6 +108,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               : 'Book private boat charters and cruise trips with verified operators.'}
           </p>
         </div>
+
+        {/* Booking Authentication Notice */}
+        {isBookingRedirect && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 border border-sky-300 text-sky-950 text-xs shadow-sm flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+              <Anchor className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-sky-950 text-sm">Account Required to Book Ship</p>
+              <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
+                Please sign in or create an account to proceed with reserving your vessel or cruise tour tickets.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (

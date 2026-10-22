@@ -210,7 +210,11 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
   const handleBookEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      onNeedLogin();
+      if (onNeedLogin) {
+        onNeedLogin();
+      } else {
+        navigate('/login?redirect=/events');
+      }
       return;
     }
 
@@ -988,11 +992,20 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
                 type="button"
                 onClick={handleBookEvent}
                 disabled={submitting}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-serif font-black text-sm tracking-wide shadow-xl shadow-orange-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                className={`w-full py-3.5 rounded-2xl text-white font-serif font-black text-sm tracking-wide shadow-xl flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer ${
+                  !user
+                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-600/25'
+                    : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/25'
+                }`}
               >
-                <span>{submitting ? 'Securing Charter...' : 'CONFIRM & RESERVE CHARTER'}</span>
+                <span>{submitting ? 'Securing Charter...' : !user ? 'SIGN IN TO RESERVE CHARTER' : 'CONFIRM & RESERVE CHARTER'}</span>
                 <ArrowRight className="w-4 h-4 text-white" />
               </button>
+              {!user && (
+                <p className="text-[11px] text-center text-slate-500 font-medium">
+                  🔒 User account login is required to reserve a private charter
+                </p>
+              )}
 
               {/* Trust Guarantees */}
               <div className="pt-3 border-t border-slate-100 space-y-2 text-[11px] text-slate-600 font-medium">

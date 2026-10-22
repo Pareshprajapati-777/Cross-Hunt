@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 import { getTourImageUrl } from '../utils/images';
+import { useAuth } from '../context/AuthContext';
 
 interface TourDetailPageProps {
   tour?: PublicTour | null;
@@ -28,6 +29,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
   onBack,
   onBookTourTicket,
 }) => {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tour, setTour] = useState<PublicTour | null>(initialTour || null);
@@ -60,10 +62,15 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
   };
 
   const handleBookTicket = (selectedTour: PublicTour) => {
+    const bookUrl = `/book-tour/${selectedTour.id}`;
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(bookUrl)}`, { state: { from: bookUrl, reason: 'booking' } });
+      return;
+    }
     if (onBookTourTicket) {
       onBookTourTicket(selectedTour);
     } else {
-      navigate(`/book-tour/${selectedTour.id}`);
+      navigate(bookUrl);
     }
   };
 
@@ -291,11 +298,20 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
               <button
                 onClick={() => handleBookTicket(tour)}
                 disabled={!tour.is_bookable}
-                className="w-full py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`w-full py-4 rounded-2xl text-white text-sm font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  !user
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                    : 'bg-sky-500 hover:bg-sky-600 shadow-sky-500/25'
+                }`}
               >
-                <span>Proceed to Book Passengers</span>
+                <span>{!user ? 'Sign In to Book Passengers' : 'Proceed to Book Passengers'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+              {!user && (
+                <p className="text-[11px] text-center text-slate-500 font-medium">
+                  🔒 User account login is required to reserve tour tickets
+                </p>
+              )}
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
                 <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />

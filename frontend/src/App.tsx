@@ -6,6 +6,7 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useSearchParams,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/common/Navbar';
@@ -54,6 +55,7 @@ function PageLoader() {
 
 /**
  * Route guard: requires user to be logged in.
+ * Preserves the target booking URL so the customer returns right back after authentication.
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -63,7 +65,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <PageLoader />;
   }
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    const returnUrl = `${location.pathname}${location.search}`;
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(returnUrl)}`}
+        replace
+        state={{ from: location, reason: 'booking' }}
+      />
+    );
   }
   return <>{children}</>;
 }
@@ -108,40 +117,62 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Route guard for Login and Register pages. If already signed in, redirects to appropriate dashboard.
+ * Route guard for Login and Register pages. If already signed in or after authentication,
+ * redirects to the intended booking page or to the appropriate user dashboard.
  */
 function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const fromState = (location.state as any)?.from;
+  const redirectParam = searchParams.get('redirect');
+  const returnUrl = redirectParam
+    ? redirectParam
+    : fromState
+    ? (typeof fromState === 'string' ? fromState : `${fromState.pathname || ''}${fromState.search || ''}`)
+    : null;
+
+  const getDestination = (loggedUser: any) => {
+    if (
+      returnUrl &&
+      returnUrl.startsWith('/') &&
+      !returnUrl.startsWith('/login') &&
+      !returnUrl.startsWith('/register')
+    ) {
+      return returnUrl;
+    }
+    if (loggedUser?.is_admin || loggedUser?.role === 'ADMIN') return '/admin-panel';
+    if (
+      loggedUser?.is_operator ||
+      loggedUser?.role === 'OWNER' ||
+      loggedUser?.role === 'CROSS_OWNER'
+    ) {
+      return '/owner';
+    }
+    return '/dashboard';
+  };
 
   if (loading) {
     return <PageLoader />;
   }
   if (user) {
-    if (user.is_admin || user.role === 'ADMIN') return <Navigate to="/admin-panel" replace />;
-    if (user.is_operator || user.role === 'OWNER' || user.role === 'CROSS_OWNER') return <Navigate to="/owner" replace />;
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDestination(user)} replace />;
   }
 
   const handleAuthSuccess = (loggedUser: any) => {
-    if (loggedUser?.is_admin || loggedUser?.role === 'ADMIN') {
-      navigate('/admin-panel');
-    } else if (
-      loggedUser?.is_operator ||
-      loggedUser?.role === 'OWNER' ||
-      loggedUser?.role === 'CROSS_OWNER'
-    ) {
-      navigate('/owner');
-    } else {
-      navigate('/dashboard');
-    }
+    navigate(getDestination(loggedUser), { replace: true });
   };
 
   return (
     <AuthPage
       initialMode={mode}
       onSuccess={handleAuthSuccess}
-      onSwitchMode={(nextMode) => navigate(`/${nextMode}`)}
+      onSwitchMode={(nextMode) => {
+        const query = searchParams.toString();
+        navigate(`/${nextMode}${query ? `?${query}` : ''}`, { state: location.state });
+      }}
     />
   );
 }
@@ -243,38 +274,44 @@ const AppContent: React.FC = () => {
             }
           />
 
-          {/* Booking: Private Ship Charter */}
+          {/* Booking: Private Ship Charter (Requires Authenticated User) */}
           <Route
             path="/book-cruise/:id"
             element={
-              <BookTourPage
-                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
-                onCancel={() => navigate('/explore')}
-                onNeedLogin={() => navigate('/login')}
-              />
+              <ProtectedRoute>
+                <BookTourPage
+                  onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                  onCancel={() => navigate('/explore')}
+                  onNeedLogin={() => navigate('/login')}
+                />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/book-cruise"
             element={
-              <BookTourPage
-                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
-                onCancel={() => navigate('/explore')}
-                onNeedLogin={() => navigate('/login')}
-              />
+              <ProtectedRoute>
+                <BookTourPage
+                  onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                  onCancel={() => navigate('/explore')}
+                  onNeedLogin={() => navigate('/login')}
+                />
+              </ProtectedRoute>
             }
           />
           <Route path="/private-booking" element={<Navigate to="/explore" replace />} />
 
-          {/* Booking: Public Cruise Tour Ticket */}
+          {/* Booking: Public Cruise Tour Ticket (Requires Authenticated User) */}
           <Route
             path="/book-tour/:id"
             element={
-              <BookPublicTourTicketPage
-                onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
-                onCancel={() => navigate('/tours')}
-                onNeedLogin={() => navigate('/login')}
-              />
+              <ProtectedRoute>
+                <BookPublicTourTicketPage
+                  onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
+                  onCancel={() => navigate('/tours')}
+                  onNeedLogin={() => navigate('/login')}
+                />
+              </ProtectedRoute>
             }
           />
 
@@ -284,7 +321,7 @@ const AppContent: React.FC = () => {
             element={
               <PrivateEventsPage
                 onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
-                onNeedLogin={() => navigate('/login')}
+                onNeedLogin={() => navigate('/login?redirect=/events')}
               />
             }
           />

@@ -185,7 +185,8 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
       if (onNeedLogin) {
         onNeedLogin();
       } else {
-        navigate('/login');
+        const returnUrl = `${window.location.pathname}${window.location.search}`;
+        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
       }
       return;
     }
@@ -307,9 +308,19 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
           )}
 
           {!user && (
-            <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs font-bold flex items-center justify-between">
-              <span>Sign in is required to book your digital ticket.</span>
-              <button onClick={onNeedLogin} className="px-3.5 py-1.5 rounded-xl bg-sky-500 text-white text-xs">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>User account login is required to reserve your cruise tour ticket.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const returnUrl = `${window.location.pathname}${window.location.search}`;
+                  navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+                }}
+                className="px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer shrink-0"
+              >
                 Sign In
               </button>
             </div>
@@ -445,9 +456,13 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+              className={`w-full py-4 rounded-2xl text-white text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 ${
+                !user
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                  : 'bg-sky-500 hover:bg-sky-600 shadow-sky-500/25'
+              }`}
             >
-              <span>{submitting ? 'Confirming Booking...' : 'CONFIRM & GET DIGITAL TICKET'}</span>
+              <span>{submitting ? 'Confirming Booking...' : !user ? 'SIGN IN TO CONFIRM & GET TICKET' : 'CONFIRM & GET DIGITAL TICKET'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

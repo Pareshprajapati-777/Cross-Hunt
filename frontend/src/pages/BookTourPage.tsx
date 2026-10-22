@@ -267,7 +267,8 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       if (onNeedLogin) {
         onNeedLogin();
       } else {
-        navigate('/login');
+        const returnUrl = `${window.location.pathname}${window.location.search}`;
+        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
       }
       return;
     }
@@ -284,7 +285,8 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       if (onNeedLogin) {
         onNeedLogin();
       } else {
-        navigate('/login');
+        const returnUrl = `${window.location.pathname}${window.location.search}`;
+        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
       }
       return;
     }
@@ -438,6 +440,30 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Form Steps */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm">
+          {!user && (
+            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-950 text-xs sm:text-sm">Account Login Required</p>
+                  <p className="text-[11px] text-amber-800">You must be logged into your account to book this ship charter.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const returnUrl = `${window.location.pathname}${window.location.search}`;
+                  navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer shadow-sm shrink-0"
+              >
+                Sign In
+              </button>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
@@ -632,9 +658,19 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
               </h2>
 
               {!user && (
-                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs font-bold flex items-center justify-between">
-                  <span>Sign in is required to complete your reservation.</span>
-                  <button onClick={onNeedLogin} className="px-3.5 py-1.5 rounded-xl bg-sky-500 text-white text-xs">
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>User login is required to complete and confirm your vessel booking.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const returnUrl = `${window.location.pathname}${window.location.search}`;
+                      navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+                    }}
+                    className="px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer shrink-0"
+                  >
                     Sign In
                   </button>
                 </div>
@@ -739,9 +775,17 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                 type="button"
                 disabled={submitting}
                 onClick={handleConfirmBooking}
-                className="px-8 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition cursor-pointer disabled:opacity-50"
+                className={`px-8 py-3 rounded-2xl text-white text-xs font-bold flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-50 ${
+                  !user
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                    : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
+                }`}
               >
-                {submitting ? 'Confirming with Fleet...' : 'CONFIRM & ISSUE TICKET'}
+                {submitting
+                  ? 'Confirming with Fleet...'
+                  : !user
+                  ? 'SIGN IN TO CONFIRM & ISSUE TICKET'
+                  : 'CONFIRM & ISSUE TICKET'}
               </button>
             )}
           </div>
