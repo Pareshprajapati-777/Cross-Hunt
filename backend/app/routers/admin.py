@@ -1400,6 +1400,8 @@ def list_admin_reviews(
 
 @router.post("/reviews/warn-owner/")
 @router.post("/reviews/warn-owner")
+@router.post("/reviews/send-warning/")
+@router.post("/reviews/send-warning")
 async def admin_warn_ship_owner(
     request: Request,
     current_user: User = Depends(require_admin),
@@ -1436,21 +1438,7 @@ async def admin_warn_ship_owner(
     r.warning_message = warning_text
     r.warning_sent_at = datetime.utcnow()
 
-    # Create Platform Notification for ship owner
-    target_user_id = ship.owner_id if ship else None
-    notif = PlatformNotification(
-        title=f"⚠️ Safety Warning: Passenger Complaint on {ship_name}",
-        message=warning_text,
-        notification_type="COMPLAINT_WARNING",
-        target_audience="OPERATOR" if target_user_id else "ALL_USERS",
-        target_user_id=target_user_id,
-        action_link="/operator/dashboard",
-        sender_name="Cross Hunt Safety & Moderation Administration",
-        is_read=False,
-        recipients_count=1,
-        created_at=datetime.utcnow()
-    )
-    db.add(notif)
+    # Dispatched directly to owner's Complaint Box in the Operator Operations Suite (bypasses notification bell)
     db.commit()
 
     return {

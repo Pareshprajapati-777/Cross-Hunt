@@ -30,7 +30,14 @@ def get_user_notifications(
     if current_user.role in ['OWNER', 'CROSS_OWNER']:
         conds.append(PlatformNotification.target_audience == 'ALL_OWNERS')
 
-    notifs = db.query(PlatformNotification).filter(or_(*conds)).order_by(desc(PlatformNotification.created_at), desc(PlatformNotification.id)).limit(25).all()
+    notifs = (
+        db.query(PlatformNotification)
+        .filter(or_(*conds))
+        .filter(PlatformNotification.notification_type != 'COMPLAINT_WARNING')
+        .order_by(desc(PlatformNotification.created_at), desc(PlatformNotification.id))
+        .limit(25)
+        .all()
+    )
     unread_count = sum(1 for n in notifs if not n.is_read)
 
     data = []

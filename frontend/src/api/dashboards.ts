@@ -24,6 +24,9 @@ export interface OperatorDashboardData {
     commission_rate?: number;
     private_revenue?: number;
     tour_revenue?: number;
+    reviews_count?: number;
+    complaints_count?: number;
+    admin_warnings_count?: number;
   };
   earnings?: number;
   owner_payout?: number;
@@ -172,6 +175,51 @@ export async function createOperatorTour(payload: any): Promise<{ success: boole
   return apiRequest('/api/operator/tours/', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export interface OperatorReview {
+  id: number;
+  ship_id: number;
+  ship_name: string;
+  ship_image?: string;
+  ship_category?: string;
+  ship_location?: string;
+  author: string;
+  user: string;
+  rating: number;
+  comment: string;
+  has_complaint: boolean;
+  complaint_category?: string;
+  complaint_text?: string;
+  complaint_status?: 'NONE' | 'PENDING' | 'WARNING_SENT' | 'RESOLVED';
+  warning_message?: string;
+  warning_sent_at?: string;
+  booking_id?: string;
+  booking_type?: string;
+  travel_date?: string;
+  created_at?: string;
+  date?: string;
+}
+
+export interface OperatorReviewsResponse {
+  success: boolean;
+  reviews: OperatorReview[];
+  complaints: OperatorReview[];
+  admin_warnings: OperatorReview[];
+  total_count: number;
+  complaints_count: number;
+  admin_warnings_count: number;
+  avg_rating: number;
+}
+
+export async function getOperatorReviews(): Promise<OperatorReviewsResponse> {
+  return apiRequest<OperatorReviewsResponse>('/api/operator/reviews/');
+}
+
+export async function resolveOperatorComplaint(reviewId: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>(`/api/operator/reviews/${reviewId}/resolve/`, {
+    method: 'POST',
   });
 }
 

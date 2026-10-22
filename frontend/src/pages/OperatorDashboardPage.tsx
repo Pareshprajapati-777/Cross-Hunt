@@ -11,7 +11,10 @@ import {
   getOperatorAvailability,
   getTourPassengers,
   uploadOperatorImage,
-  OperatorDashboardData
+  getOperatorReviews,
+  resolveOperatorComplaint,
+  OperatorDashboardData,
+  OperatorReview
 } from '../api/dashboards';
 import {
   Ship,
@@ -39,7 +42,11 @@ import {
   Upload,
   Link as LinkIcon,
   Loader2,
-  User
+  User,
+  Star,
+  AlertTriangle,
+  ShieldAlert,
+  MessageSquare
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
@@ -56,6 +63,7 @@ type OperatorTab =
   | 'requests'
   | 'tours'
   | 'passengers'
+  | 'reviews'
   | 'profile';
 
 export const OperatorDashboardPage: React.FC = () => {
@@ -204,6 +212,55 @@ export const OperatorDashboardPage: React.FC = () => {
     }
   };
 
+  // Reviews & Complaints Management State
+  const [reviewsData, setReviewsData] = useState<{
+    reviews: OperatorReview[];
+    complaints: OperatorReview[];
+    admin_warnings: OperatorReview[];
+    total_count: number;
+    complaints_count: number;
+    admin_warnings_count: number;
+    avg_rating: number;
+  }>({
+    reviews: [],
+    complaints: [],
+    admin_warnings: [],
+    total_count: 0,
+    complaints_count: 0,
+    admin_warnings_count: 0,
+    avg_rating: 5.0,
+  });
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsFilterTab, setReviewsFilterTab] = useState<'all' | 'warnings' | 'complaints' | 'positive' | 'critical'>('all');
+  const [resolvingId, setResolvingId] = useState<number | null>(null);
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const res = await getOperatorReviews();
+      setReviewsData(res);
+    } catch (err) {
+      console.error('Failed to load operator reviews:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleResolveComplaint = async (reviewId: number) => {
+    if (!window.confirm('Mark this passenger complaint as resolved & acknowledged? This will update the compliance status.')) return;
+    setResolvingId(reviewId);
+    try {
+      const res = await resolveOperatorComplaint(reviewId);
+      alert(res.message || 'Complaint resolved successfully.');
+      await fetchReviews();
+      fetchDashboard();
+    } catch (err: any) {
+      alert(err.message || 'Failed to resolve complaint.');
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   // Add Tour Form State
   const calculateTourDuration = (depDateStr: string, retDateStr: string) => {
     if (!depDateStr || !retDateStr) return { days: 1, display: '1 Day' };
@@ -294,7 +351,15 @@ export const OperatorDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboard();
+    fetchReviews();
   }, []);
+
+  // Fetch reviews when reviews tab is opened
+  useEffect(() => {
+    if (activeTab === 'reviews') {
+      fetchReviews();
+    }
+  }, [activeTab]);
 
   // Fetch Extras when extras tab is opened
   useEffect(() => {
@@ -683,6 +748,14 @@ export const OperatorDashboardPage: React.FC = () => {
           { id: 'requests', label: `Booking Requests (${data?.recent_bookings?.length || 0})`, icon: Clock },
           { id: 'tours', label: `Public Tours (${data?.my_tours?.length || 0})`, icon: Anchor },
           { id: 'passengers', label: 'Tour Passengers', icon: Users },
+          {
+            id: 'reviews',
+            label: reviewsData.admin_warnings_count > 0
+              ? `Complaints & Reviews (${reviewsData.admin_warnings_count} Alert${reviewsData.admin_warnings_count > 1 ? 's' : ''})`
+              : `Reviews & Feedback (${reviewsData.total_count})`,
+            icon: Star,
+            hasWarning: reviewsData.admin_warnings_count > 0,
+          },
           { id: 'profile', label: 'Owner Profile', icon: User },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -697,6 +770,9 @@ export const OperatorDashboardPage: React.FC = () => {
                   : 'text-slate-600 hover:text-[#051833] hover:bg-slate-100 font-bold'
               }`}
             >
+              {tab.hasWarning && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block -ml-0.5" />
+              )}
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
             </button>
@@ -1887,6 +1963,407 @@ export const OperatorDashboardPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* TAB 8: GUEST REVIEWS & OFFICIAL COMPLAINTS BOX */}
+      {activeTab === 'reviews' && (() => {
+        const displayedReviews = reviewsData.reviews.filter((r) => {
+          if (reviewsFilterTab === 'warnings') {
+            return r.complaint_status === 'WARNING_SENT' || (Boolean(r.warning_message) && r.complaint_status !== 'RESOLVED');
+          }
+          if (reviewsFilterTab === 'complaints') {
+            return r.has_complaint || r.complaint_status !== 'NONE';
+          }
+          if (reviewsFilterTab === 'positive') {
+            return r.rating >= 4;
+          }
+          if (reviewsFilterTab === 'critical') {
+            return r.rating < 4;
+          }
+          return true;
+        });
+
+        const fiveStarCount = reviewsData.reviews.filter((r) => r.rating === 5).length;
+        const fiveStarPct = reviewsData.total_count > 0 ? Math.round((fiveStarCount / reviewsData.total_count) * 100) : 100;
+
+        return (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
+                  Passenger Experience & Safety Compliance
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">
+                  Guest Reviews & Complaints Box
+                </h2>
+                <p className="text-xs text-[#102B46]/65 mt-0.5 font-medium">
+                  Review passenger trip feedback, ratings across your fleet, and directly resolve official compliance warnings dispatched by platform moderation.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchReviews}
+                disabled={reviewsLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-slate-50 border border-[#082F5B]/15 text-[#082F5B] text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
+              >
+                <Clock className={`w-3.5 h-3.5 ${reviewsLoading ? 'animate-spin text-[#1677C8]' : ''}`} />
+                <span>Refresh Reviews</span>
+              </button>
+            </div>
+
+            {/* KPI Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider mb-1">Average Fleet Rating</span>
+                <div className="flex items-center gap-2">
+                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                  <span className="text-3xl font-black text-[#102B46] font-mono-numbers">{reviewsData.avg_rating.toFixed(1)}</span>
+                  <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">From verified passenger voyages</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider mb-1">Total Reviews</span>
+                <div className="text-3xl font-black text-[#102B46] font-mono-numbers">{reviewsData.total_count}</div>
+                <p className="text-[11px] text-emerald-600 font-semibold mt-1">{fiveStarPct}% 5-Star satisfaction rate</p>
+              </div>
+
+              <div className={`p-5 rounded-3xl border shadow-xs transition-all ${
+                reviewsData.admin_warnings_count > 0 
+                  ? 'bg-rose-50/80 border-rose-300' 
+                  : 'bg-emerald-50/50 border-emerald-200'
+              }`}>
+                <span className="text-[10px] uppercase font-bold block tracking-wider mb-1 flex items-center gap-1.5 text-slate-600">
+                  <ShieldAlert className={`w-3.5 h-3.5 ${reviewsData.admin_warnings_count > 0 ? 'text-rose-600' : 'text-emerald-600'}`} />
+                  <span>Admin Complaints Box</span>
+                </span>
+                <div className={`text-3xl font-black font-mono-numbers ${
+                  reviewsData.admin_warnings_count > 0 ? 'text-rose-700' : 'text-emerald-700'
+                }`}>
+                  {reviewsData.admin_warnings_count}
+                </div>
+                <p className={`text-[11px] font-semibold mt-1 ${
+                  reviewsData.admin_warnings_count > 0 ? 'text-rose-600' : 'text-emerald-600'
+                }`}>
+                  {reviewsData.admin_warnings_count > 0 ? 'Active compliance warnings require action' : 'Zero active warnings (All clear)'}
+                </p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider mb-1">Passenger Grievances</span>
+                <div className="text-3xl font-black text-[#102B46] font-mono-numbers">{reviewsData.complaints_count}</div>
+                <p className="text-[11px] text-slate-400 mt-1">Total grievances logged on fleet</p>
+              </div>
+            </div>
+
+            {/* DEDICATED OFFICIAL COMPLAINTS BOX ("Complen Box") */}
+            <div className={`rounded-3xl border-2 transition-all p-6 sm:p-8 shadow-md ${
+              reviewsData.admin_warnings.length > 0
+                ? 'bg-gradient-to-br from-rose-50/90 via-amber-50/40 to-white border-rose-300 shadow-rose-900/5'
+                : 'bg-gradient-to-br from-emerald-50/70 via-sky-50/30 to-white border-emerald-300 shadow-emerald-900/5'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border shadow-xs"
+                    style={{
+                      backgroundColor: reviewsData.admin_warnings.length > 0 ? '#ffe4e6' : '#dcfce7',
+                      color: reviewsData.admin_warnings.length > 0 ? '#9f1239' : '#166534',
+                      borderColor: reviewsData.admin_warnings.length > 0 ? '#fecdd3' : '#bbf7d0',
+                    }}
+                  >
+                    {reviewsData.admin_warnings.length > 0 ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Action Required: Official Admin Directives</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Complaints Box: Fleet In Compliance</span>
+                      </>
+                    )}
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#102B46] font-heading tracking-tight">
+                    Official Safety & Moderation Complaints Box
+                  </h3>
+                  <p className="text-xs text-[#102B46]/70 mt-1 font-medium">
+                    When platform administrators investigate passenger grievances and dispatch formal compliance warnings, they arrive directly into this box.
+                  </p>
+                </div>
+
+                {reviewsData.admin_warnings.length > 0 && (
+                  <span className="px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-xs font-black self-start sm:self-auto shadow-sm">
+                    {reviewsData.admin_warnings.length} Active Directive{reviewsData.admin_warnings.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* If there are admin warnings in the complaint box */}
+              {reviewsData.admin_warnings.length > 0 ? (
+                <div className="space-y-4">
+                  {reviewsData.admin_warnings.map((warn) => (
+                    <div
+                      key={warn.id}
+                      className="bg-white rounded-2xl border border-rose-200/90 p-5 sm:p-6 shadow-sm space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-100 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                            <Ship className="w-5 h-5 text-rose-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-extrabold text-base text-[#102B46]">{warn.ship_name}</h4>
+                              {warn.ship_category && (
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[#102B46] text-[10px] font-bold">
+                                  {warn.ship_category}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              Passenger: <strong className="text-[#102B46]">{warn.author || warn.user}</strong>
+                              {warn.booking_id && <> • Booking: <span className="font-mono">{warn.booking_id}</span></>}
+                              {warn.travel_date && <> • Voyage Date: {warn.travel_date}</>}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-[11px] font-black uppercase tracking-wider self-start sm:self-auto border border-rose-200">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Warning Dispatched</span>
+                        </span>
+                      </div>
+
+                      {/* Passenger's Filed Grievance */}
+                      <div className="bg-rose-50/50 rounded-xl p-3.5 border border-rose-100 text-xs space-y-1">
+                        <div className="font-bold text-rose-900 flex items-center gap-1.5">
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-rose-200/60 rounded text-rose-800">
+                            Category: {warn.complaint_category || 'Service Quality'}
+                          </span>
+                        </div>
+                        <p className="text-rose-950 font-medium italic mt-1">
+                          "{warn.complaint_text || warn.comment || 'Passenger filed a grievance regarding voyage standards.'}"
+                        </p>
+                      </div>
+
+                      {/* Admin's Official Directive Message */}
+                      <div className="bg-[#061D36] rounded-2xl p-4 sm:p-5 text-white border border-[#63B8F0]/30 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#63B8F0] font-bold uppercase tracking-wider flex items-center gap-1.5 text-[10px]">
+                            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                            Official Directive from Platform Moderation
+                          </span>
+                          <span className="text-white/60 text-[10px] font-mono">
+                            {warn.warning_sent_at || 'Recent'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-100 font-mono leading-relaxed">
+                          {warn.warning_message || 'Please investigate and resolve this passenger issue immediately. Failure to adhere to standards may affect listing status.'}
+                        </p>
+                      </div>
+
+                      {/* Action Button */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Inspect this voyage with your crew and mark the issue as resolved once addressed.
+                        </span>
+                        <button
+                          onClick={() => handleResolveComplaint(warn.id)}
+                          disabled={resolvingId === warn.id}
+                          className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm disabled:opacity-50"
+                        >
+                          {resolvingId === warn.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          )}
+                          <span>Mark Resolved & Acknowledge</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 px-4 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-extrabold text-[#102B46] text-base">Complaints Box is Empty</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    No active passenger grievances or administration compliance warnings for your vessels. When any official warning is dispatched by platform moderation, it will appear right here.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* PASSENGER REVIEWS LIST SECTION */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#082F5B]/10 pb-4">
+                <div>
+                  <h3 className="text-xl font-black text-[#102B46] font-heading tracking-tight">
+                    All Passenger Reviews & Ratings
+                  </h3>
+                  <p className="text-xs text-[#102B46]/65 mt-0.5">
+                    Individual ratings and verified feedback from guests across your ships and tours.
+                  </p>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => setReviewsFilterTab('all')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                      reviewsFilterTab === 'all'
+                        ? 'bg-[#102B46] text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    All ({reviewsData.total_count})
+                  </button>
+                  <button
+                    onClick={() => setReviewsFilterTab('warnings')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                      reviewsFilterTab === 'warnings'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>Admin Notices ({reviewsData.admin_warnings_count})</span>
+                  </button>
+                  <button
+                    onClick={() => setReviewsFilterTab('complaints')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                      reviewsFilterTab === 'complaints'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>Complaints ({reviewsData.complaints_count})</span>
+                  </button>
+                  <button
+                    onClick={() => setReviewsFilterTab('positive')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                      reviewsFilterTab === 'positive'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>Positive (4-5★)</span>
+                  </button>
+                  <button
+                    onClick={() => setReviewsFilterTab('critical')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                      reviewsFilterTab === 'critical'
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Critical (1-3★)
+                  </button>
+                </div>
+              </div>
+
+              {/* Reviews Grid */}
+              {displayedReviews.length === 0 ? (
+                <div className="bg-white rounded-3xl p-10 border border-[#082F5B]/10 text-center space-y-2">
+                  <Star className="w-10 h-10 text-slate-300 mx-auto" />
+                  <h4 className="font-bold text-[#102B46]">No Reviews Match Filter</h4>
+                  <p className="text-xs text-slate-500">There are no passenger reviews under this selection.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {displayedReviews.map((r) => {
+                    const stars = [1, 2, 3, 4, 5];
+                    return (
+                      <div
+                        key={r.id}
+                        className={`bg-white rounded-3xl p-6 border shadow-sm transition hover:shadow-md flex flex-col justify-between space-y-4 ${
+                          r.has_complaint ? 'border-amber-200 bg-amber-50/20' : 'border-[#082F5B]/10'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {/* Card Top: Vessel & Rating */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              {r.ship_image ? (
+                                <img
+                                  src={getTourImageUrl(r.ship_image)}
+                                  alt={r.ship_name}
+                                  className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                                  onError={(e: any) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                                  <Ship className="w-5 h-5 text-[#1677C8]" />
+                                </div>
+                              )}
+                              <div>
+                                <h4 className="font-black text-sm text-[#102B46]">{r.ship_name}</h4>
+                                <span className="text-[11px] text-slate-400 block">{r.ship_location || 'Coastal'}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-0.5">
+                              {stars.map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`w-4 h-4 ${
+                                    s <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Guest Feedback Text */}
+                          <p className="text-xs text-[#102B46]/85 font-medium leading-relaxed">
+                            "{r.comment || 'Passenger gave a 5-star rating with no text comment.'}"
+                          </p>
+
+                          {/* If Passenger Filed a Grievance */}
+                          {r.has_complaint && (
+                            <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl text-xs space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider">
+                                  Complaint: {r.complaint_category || 'Service Issue'}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                  r.complaint_status === 'RESOLVED'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : r.complaint_status === 'WARNING_SENT'
+                                    ? 'bg-rose-200 text-rose-900'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {r.complaint_status === 'RESOLVED' ? 'Resolved' : r.complaint_status === 'WARNING_SENT' ? 'Warning Issued' : 'Pending Review'}
+                                </span>
+                              </div>
+                              <p className="text-rose-900 text-[11px] italic">
+                                {r.complaint_text}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Bottom Meta */}
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="font-semibold text-[#102B46]">{r.author || r.user}</span>
+                          <span>{r.date || r.created_at || 'Recent Voyage'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 8. SHIP OWNER / OPERATOR PROFILE TAB */}
       {activeTab === 'profile' && (

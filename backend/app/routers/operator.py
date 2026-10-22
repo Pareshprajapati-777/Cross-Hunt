@@ -15,6 +15,7 @@ from backend.app.models.user import User
 from backend.app.models.cross import Cross, ShipExtra
 from backend.app.models.tour import PublicTour
 from backend.app.models.booking import Booking
+from backend.app.models.offer import CrossReview
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
 from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
@@ -71,6 +72,13 @@ def get_operator_dashboard(
     owner_payout_dec = round(earnings_dec * Decimal('0.85'), 2)
     platform_comm_dec = round(earnings_dec * Decimal('0.15'), 2)
 
+    # Operator Reviews & Complaints
+    if is_admin_mode:
+        owner_reviews = db.query(CrossReview).all()
+    else:
+        v_ids = [v.id for v in vessels]
+        owner_reviews = db.query(CrossReview).filter(CrossReview.cross_id.in_(v_ids)).all() if v_ids else []
+
     stats = {
         'total_ships': len(serialized_ships),
         'total_vessels': len(serialized_ships),
@@ -92,6 +100,9 @@ def get_operator_dashboard(
         'commission_rate': 0.15,
         'private_revenue': float(private_rev),
         'tour_revenue': float(tour_rev),
+        'reviews_count': len(owner_reviews),
+        'complaints_count': sum(1 for r in owner_reviews if r.complaint_status == 'WARNING_SENT' or (r.has_complaint and r.complaint_status != 'RESOLVED')),
+        'admin_warnings_count': sum(1 for r in owner_reviews if r.complaint_status == 'WARNING_SENT' or (bool(r.warning_message) and r.complaint_status != 'RESOLVED')),
     }
 
     # Monthly Revenue & Bookings Trend
@@ -880,3 +891,108 @@ def operator_booking_action(
         'message': f'Booking #{booking_id} status updated to {booking.status}.',
         'booking': serialize_booking(booking)
     }
+
+
+@router.get("/reviews/")
+@router.get("/reviews")
+def get_operator_reviews(
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    has_own_ships = db.query(Cross).filter(Cross.owner_id == current_user.id).first() is not None
+    is_admin_mode = (current_user.role in ['ADMIN'] or current_user.is_superuser) and not has_own_ships
+
+    review_opts = (
+        joinedload(CrossReview.cross),
+        joinedload(CrossReview.user),
+        joinedload(CrossReview.booking),
+    )
+
+    if is_admin_mode:
+        reviews = (
+            db.query(CrossReview)
+            .options(*review_opts)
+            .order_by(desc(CrossReview.created_at), desc(CrossReview.id))
+            .all()
+        )
+    else:
+        owned_ship_ids = [s.id for s in db.query(Cross.id).filter(Cross.owner_id == current_user.id).all()]
+        if not owned_ship_ids:
+            return {
+                "success": True,
+                "reviews": [],
+                "complaints": [],
+                "admin_warnings": [],
+                "total_count": 0,
+                "complaints_count": 0,
+                "admin_warnings_count": 0,
+                "avg_rating": 5.0,
+            }
+        reviews = (
+            db.query(CrossReview)
+            .filter(CrossReview.cross_id.in_(owned_ship_ids))
+            .options(*review_opts)
+            .order_by(desc(CrossReview.created_at), desc(CrossReview.id))
+            .all()
+        )
+
+    serialized = []
+    for r in reviews:
+        item = r.to_dict()
+        if r.cross:
+            item["ship_image"] = r.cross.display_image_url
+            item["ship_category"] = r.cross.effective_category or "Cruiser"
+            item["ship_location"] = r.cross.location or "Mumbai"
+        else:
+            item["ship_image"] = ""
+            item["ship_category"] = "Cruiser"
+            item["ship_location"] = "Mumbai"
+
+        if r.booking:
+            item["booking_id"] = r.booking.booking_id
+            item["booking_type"] = r.booking.booking_type
+            item["travel_date"] = r.booking.booking_date.strftime("%Y-%m-%d") if r.booking.booking_date else ""
+        serialized.append(item)
+
+    complaints = [
+        r for r in serialized
+        if r.get("has_complaint") or r.get("warning_message") or r.get("complaint_status") in ["WARNING_SENT", "RESOLVED", "PENDING"]
+    ]
+    admin_warnings = [
+        r for r in serialized
+        if r.get("complaint_status") == "WARNING_SENT" or (bool(r.get("warning_message")) and r.get("complaint_status") != "RESOLVED")
+    ]
+
+    avg_rating = round(sum(r["rating"] for r in serialized) / len(serialized), 1) if serialized else 5.0
+
+    return {
+        "success": True,
+        "reviews": serialized,
+        "complaints": complaints,
+        "admin_warnings": admin_warnings,
+        "total_count": len(serialized),
+        "complaints_count": len(complaints),
+        "admin_warnings_count": len(admin_warnings),
+        "avg_rating": avg_rating,
+    }
+
+
+@router.post("/reviews/{review_id}/resolve/")
+@router.post("/reviews/{review_id}/resolve")
+def resolve_operator_complaint(
+    review_id: int,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Review or complaint not found.")
+
+    if not (current_user.role in ['ADMIN'] or current_user.is_superuser):
+        if not r.cross or r.cross.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Unauthorized to resolve complaints for this vessel.")
+
+    r.complaint_status = "RESOLVED"
+    db.commit()
+    return {"success": True, "message": "Complaint marked as resolved & addressed."}
+
