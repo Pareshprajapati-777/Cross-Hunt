@@ -1061,12 +1061,14 @@ async def admin_ship_action(
 
     if action == 'approve':
         ship.is_approved = True
+        ship.is_active = True
         db.commit()
-        return {'success': True, 'message': f'Ship {ship.name} approved for public booking.'}
-    elif action == 'revoke_approval':
-        ship.is_approved = False
+        return {'success': True, 'is_approved': True, 'is_active': True, 'message': f'Ship {ship.name} approved for public booking.'}
+    elif action in ['revoke', 'revoke_approval']:
+        # Revoke must NOT change is_approved; it should set is_active to False (unactive)
+        ship.is_active = False
         db.commit()
-        return {'success': True, 'message': f'Ship {ship.name} approval revoked.'}
+        return {'success': True, 'is_approved': ship.is_approved, 'is_active': False, 'message': f'Ship {ship.name} revoked and set to inactive.'}
     elif action == 'toggle_active':
         ship.is_active = not ship.is_active
         db.commit()

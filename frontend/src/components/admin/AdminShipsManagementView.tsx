@@ -111,15 +111,29 @@ export const AdminShipsManagementView: React.FC = () => {
     }
   };
 
-  const handleToggleApprove = async (ship: any) => {
+  const handleRevokeOrApprove = async (ship: any) => {
     try {
-      const action = ship.is_approved ? 'revoke_approval' : 'approve';
-      await adminShipAction(ship.id, action);
-      setShips((prev) =>
-        prev.map((s) => (s.id === ship.id ? { ...s, is_approved: !s.is_approved } : s))
-      );
+      if (!ship.is_approved) {
+        // Approve ship and mark it active
+        await adminShipAction(ship.id, 'approve');
+        setShips((prev) =>
+          prev.map((s) => (s.id === ship.id ? { ...s, is_approved: true, is_active: true } : s))
+        );
+      } else if (ship.is_active) {
+        // Revoke hone par approval me changes nahi, active me unactive hona chahiye!
+        await adminShipAction(ship.id, 'revoke');
+        setShips((prev) =>
+          prev.map((s) => (s.id === ship.id ? { ...s, is_active: false } : s))
+        );
+      } else {
+        // Vessel is approved but inactive, clicking reactivates it
+        await adminShipAction(ship.id, 'toggle_active');
+        setShips((prev) =>
+          prev.map((s) => (s.id === ship.id ? { ...s, is_active: true } : s))
+        );
+      }
     } catch (err: any) {
-      alert(err.message || 'Failed to update approval');
+      alert(err.message || 'Failed to update vessel status');
     }
   };
 
@@ -401,17 +415,27 @@ export const AdminShipsManagementView: React.FC = () => {
                       </button>
 
                       {/* Approve / Revoke */}
-                      <button
-                        onClick={() => handleToggleApprove(s)}
-                        className={`px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border ${
-                          s.is_approved
-                            ? 'bg-amber-50 text-amber-800 border-amber-300'
-                            : 'bg-emerald-500 text-white'
-                        }`}
-                        title={s.is_approved ? 'Revoke Approval' : 'Approve Vessel'}
-                      >
-                        {s.is_approved ? 'Revoke' : 'Approve'}
-                      </button>
+                      {!s.is_approved ? (
+                        <button
+                          onClick={() => handleRevokeOrApprove(s)}
+                          className="px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border bg-emerald-500 text-white hover:bg-emerald-600"
+                          title="Approve Vessel"
+                        >
+                          Approve
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleRevokeOrApprove(s)}
+                          className={`px-2 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition border ${
+                            s.is_active
+                              ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                              : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                          }`}
+                          title={s.is_active ? 'Revoke Vessel (Set Inactive)' : 'Vessel Revoked (Inactive) - Click to Reactivate'}
+                        >
+                          {s.is_active ? 'Revoke' : 'Revoked'}
+                        </button>
+                      )}
 
                       {/* Activate / Deactivate */}
                       <button

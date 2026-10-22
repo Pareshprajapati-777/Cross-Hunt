@@ -253,7 +253,7 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleShipAction = async (shipId: number, action: 'approve' | 'toggle_active' | 'delete') => {
+  const handleShipAction = async (shipId: number, action: 'approve' | 'revoke' | 'revoke_approval' | 'toggle_active' | 'delete') => {
     if (action === 'delete' && !window.confirm('Delete this vessel permanently?')) return;
     try {
       await adminShipAction(shipId, action);

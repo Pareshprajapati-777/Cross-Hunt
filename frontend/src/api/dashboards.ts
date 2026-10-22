@@ -379,7 +379,10 @@ export async function getAdminShips(params?: {
   return apiRequest(`/api/admin/ships/${buildQueryParams(params)}`);
 }
 
-export async function adminShipAction(shipId: number, action: 'approve' | 'revoke_approval' | 'toggle_active' | 'delete'): Promise<{ success: boolean; message: string }> {
+export async function adminShipAction(
+  shipId: number,
+  action: 'approve' | 'revoke_approval' | 'revoke' | 'toggle_active' | 'delete'
+): Promise<{ success: boolean; message: string; is_active?: boolean; is_approved?: boolean }> {
   return apiRequest('/api/admin/ships/', {
     method: 'POST',
     body: JSON.stringify({ ship_id: shipId, action }),

@@ -162,3 +162,46 @@ def test_new_items_sorted_at_top(client):
     db.commit()
     db.close()
 
+
+def test_ship_revoke_action_deactivates_without_altering_approval(client):
+    client.post("/api/auth/login/", json={"username": "admin", "password": "Admin@12345"})
+
+    # 1. Create a test ship
+    ship_res = client.post("/api/admin/ships/", json={
+        "action": "create_ship",
+        "name": "Revoke Test Vessel",
+        "category": "YACHT",
+        "location": "Goa",
+        "price": 20000,
+        "capacity": 10
+    })
+    assert ship_res.status_code == 200
+    ship_id = ship_res.json()["ship"]["id"]
+
+    from backend.app.database.session import SessionLocal
+    from backend.app.models.cross import Cross
+    db = SessionLocal()
+    s = db.query(Cross).filter(Cross.id == ship_id).first()
+    s.is_approved = True
+    s.is_active = True
+    db.commit()
+    db.close()
+
+    # 2. Call action "revoke"
+    revoke_res = client.post("/api/admin/ships/", json={"ship_id": ship_id, "action": "revoke"})
+    assert revoke_res.status_code == 200
+    assert revoke_res.json()["is_active"] is False
+    assert revoke_res.json()["is_approved"] is True
+
+    db = SessionLocal()
+    s = db.query(Cross).filter(Cross.id == ship_id).first()
+    # Approval must NOT change (stays True)
+    assert s.is_approved is True
+    # Active must become False (unactive)
+    assert s.is_active is False
+
+    # 3. Clean up
+    db.delete(s)
+    db.commit()
+    db.close()
+
