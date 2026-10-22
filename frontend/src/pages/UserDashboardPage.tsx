@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { getMyBookings, cancelBooking, submitReview, updateBookingWhatsAppOpt, sendTestWhatsAppReminder } from '../api/bookings';
+import { getMyBookings, cancelBooking, submitReview, updateBookingWhatsAppOpt } from '../api/bookings';
 import { getCruises } from '../api/cruises';
 import { getTours } from '../api/tours';
 import { getActiveOffers } from '../api/offers';
@@ -189,8 +189,6 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     }
   };
 
-  const [testingWaId, setTestingWaId] = useState<string | null>(null);
-
   const handleToggleWhatsAppOpt = async (booking: Booking) => {
     try {
       const nextOpt = !booking.whatsapp_reminder_opt_in;
@@ -199,22 +197,6 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       fetchBookings();
     } catch (err: any) {
       alert(err.message || 'Failed to update WhatsApp preferences.');
-    }
-  };
-
-  const handleSendTestWhatsApp = async (bookingId: string) => {
-    setTestingWaId(bookingId);
-    try {
-      const res = await sendTestWhatsAppReminder(bookingId);
-      if (res.wa_link) {
-        window.open(res.wa_link, '_blank');
-      }
-      alert(res.message);
-      fetchBookings();
-    } catch (err: any) {
-      alert(err.message || 'Failed to dispatch WhatsApp notification.');
-    } finally {
-      setTestingWaId(null);
     }
   };
 
@@ -986,20 +968,6 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                                 className="px-3 py-1 rounded-full bg-[#F8FCFF] border border-[#082F5B]/15 hover:bg-[#EAF4FB] text-[11px] font-bold text-[#102B46] transition cursor-pointer"
                               >
                                 {b.whatsapp_reminder_opt_in ? 'Opt Out' : 'Opt In'}
-                              </button>
-                            )}
-
-                            {/* Instant Test Dispatch */}
-                            {(b.customer_whatsapp || user?.phone) && (
-                              <button
-                                type="button"
-                                disabled={testingWaId === b.booking_id}
-                                onClick={() => handleSendTestWhatsApp(b.booking_id)}
-                                className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 hover:bg-emerald-600 hover:text-white text-[11px] font-bold text-emerald-700 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                title="Open official trip reminder on WhatsApp"
-                              >
-                                <MessageSquare className="w-3 h-3" />
-                                <span>{testingWaId === b.booking_id ? 'Opening...' : 'Send to WhatsApp'}</span>
                               </button>
                             )}
                           </div>
