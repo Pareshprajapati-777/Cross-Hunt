@@ -190,8 +190,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500 transition"
                 >
-                  <option value="USER">Guest Traveler / Event Host</option>
-                  <option value="CROSS_OWNER">Boat / Cruise Operator</option>
+                  <option value="USER">Travel User</option>
+                  <option value="CROSS_OWNER">Ship Owner</option>
                 </select>
               </div>
             </>
