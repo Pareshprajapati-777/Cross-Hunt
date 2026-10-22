@@ -162,3 +162,41 @@ def test_forgot_and_reset_password(client):
         db.commit()
     db.close()
 
+
+def test_admin_password_reset_rejects_old_password(client):
+    # Admin resets password to a new password
+    r_reset = client.post("/api/auth/reset-password/", json={
+        "username_or_email": "admin",
+        "new_password": "AdminNewPassword@2026"
+    })
+    assert r_reset.status_code == 200
+
+    # Old passwords MUST be rejected
+    r_old1 = client.post("/api/auth/login/", json={
+        "username": "admin",
+        "password": "Admin@12345"
+    })
+    assert r_old1.status_code == 400
+
+    r_old2 = client.post("/api/auth/login/", json={
+        "username": "admin",
+        "password": "admin123"
+    })
+    assert r_old2.status_code == 400
+
+    # New password MUST succeed
+    r_new = client.post("/api/auth/login/", json={
+        "username": "admin",
+        "password": "AdminNewPassword@2026"
+    })
+    assert r_new.status_code == 200
+    assert r_new.json()["user"]["username"] == "admin"
+
+    # Restore admin password to Admin@12345
+    r_restore = client.post("/api/auth/reset-password/", json={
+        "username_or_email": "admin",
+        "new_password": "Admin@12345"
+    })
+    assert r_restore.status_code == 200
+
+
