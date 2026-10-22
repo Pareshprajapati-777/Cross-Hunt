@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
+import { getTourImageUrl } from '../utils/images';
 import { Link } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
@@ -1721,53 +1722,89 @@ export const OperatorDashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {data?.my_tours?.map((tour) => (
-              <div key={tour.id} className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all p-6 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 text-[10px] font-black uppercase tracking-wider">
-                    {tour.ship_name}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black uppercase tracking-wider">
-                    {tour.remaining_capacity} Seats Remaining
-                  </span>
-                </div>
+            {data?.my_tours?.map((tour) => {
+              const shipImg = getTourImageUrl(tour.ship_image || tour.tour_image || tour.image_url);
+              return (
+                <div
+                  key={tour.id}
+                  className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all overflow-hidden flex flex-col justify-between group"
+                >
+                  {/* Ship / Tour Vessel Cover Image */}
+                  <div className="relative h-48 sm:h-52 w-full bg-slate-100 overflow-hidden">
+                    <img
+                      src={shipImg}
+                      alt={tour.ship_name || tour.tour_title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e: any) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#082F5B]/85 via-black/15 to-black/30" />
 
-                <div>
-                  <h3 className="text-xl font-black text-[#102B46] font-heading tracking-tight">{tour.tour_title}</h3>
-                  <p className="text-xs text-[#102B46]/70 mt-1 font-medium">
-                    {tour.departure_port} → {tour.destination} ({tour.departure_date})
-                  </p>
-                </div>
+                    {/* Floating Top Badges */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#082F5B] border border-white/30 text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                        <Ship className="w-3 h-3 text-[#1677C8]" />
+                        <span>{tour.ship_name}</span>
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span>{tour.remaining_capacity} Seats Remaining</span>
+                      </span>
+                    </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-[#EAF4FB]/60 p-3.5 rounded-2xl border border-[#082F5B]/10">
-                  <div>
-                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Duration</span>
-                    <span className="font-black text-[#102B46] mt-0.5 block">{tour.duration_display || `${tour.duration_days} Days`}</span>
+                    {/* Route Info Overlay at Bottom of Image */}
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <span className="text-xs font-bold text-white/95 flex items-center gap-1.5 drop-shadow-sm">
+                        <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span className="line-clamp-1">{tour.departure_port} → {tour.destination}</span>
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Adult Rate</span>
-                    <span className="font-black text-[#1677C8] mt-0.5 block">{formatINR(tour.adult_price)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Booked / Total</span>
-                    <span className="font-black text-[#102B46] mt-0.5 block">{tour.booked_capacity} / {tour.total_capacity}</span>
-                  </div>
-                </div>
 
-                <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={() => {
-                      setSelectedTourIdForManifest(tour.id);
-                      setActiveTab('passengers');
-                    }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#082F5B] hover:bg-[#1677C8] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    View Passenger List
-                  </button>
+                  {/* Card Content Details */}
+                  <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1.5">
+                      <h3 className="text-xl font-black text-[#102B46] font-heading tracking-tight leading-snug">
+                        {tour.tour_title}
+                      </h3>
+                      <p className="text-xs text-[#102B46]/70 font-medium flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-[#1677C8] shrink-0" />
+                        <span>Departure Date: <strong className="text-[#102B46]">{tour.departure_date}</strong></span>
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs bg-[#EAF4FB]/60 p-3.5 rounded-2xl border border-[#082F5B]/10">
+                      <div>
+                        <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Duration</span>
+                        <span className="font-black text-[#102B46] mt-0.5 block">{tour.duration_display || `${tour.duration_days} Days`}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Adult Rate</span>
+                        <span className="font-black text-[#1677C8] mt-0.5 block">{formatINR(tour.adult_price)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Booked / Total</span>
+                        <span className="font-black text-[#102B46] mt-0.5 block">{tour.booked_capacity} / {tour.total_capacity}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        onClick={() => {
+                          setSelectedTourIdForManifest(tour.id);
+                          setActiveTab('passengers');
+                        }}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#082F5B] hover:bg-[#1677C8] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>View Passenger List</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
