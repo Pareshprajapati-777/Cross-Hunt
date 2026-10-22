@@ -83,7 +83,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   // Bookings state
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [bookingFilter, setBookingFilter] = useState<'ALL' | 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ALL');
+  const [bookingFilter, setBookingFilter] = useState<'ALL' | 'UPCOMING' | 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'CANCELLED'>('ALL');
   const [bookingSearch, setBookingSearch] = useState<string>('');
 
   // Recommendation & Discovery Data
@@ -276,6 +276,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const activeBookings = bookings.filter(
     (b) => b.status === 'CONFIRMED' || b.tracking_status === 'BOARDING' || b.tracking_status === 'DEPARTED'
   );
+  const pendingBookings = bookings.filter((b) => b.status === 'PENDING');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.tracking_status === 'COMPLETED');
   const cancelledBookings = bookings.filter((b) => b.status === 'CANCELLED');
   const publicTickets = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
@@ -380,6 +381,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       case 'ACTIVE':
         list = activeBookings;
         break;
+      case 'PENDING':
+        list = pendingBookings;
+        break;
       case 'COMPLETED':
         list = completedBookings;
         break;
@@ -480,23 +484,62 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
 
         {/* Overview KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-[#0284c7]/15 shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Upcoming</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubTab('bookings');
+              setBookingFilter('UPCOMING');
+            }}
+            className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-sky-50/60 border border-[#0284c7]/15 hover:border-sky-300 shadow-sm transition cursor-pointer text-center group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-500 group-hover:text-sky-700 block tracking-wider">Upcoming</span>
             <span className="font-mono-numbers text-2xl font-black text-[#051833]">{upcomingBookings.length}</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-[#0284c7]/15 shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Active</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubTab('bookings');
+              setBookingFilter('ACTIVE');
+            }}
+            className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-sky-50/60 border border-[#0284c7]/15 hover:border-sky-300 shadow-sm transition cursor-pointer text-center group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-500 group-hover:text-sky-700 block tracking-wider">Active</span>
             <span className="font-mono-numbers text-2xl font-black text-[#0284c7]">{activeBookings.length}</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-[#0284c7]/15 shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Completed</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubTab('bookings');
+              setBookingFilter('PENDING');
+            }}
+            className="p-3.5 rounded-2xl bg-amber-50/80 hover:bg-amber-100/70 border border-amber-200/80 hover:border-amber-300 shadow-sm transition cursor-pointer text-center group"
+          >
+            <span className="text-[10px] uppercase font-bold text-amber-700 block tracking-wider">Pending</span>
+            <span className="font-mono-numbers text-2xl font-black text-amber-700">{pendingBookings.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubTab('bookings');
+              setBookingFilter('COMPLETED');
+            }}
+            className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-emerald-50/60 border border-[#0284c7]/15 hover:border-emerald-300 shadow-sm transition cursor-pointer text-center group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-500 group-hover:text-emerald-700 block tracking-wider">Completed</span>
             <span className="font-mono-numbers text-2xl font-black text-emerald-600">{completedBookings.length}</span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-[#0284c7]/15 shadow-sm">
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubTab('bookings');
+              setBookingFilter('ALL');
+            }}
+            className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-slate-100 border border-[#0284c7]/15 shadow-sm transition cursor-pointer text-center group"
+          >
             <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total</span>
             <span className="font-mono-numbers text-2xl font-black text-[#051833]">{bookings.length}</span>
-          </div>
+          </button>
           <button
             type="button"
             onClick={() => setActiveSubTab('favorites')}
@@ -868,6 +911,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 { id: 'ALL', label: `All Bookings (${bookings.length})` },
                 { id: 'UPCOMING', label: `Upcoming (${upcomingBookings.length})` },
                 { id: 'ACTIVE', label: `Active (${activeBookings.length})` },
+                { id: 'PENDING', label: `Pending (${pendingBookings.length})` },
                 { id: 'COMPLETED', label: `Completed (${completedBookings.length})` },
                 { id: 'CANCELLED', label: `Cancelled (${cancelledBookings.length})` },
               ].map((f) => (
