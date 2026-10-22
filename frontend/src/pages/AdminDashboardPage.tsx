@@ -934,14 +934,6 @@ export const AdminDashboardPage: React.FC = () => {
                         >
                           Invoice
                         </button>
-                        {b.status === 'PENDING' && (
-                          <button
-                            onClick={() => handleBookingStatus(b.booking_id, 'CONFIRMED')}
-                            className="px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer shadow-sm transition-all"
-                          >
-                            Confirm
-                          </button>
-                        )}
                       </td>
                     </tr>
                   ))}
