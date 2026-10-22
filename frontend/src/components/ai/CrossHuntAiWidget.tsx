@@ -4,9 +4,38 @@ import { CrossHuntChatModal } from './CrossHuntChatModal';
 import { Sparkles, MessageCircle, X } from 'lucide-react';
 
 export const CrossHuntAiWidget: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('cross_hunt_ai_open') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isMinimized, setIsMinimized] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('cross_hunt_ai_minimized') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showTooltip, setShowTooltip] = useState(false);
+
+  // Sync state to sessionStorage for seamless resume across navigation / back button
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('cross_hunt_ai_open', isOpen ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('cross_hunt_ai_minimized', isMinimized ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
+  }, [isMinimized]);
 
   // Position state for movable desktop dragging (defaults to bottom-right)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -83,10 +112,15 @@ export const CrossHuntAiWidget: React.FC = () => {
       localStorage.setItem('cross_hunt_dolphin_pos', JSON.stringify(position));
     }
 
-    // If user clicked without dragging, toggle chat open
+    // If user clicked without dragging, toggle chat open / resume
     if (!hasMovedRef.current) {
-      setIsOpen((prev) => !prev);
-      setIsMinimized(false);
+      if (isMinimized) {
+        setIsMinimized(false);
+        setIsOpen(true);
+      } else {
+        setIsOpen((prev) => !prev);
+        setIsMinimized(false);
+      }
       setShowTooltip(false);
     }
   };
@@ -95,6 +129,21 @@ export const CrossHuntAiWidget: React.FC = () => {
     setIsOpen(true);
     setIsMinimized(false);
     setShowTooltip(false);
+  };
+
+  const handleMinimizeChat = () => {
+    setIsMinimized(true);
+  };
+
+  const handleResumeChat = () => {
+    setIsOpen(true);
+    setIsMinimized(false);
+    setShowTooltip(false);
+  };
+
+  const handleCloseChat = () => {
+    setIsOpen(false);
+    setIsMinimized(false);
   };
 
   return (
@@ -177,8 +226,9 @@ export const CrossHuntAiWidget: React.FC = () => {
       {/* ============================================================== */}
       <CrossHuntChatModal
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        onMinimize={() => setIsMinimized(true)}
+        onClose={handleCloseChat}
+        onMinimize={handleMinimizeChat}
+        onResume={handleResumeChat}
         isMinimized={isMinimized}
       />
     </>

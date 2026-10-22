@@ -39,6 +39,7 @@ interface CrossHuntChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMinimize: () => void;
+  onResume?: () => void;
   isMinimized: boolean;
 }
 
@@ -55,6 +56,7 @@ export const CrossHuntChatModal: React.FC<CrossHuntChatModalProps> = ({
   isOpen,
   onClose,
   onMinimize,
+  onResume,
   isMinimized,
 }) => {
   const navigate = useNavigate();
@@ -327,6 +329,10 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
       if (action.url.startsWith('http')) {
         window.open(action.url, '_blank');
       } else {
+        // Auto-minimize when clicking a route so user sees destination page while keeping chat easily resumable
+        if (onMinimize) {
+          onMinimize();
+        }
         navigate(action.url);
       }
     }
@@ -362,22 +368,31 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
 
   // Minimized Floating Pill view
   if (isMinimized) {
+    const handleResume = onResume || onMinimize;
     return (
       <div
-        onClick={onMinimize}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-gradient-to-r from-sky-600 to-blue-700 text-white px-4 py-3 rounded-full shadow-2xl hover:shadow-sky-500/30 cursor-pointer border border-sky-400/40 hover:scale-105 transition-all duration-300 group"
+        role="button"
+        tabIndex={0}
+        onClick={handleResume}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleResume();
+          }
+        }}
+        className="fixed bottom-5 right-5 z-[60] flex items-center gap-3 bg-gradient-to-r from-sky-600 to-blue-700 text-white px-4 py-3 rounded-full shadow-2xl hover:shadow-sky-500/40 cursor-pointer border border-sky-400/40 hover:scale-105 active:scale-95 transition-all duration-300 group select-none"
       >
-        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white/20 p-0.5">
+        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white/20 p-0.5 pointer-events-none">
           <img src="/dolphin_icon.png" alt="Dolphin" className="w-full h-full object-contain" />
           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full animate-ping" />
         </div>
-        <div className="text-left">
+        <div className="text-left pointer-events-none">
           <div className="text-xs font-bold leading-none flex items-center gap-1.5">
             Cross-Hunt AI 🐬
           </div>
           <div className="text-[10px] text-sky-100 font-medium">Click to resume chat</div>
         </div>
-        <Maximize2 className="w-4 h-4 ml-1 text-sky-200 group-hover:text-white" />
+        <Maximize2 className="w-4 h-4 ml-1 text-sky-200 group-hover:text-white pointer-events-none" />
       </div>
     );
   }
