@@ -17,7 +17,8 @@ import {
   Copy,
   Check,
   Globe,
-  Settings
+  Settings,
+  Ship
 } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 
@@ -110,15 +111,10 @@ export const TicketPass: React.FC<TicketPassProps> = ({
         {/* Top Header Strip - Midnight Oceanic Navy to Deep Ocean */}
         <div className="bg-gradient-to-r from-[#030d1c] via-[#051833] to-[#0a2548] p-6 text-[#fff8dc] flex items-center justify-between relative border-b border-[#38bdf8]/20">
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-full bg-[#030d1c] border-2 border-[#38bdf8]/40 flex items-center justify-center p-1.5 overflow-hidden shadow-sm shrink-0">
-              <img
-                src="/static/images/logo_icon.png"
-                alt="Emblem"
-                className="w-full h-full object-contain rounded-full"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                }}
-              />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0369a1] to-[#fff8dc] p-[2px] shadow-sm flex items-center justify-center shrink-0">
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                <Ship className="w-6 h-6 text-[#0284c7]" />
+              </div>
             </div>
             <div>
               <span className="text-[10px] tracking-widest font-mono uppercase text-[#38bdf8] block font-bold">

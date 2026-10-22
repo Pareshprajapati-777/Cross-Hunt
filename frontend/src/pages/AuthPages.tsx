@@ -11,7 +11,8 @@ import {
   EyeOff,
   KeyRound,
   CheckCircle2,
-  ChevronLeft
+  ChevronLeft,
+  Ship
 } from 'lucide-react';
 
 export type AuthMode = 'login' | 'register' | 'forgot';
@@ -150,22 +151,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl p-8 border-2 border-sky-400 shadow-[0_0_25px_rgba(14,165,233,0.35),0_10px_40px_rgba(2,132,199,0.15)] ring-1 ring-sky-300/50">
           {/* Emblem & Title */}
           <div className="text-center mb-8 space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-full bg-white border-2 border-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.4)] flex items-center justify-center p-2 overflow-hidden">
-              {mode === 'forgot' ? (
-                <KeyRound className="w-7 h-7 text-sky-600" />
-              ) : (
-                <>
-                  <img
-                    src="/static/images/logo_icon.png"
-                    alt="Cross Hunt Emblem"
-                    className="w-full h-full object-contain rounded-full filter drop-shadow"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  <Anchor className="w-6 h-6 text-sky-600" />
-                </>
-              )}
+            <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0369a1] to-[#fff8dc] p-[2.5px] shadow-[0_0_20px_rgba(14,165,233,0.35)] flex items-center justify-center">
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                {mode === 'forgot' ? (
+                  <KeyRound className="w-7 h-7 text-[#0284c7]" />
+                ) : (
+                  <Ship className="w-8 h-8 text-[#0284c7]" />
+                )}
+              </div>
             </div>
 
             <h1 className="text-2xl font-display font-extrabold text-slate-900 tracking-tight">
