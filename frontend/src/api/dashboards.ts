@@ -520,6 +520,8 @@ export interface PlatformNotificationItem {
   is_read: boolean;
   recipients_count: number;
   created_at: string;
+  promo_code?: string | null;
+  offer_active?: boolean;
 }
 
 export async function getAdminNotifications(): Promise<{
@@ -543,7 +545,13 @@ export async function createAdminNotification(payload: {
   target_user_id?: number;
   action_link?: string;
   sender_name?: string;
-}): Promise<{ success: boolean; message: string; notification?: any }> {
+  promo_code?: string;
+  discount_type?: 'PERCENTAGE' | 'FLAT';
+  discount_value?: number;
+  min_booking_amount?: number;
+  valid_days?: number;
+  auto_create_offer?: boolean;
+}): Promise<{ success: boolean; message: string; notification?: any; offer?: any }> {
   return apiRequest('/api/admin/notifications/', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -559,6 +567,7 @@ export async function getUserNotifications(): Promise<{
     action_link: string;
     sender_name: string;
     is_read: boolean;
+    promo_code?: string | null;
     created_at: string;
   }>;
   unread_count: number;

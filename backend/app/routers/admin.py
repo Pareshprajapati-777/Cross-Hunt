@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 import json
+import re
 
 from backend.app.database.session import get_db
 from backend.app.dependencies.auth import get_current_user, require_admin
@@ -1722,6 +1723,16 @@ def list_admin_notifications(
     data = []
     for n in notifications:
         u_name = n.target_user.full_name or n.target_user.username if n.target_user else 'All in Audience'
+        # Detect promo code if any
+        code_match = re.search(r'(?:coupon\s+code|promo\s+code|promo\s+voucher|voucher|coupon|code)\s*[:\-]?\s*([A-Z0-9_-]{4,20})', f"{n.title} {n.message}", re.IGNORECASE)
+        p_code = code_match.group(1).upper() if code_match else None
+        
+        # Check if offer is active in db
+        offer_active = False
+        if p_code:
+            existing = db.query(Offer).filter(Offer.code.ilike(p_code), Offer.is_active == True).first()
+            offer_active = bool(existing)
+
         data.append({
             'id': n.id,
             'title': n.title,
@@ -1734,6 +1745,8 @@ def list_admin_notifications(
             'sender_name': n.sender_name,
             'is_read': n.is_read,
             'recipients_count': n.recipients_count,
+            'promo_code': p_code,
+            'offer_active': offer_active,
             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M') if n.created_at else ''
         })
 
@@ -1771,8 +1784,88 @@ async def create_admin_notification(
     target_user_id = data.get('target_user_id')
     sender_name = data.get('sender_name', 'Cross Hunt Executive Admin').strip()
 
+    # Coupon & Promo Offer Parameters
+    promo_code = data.get('promo_code', '').strip().upper()
+    discount_val = data.get('discount_value')
+    discount_type = data.get('discount_type', 'PERCENTAGE').strip().upper()
+    min_booking_amt = data.get('min_booking_amount', 0)
+    valid_days = data.get('valid_days', 60)
+    auto_create_offer = data.get('auto_create_offer', True)
+
     if not title or not message:
         raise HTTPException(status_code=400, detail="Notification title and message content are required.")
+
+    # If promo code not explicitly passed, attempt regex detection from title + message
+    if not promo_code:
+        code_match = re.search(r'(?:coupon\s+code|promo\s+code|promo\s+voucher|voucher|coupon|code)\s*[:\-]?\s*([A-Z0-9_-]{4,20})', f"{title} {message}", re.IGNORECASE)
+        if code_match:
+            promo_code = code_match.group(1).upper()
+
+    created_offer = None
+    if promo_code and auto_create_offer:
+        # Determine discount value if not provided
+        if discount_val is None or str(discount_val).strip() == '':
+            pct_m = re.search(r'(\d{1,2})%\s*(?:off|discount|instant)?', f"{title} {message}", re.IGNORECASE)
+            if pct_m:
+                discount_val = float(pct_m.group(1))
+                discount_type = 'PERCENTAGE'
+            else:
+                flat_m = re.search(r'(?:flat\s*|instant\s*)?[₹\s]*([0-9,]+)\s*(?:off|discount)', f"{title} {message}", re.IGNORECASE)
+                if flat_m:
+                    try:
+                        discount_val = float(flat_m.group(1).replace(',', ''))
+                        discount_type = 'FLAT'
+                    except ValueError:
+                        discount_val = 15.0
+                else:
+                    discount_val = 15.0
+        else:
+            try:
+                discount_val = float(discount_val)
+            except (ValueError, TypeError):
+                discount_val = 15.0
+
+        try:
+            min_amt = Decimal(str(min_booking_amt or 0.0))
+        except Exception:
+            min_amt = Decimal("0.00")
+
+        today = date.today()
+        try:
+            d_days = int(valid_days) if valid_days else 60
+        except Exception:
+            d_days = 60
+        expiry_date = today + timedelta(days=max(7, d_days))
+
+        existing_offer = db.query(Offer).filter(Offer.code.ilike(promo_code)).first()
+        if existing_offer:
+            existing_offer.title = title[:120] if title else existing_offer.title
+            existing_offer.description = message or existing_offer.description
+            existing_offer.discount_type = discount_type if discount_type in ['PERCENTAGE', 'FLAT'] else 'PERCENTAGE'
+            existing_offer.discount_value = Decimal(str(round(discount_val, 2)))
+            existing_offer.min_booking_amount = min_amt
+            if existing_offer.valid_to < today:
+                existing_offer.valid_to = expiry_date
+            existing_offer.is_active = True
+            created_offer = existing_offer
+        else:
+            new_offer = Offer(
+                code=promo_code,
+                title=title[:120] if title else f"{promo_code} Special Offer",
+                description=message or f"Promotional offer coupon {promo_code}",
+                discount_type=discount_type if discount_type in ['PERCENTAGE', 'FLAT'] else 'PERCENTAGE',
+                discount_value=Decimal(str(round(discount_val, 2))),
+                min_booking_amount=min_amt,
+                valid_from=today,
+                valid_to=expiry_date,
+                is_active=True
+            )
+            db.add(new_offer)
+            created_offer = new_offer
+        db.flush()
+
+    if not action_link and notif_type == 'OFFER':
+        action_link = '/tours'
 
     target_user = None
     recipients_count = 1
@@ -1800,17 +1893,24 @@ async def create_admin_notification(
     db.commit()
     db.refresh(new_notif)
 
+    success_msg = f"Notification '{new_notif.title}' successfully dispatched to {recipients_count} recipient(s)."
+    if created_offer:
+        discount_label = f"{float(created_offer.discount_value)}%" if created_offer.discount_type == 'PERCENTAGE' else f"₹{float(created_offer.discount_value)}"
+        success_msg += f" Promo Code '{created_offer.code}' ({discount_label} OFF) is now LIVE and working for customer checkout!"
+
     return {
         'success': True,
-        'message': f"Notification '{new_notif.title}' successfully dispatched to {recipients_count} recipient(s).",
+        'message': success_msg,
         'notification': {
             'id': new_notif.id,
             'title': new_notif.title,
             'notification_type': new_notif.notification_type,
             'target_audience': new_notif.target_audience,
             'recipients_count': new_notif.recipients_count,
+            'promo_code': promo_code if promo_code else None,
             'created_at': new_notif.created_at.strftime('%Y-%m-%d %H:%M') if new_notif.created_at else ''
-        }
+        },
+        'offer': created_offer.to_dict() if created_offer else None
     }
 
 

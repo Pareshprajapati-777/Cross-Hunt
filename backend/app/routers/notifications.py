@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc
@@ -34,6 +35,9 @@ def get_user_notifications(
 
     data = []
     for n in notifs:
+        code_match = re.search(r'(?:coupon\s+code|promo\s+code|promo\s+voucher|voucher|coupon|code)\s*[:\-]?\s*([A-Z0-9_-]{4,20})', f"{n.title} {n.message}", re.IGNORECASE)
+        p_code = code_match.group(1).upper() if code_match else None
+
         data.append({
             'id': n.id,
             'title': n.title,
@@ -42,6 +46,7 @@ def get_user_notifications(
             'action_link': n.action_link or '',
             'sender_name': n.sender_name,
             'is_read': n.is_read,
+            'promo_code': p_code,
             'created_at': n.created_at.strftime('%d %b, %H:%M') if n.created_at else ''
         })
 

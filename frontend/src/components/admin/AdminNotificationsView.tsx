@@ -15,7 +15,12 @@ import {
   Sparkles,
   UserCheck,
   ShieldAlert,
-  Info
+  Info,
+  Percent,
+  Gift,
+  Calendar,
+  Check,
+  Copy
 } from 'lucide-react';
 import {
   getAdminNotifications,
@@ -57,6 +62,14 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
   const [actionLink, setActionLink] = useState('');
   const [senderName, setSenderName] = useState('Chief Marine Officer - Cross Hunt');
 
+  // Coupon / Promo Code State for Special Offer / Deal
+  const [promoCode, setPromoCode] = useState('FESTIVE20');
+  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FLAT'>('PERCENTAGE');
+  const [discountValue, setDiscountValue] = useState<number | string>(20);
+  const [minBookingAmount, setMinBookingAmount] = useState<number | string>(0);
+  const [validDays, setValidDays] = useState<number | string>(60);
+  const [autoCreateOffer, setAutoCreateOffer] = useState<boolean>(true);
+
   useEffect(() => {
     if (initialTargetUserId) {
       setTargetAudience('SPECIFIC_USER');
@@ -96,6 +109,23 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
     loadNotifications();
   }, []);
 
+  const generatePromoCode = () => {
+    const prefixes = ['FESTIVE', 'CRUISE', 'SAIL', 'DISCOUNT', 'LUXURY', 'VIP'];
+    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const num = Math.floor(Math.random() * 3 + 1) * 10;
+    const newCode = `${p}${num}`;
+    setPromoCode(newCode);
+    setDiscountValue(num);
+  };
+
+  const handleSyncPromoToText = () => {
+    const code = promoCode.trim().toUpperCase() || 'FESTIVE20';
+    const disc = discountType === 'PERCENTAGE' ? `${discountValue}%` : `₹${discountValue}`;
+    setTitle(`Diwali & Festive Cruise Flat ${disc} Off Vouchers Live!`);
+    setMessage(`Use coupon code ${code} to claim ${disc} instant discount on luxury yacht private charters and cruise tours across Goa & Mumbai fleets.`);
+    if (!actionLink) setActionLink('/tours');
+  };
+
   // Quick template fills
   const handleApplyTemplate = (type: 'UPDATE' | 'OFFER' | 'ANNOUNCEMENT') => {
     if (type === 'UPDATE') {
@@ -106,10 +136,16 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
       setSenderName('Safety & Maritime Operations');
     } else if (type === 'OFFER') {
       setNotifType('OFFER');
-      setTitle('Festive Season Flash Deal: Flat 15% OFF Private Yacht Charters');
-      setMessage('Celebrate your upcoming wedding, milestone birthday, or private sunset gathering on water. Use promo voucher FESTIVE15 at checkout to enjoy 15% instant platform discount.');
+      setPromoCode('FESTIVE20');
+      setDiscountType('PERCENTAGE');
+      setDiscountValue(20);
+      setMinBookingAmount(0);
+      setValidDays(60);
+      setAutoCreateOffer(true);
+      setTitle('Diwali & Festive Cruise Flat 20% Off Vouchers Live!');
+      setMessage('Use coupon code FESTIVE20 to claim 20% instant discount on luxury yacht private charters across Goa and Mumbai fleets.');
       setActionLink('/tours');
-      setSenderName('VIP Cruise Concierge');
+      setSenderName('Marketing Director');
     } else {
       setNotifType('ANNOUNCEMENT');
       setTitle('New 85-Foot Luxury Flybridge Cruiser Added to Mumbai Fleet');
@@ -138,8 +174,14 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
         notification_type: notifType,
         target_audience: targetAudience,
         target_user_id: targetAudience === 'SPECIFIC_USER' ? Number(selectedUserId) : undefined,
-        action_link: actionLink,
+        action_link: actionLink || (notifType === 'OFFER' ? '/tours' : ''),
         sender_name: senderName,
+        promo_code: notifType === 'OFFER' ? promoCode.trim().toUpperCase() : undefined,
+        discount_type: discountType,
+        discount_value: Number(discountValue) || 20,
+        min_booking_amount: Number(minBookingAmount) || 0,
+        valid_days: Number(validDays) || 60,
+        auto_create_offer: autoCreateOffer,
       });
 
       if (res.success) {
@@ -148,7 +190,7 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
         setMessage('');
         setActionLink('');
         loadNotifications();
-        setTimeout(() => setSuccessBanner(null), 5000);
+        setTimeout(() => setSuccessBanner(null), 6000);
       }
     } catch (err: any) {
       alert(err.message || 'Failed to dispatch notification');
@@ -323,6 +365,170 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
               </button>
             </div>
           </div>
+
+          {/* SPECIAL OFFER & PROMO COUPON SETTINGS (Displayed when category is OFFER) */}
+          {notifType === 'OFFER' && (
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-rose-50/90 via-amber-50/60 to-rose-50/40 border-2 border-rose-200/90 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-200/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold shadow-sm">
+                    <Gift className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-rose-950">
+                        Live Discount Coupon & Promo Code Configuration
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                        Auto-Registered in System
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-rose-900/70 font-medium">
+                      This promo voucher will immediately be active and working for customer checkout across public tours & yacht charters.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={generatePromoCode}
+                    className="px-2.5 py-1 rounded-xl bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 text-[11px] font-bold transition shadow-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3 text-rose-500" />
+                    <span>Generate Code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSyncPromoToText}
+                    className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold transition shadow-xs cursor-pointer flex items-center gap-1"
+                    title="Copy promo code and discount into the notification title and message text"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>Apply to Message</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 text-xs">
+                {/* 1. Promo Code */}
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    Promo Voucher Code
+                  </label>
+                  <div className="relative">
+                    <Tag className="w-3.5 h-3.5 text-rose-500 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      required
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. FESTIVE20"
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-rose-300 text-xs font-mono font-black text-rose-950 uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Discount Type & Value */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                      Discount Value
+                    </label>
+                    <div className="flex gap-1 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('PERCENTAGE')}
+                        className={`px-1.5 py-0.5 rounded ${
+                          discountType === 'PERCENTAGE'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-white text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        %
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('FLAT')}
+                        className={`px-1.5 py-0.5 rounded ${
+                          discountType === 'FLAT'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-white text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        ₹ Flat
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={discountType === 'PERCENTAGE' ? 95 : 100000}
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(e.target.value)}
+                      placeholder={discountType === 'PERCENTAGE' ? '20' : '2000'}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Minimum Booking Amount */}
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    Min Booking Spend (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={minBookingAmount}
+                    onChange={(e) => setMinBookingAmount(e.target.value)}
+                    placeholder="0 = No minimum"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                  />
+                </div>
+
+                {/* 4. Validity Duration */}
+                <div>
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    Offer Active Duration
+                  </label>
+                  <select
+                    value={validDays}
+                    onChange={(e) => setValidDays(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                  >
+                    <option value={15}>15 Days (Flash Deal)</option>
+                    <option value={30}>30 Days (1 Month)</option>
+                    <option value={60}>60 Days (2 Months)</option>
+                    <option value={90}>90 Days (Quarter)</option>
+                    <option value={180}>180 Days (Half Year)</option>
+                    <option value={365}>365 Days (Full Year)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Checkbox auto-create */}
+              <div className="pt-1 flex items-center justify-between text-xs">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={autoCreateOffer}
+                    onChange={(e) => setAutoCreateOffer(e.target.checked)}
+                    className="w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500"
+                  />
+                  <span>
+                    Auto-register & activate coupon code <strong>{promoCode || 'PROMO'}</strong> in checkout discount engine
+                  </span>
+                </label>
+                <span className="text-[11px] text-emerald-700 font-bold hidden sm:inline">
+                  ✓ Active for Public Tours & Private Yacht Charters
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Target Audience Selector */}
           <div>
@@ -560,10 +766,18 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
                           Update
                         </span>
                       ) : n.notification_type === 'OFFER' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-                          <Tag className="w-2.5 h-2.5" />
-                          Offer
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                            <Tag className="w-2.5 h-2.5" />
+                            Offer
+                          </span>
+                          {n.promo_code && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <Check className="w-2.5 h-2.5 text-emerald-600" />
+                              {n.promo_code}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
                           <Megaphone className="w-2.5 h-2.5" />

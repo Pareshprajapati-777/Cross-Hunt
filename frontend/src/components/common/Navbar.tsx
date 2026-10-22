@@ -19,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -210,6 +211,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                           notifications.map((notif) => {
                             const isOffer = notif.notification_type === 'OFFER';
                             const isAlert = notif.notification_type === 'UPDATE';
+                            const promoCodeMatch = notif.promo_code || (() => {
+                              const m = `${notif.title} ${notif.message}`.match(/(?:coupon\s+code|promo\s+code|voucher|coupon|code)\s*[:\-]?\s*([A-Z0-9_-]{4,20})/i);
+                              return m ? m[1].toUpperCase() : null;
+                            })();
+
                             return (
                               <div
                                 key={notif.id}
@@ -244,6 +250,36 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                                     <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5 leading-snug">
                                       {notif.message}
                                     </p>
+
+                                    {/* Actionable Promo Code Chip */}
+                                    {promoCodeMatch && (
+                                      <div className="mt-2 pt-1.5 border-t border-amber-200/80 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-950 font-mono font-bold text-[10px] border border-amber-300">
+                                          <Tag className="w-2.5 h-2.5 text-amber-700" />
+                                          <span>{promoCodeMatch}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(promoCodeMatch);
+                                            setCopiedPromo(promoCodeMatch);
+                                            setTimeout(() => setCopiedPromo(null), 2500);
+                                          }}
+                                          className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold transition shadow-xs cursor-pointer flex items-center gap-1"
+                                        >
+                                          {copiedPromo === promoCodeMatch ? (
+                                            <>
+                                              <Check className="w-2.5 h-2.5" />
+                                              <span>Copied!</span>
+                                            </>
+                                          ) : (
+                                            <span>Copy Code</span>
+                                          )}
+                                        </button>
+                                      </div>
+                                    )}
+
                                     <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
                                       <span>{new Date(notif.created_at).toLocaleDateString()}</span>
                                       {notif.sender_name && <span>{notif.sender_name}</span>}
