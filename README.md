@@ -20,6 +20,18 @@
 
 The frontend emphasizes a premium ocean-inspired visual experience, including a Three.js hero scene, responsive layouts, and motion effects.
 
+## 🗄️ Database, Accounts & Directory
+
+The project includes an active SQLite database with demo accounts, real maritime fleet data, and export records:
+- 📖 **Full Accounts & Fleet Directory**: [`DATABASE_DATA.md`](DATABASE_DATA.md) *(View all 49 users, owners, fleet operators, vessels, and bookings directly on GitHub)*
+- 💾 **Primary SQLite Database**: [`db.sqlite3`](db.sqlite3)
+- 📄 **Complete JSON Export**: [`database/database_export.json`](database/database_export.json)
+- 📜 **Full SQL Dump**: [`database/database_dump.sql`](database/database_dump.sql)
+- 🔑 **Quick Test Credentials**:
+  - 👑 **Admin**: `admin` / `Admin@12345`
+  - ⚓ **Operator / Owner**: `owner1` / `Owner@12345`
+  - 🧳 **Guest Traveler**: `user1` / `User@12345`
+
 ## ✨ Key Features
 
 ### 🚢 Cruise Discovery & Reservations
