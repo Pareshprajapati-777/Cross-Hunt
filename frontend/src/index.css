@@ -2,29 +2,47 @@
 
 @layer base {
   :root {
-    --bg-main: #f8fafc;
-    --bg-card: #ffffff;
-    --color-ocean-950: #030712;
-    --color-ocean-900: #0a1128;
-    --color-ocean-850: #0f1c3f;
-    --color-ocean-800: #142850;
-    --color-ocean-700: #1c3d73;
-    --color-ocean-600: #25589c;
-    --color-cyan-glow: #38bdf8;
-    --color-emerald-glow: #10b981;
-    --color-gold-500: #d97706;
+    /* PEARL WHITE & SOFT CORNSILK LIGHT THEME WITH OCEANIC BLUES */
+    --bg-main: #f8f9fa;          /* Soft Off-White / Pearl White Canvas */
+    --bg-canvas-tilt: #fffdf5;   /* Subtle #fff8dc Cornsilk Warm Ivory Tilt */
+    --bg-card: #ffffff;          /* Clean White Card Surface */
+    --bg-card-subtle: #f1f5f9;   /* Soft Slate/Blue Card Sub-surface */
+    
+    /* DEEP OCEANIC NAVY FOR TEXT & HIGH-CONTRAST LABELS */
+    --text-navy: #051833;        /* Executive Deep Navy for Titles & Headings */
+    --text-secondary: #334155;   /* Body & Secondary Text */
+    --text-muted: #64748b;       /* Muted Labels & Captions */
 
-    /* Spatial Surface Tokens */
-    --surface-glass-light: rgba(255, 255, 255, 0.88);
-    --surface-glass-border-light: rgba(226, 232, 240, 0.85);
-    --surface-glass-dark: rgba(10, 17, 40, 0.92);
-    --surface-glass-border-dark: rgba(255, 255, 255, 0.1);
+    /* LUXURY CORNSILK WARM WHITE ACCENT */
+    --cornsilk: #fff8dc;         /* Warm Ivory Cornsilk White */
+    --cornsilk-tint: rgba(255, 248, 220, 0.5);
+
+    /* VIBRANT & DEEP BLUE DEPTH SCALE */
+    --ocean-abyss: #030d1c;      /* Deepest Ocean Blue (Navbars, Dark Buttons) */
+    --ocean-deep: #051833;       /* Primary Oceanic Navy */
+    --ocean-surface: #0a2548;    /* Elevated Navy */
+    --royal-blue: #0284c7;       /* Vibrant Sky/Cyan Blue */
+    --vivid-blue: #0369a1;       /* Deep Azure Blue */
+    --sky-blue: #38bdf8;         /* Cyan Wave Glow Accent */
+    --cyan-tilt: #63b8f0;        /* Wave Tilt Light Blue */
+    --ocean-border: rgba(2, 132, 199, 0.18);
+
+    /* OD Studio Light Luxury Tokens */
+    --od-bg: #f8f9fa;
+    --od-bg-2: #fffdf5;
+    --od-surface: #ffffff;
+    --od-surface-2: #f1f5f9;
+    --od-gold: #fff8dc;
+    --od-accent: #0284c7;
+    --od-accent-deep: #051833;
+    --font-cormorant: 'Cormorant Garamond', 'Playfair Display', serif;
+    --font-jost: 'Jost', 'Plus Jakarta Sans', sans-serif;
   }
 
   body {
     background-color: var(--bg-main);
-    color: #0f172a;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: var(--text-navy);
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
     margin: 0;
     padding: 0;
@@ -37,12 +55,17 @@
   h1, h2, h3, h4, .font-display, .font-serif-luxury {
     font-family: 'Playfair Display', 'Cinzel', serif;
     letter-spacing: -0.02em;
-    color: #0f172a;
+    color: var(--text-navy);
+    -webkit-text-stroke: 0.5px #051833;
+    paint-order: stroke fill;
   }
 
   .font-regal {
     font-family: 'Cinzel', serif;
     letter-spacing: 0.04em;
+    color: var(--text-navy);
+    -webkit-text-stroke: 0.5px #051833;
+    paint-order: stroke fill;
   }
 
   .font-ui {
@@ -60,39 +83,33 @@
 /* IMPECCABLE SPATIAL UI DESIGN SYSTEM & SURFACES                            */
 /* ========================================================================= */
 
-/* Spatial Light Card with Ambient Occlusion & Specular Highlight */
+/* Clean Light Luxury Card */
 .spatial-card {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(226, 232, 240, 0.85);
+  background: #ffffff;
+  border: 1px solid rgba(2, 132, 199, 0.16);
   box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.03),
-    0 16px 36px -4px rgba(2, 132, 199, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 4px 20px -2px rgba(5, 24, 51, 0.06),
+    0 2px 6px -1px rgba(5, 24, 51, 0.04);
+  color: #051833;
   transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 250ms ease;
 }
 
 .spatial-card-hover:hover {
   transform: translateY(-2px);
-  border-color: rgba(56, 189, 248, 0.5);
+  border-color: rgba(2, 132, 199, 0.35);
   box-shadow: 
-    0 8px 16px -2px rgba(0, 0, 0, 0.04),
-    0 24px 48px -4px rgba(2, 132, 199, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    0 12px 30px -4px rgba(2, 132, 199, 0.12),
+    0 4px 12px -2px rgba(5, 24, 51, 0.06);
 }
 
-/* Spatial Oceanic Midnight Glass (High-Depth Hero & Accounting Surface) */
+/* Spatial Clean Frosted Light Panel */
 .spatial-glass-dark {
-  background: radial-gradient(circle at 85% 15%, rgba(14, 165, 233, 0.15), transparent 45%),
-              radial-gradient(circle at 15% 85%, rgba(16, 185, 129, 0.1), transparent 40%),
-              rgba(10, 17, 40, 0.95);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(2, 132, 199, 0.16);
   box-shadow: 
-    0 20px 50px rgba(3, 7, 18, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 12px 32px -4px rgba(5, 24, 51, 0.08),
+    0 4px 12px -2px rgba(5, 24, 51, 0.04);
+  color: #051833;
 }
 
 /* Spatial Pill Badges & Chips */
@@ -106,27 +123,24 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid transparent;
 }
 
 .spatial-badge-cyan {
-  background: rgba(14, 165, 233, 0.12);
+  background: rgba(2, 132, 199, 0.1);
   color: #0284c7;
-  border-color: rgba(56, 189, 248, 0.3);
+  border: 1px solid rgba(2, 132, 199, 0.25);
 }
 
 .spatial-badge-emerald {
   background: rgba(16, 185, 129, 0.12);
-  color: #047857;
-  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .spatial-badge-amber {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
-  border-color: rgba(245, 158, 11, 0.3);
+  background: #fff8dc;
+  color: #051833;
+  border: 1px solid rgba(2, 132, 199, 0.2);
 }
 
 /* ========================================================================= */
@@ -135,15 +149,15 @@
 
 /* Glowing Gradient Bars with Specular Apex */
 .spatial-bar-sky {
-  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+  background: linear-gradient(180deg, #63B8F0 0%, #1677C8 100%);
+  box-shadow: 0 4px 12px rgba(22, 119, 200, 0.25);
   border-radius: 6px 6px 0 0;
   transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .spatial-bar-sky:hover {
-  background: linear-gradient(180deg, #7dd3fc 0%, #0369a1 100%);
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45);
+  background: linear-gradient(180deg, #8ad0f7 0%, #082F5B 100%);
+  box-shadow: 0 6px 20px rgba(22, 119, 200, 0.45);
   transform: translateY(-2px);
 }
 
@@ -210,3 +224,759 @@
   background: rgba(14, 165, 233, 0.2);
   color: #0369a1;
 }
+
+/* ========================================================================= */
+/* PHASE 2 — IMPECCABLE SPATIAL REFINEMENTS                                  */
+/* ========================================================================= */
+
+/* Trust badge glow: refined halo — no dark glow on light surfaces */
+.trust-badge-icon {
+  will-change: transform;
+  isolation: isolate;
+}
+
+/* Monospace numbers: already defined as .font-mono-numbers in @layer base.
+   Utility aliases for direct Tailwind-class usage. */
+.price-tag {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+}
+
+/* Departure-data chip — mono, high legibility */
+.departure-data {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-feature-settings: 'tnum';
+  letter-spacing: -0.01em;
+}
+
+/* Hero section atmospheric depth layers */
+.hero-atmospheric-overlay {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(2, 132, 199, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 50%, rgba(7, 89, 133, 0.12), transparent);
+  pointer-events: none;
+}
+
+/* Refined box-shadow for cards: ocean-tinted (never pure black) */
+.card-shadow-ocean {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.03),
+    0 16px 36px -4px rgba(2, 132, 199, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.card-shadow-ocean-hover:hover {
+  box-shadow:
+    0 8px 12px -2px rgba(0, 0, 0, 0.04),
+    0 28px 52px -4px rgba(2, 132, 199, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* Wave divider: maritime section separator */
+.wave-divider {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  pointer-events: none;
+}
+
+/* Touch target enforcement: any interactive smaller than 44px */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Focus visible — ocean-themed ring */
+:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Impeccable: prefers-reduced-motion — cut all anime.js animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Re-expose elements hidden by animation initial opacity:0 */
+  .crown-badge,
+  .hero-headline,
+  .hero-subtitle,
+  .trust-badge,
+  .search-form-container {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ========================================================================= */
+/* PHASE 3 — TASTE-SKILL PREMIUM POLISH (MOTION_INTENSITY: 7/10)            */
+/* ========================================================================= */
+
+/* Premium 3D Card Tilt on Hover */
+.premium-card-3d {
+  transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 450ms ease;
+  transform-style: preserve-3d;
+}
+
+.premium-card-3d:hover {
+  transform: translateY(-8px) rotateX(2deg);
+  box-shadow:
+    0 20px 40px rgba(2, 132, 199, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* Enhanced Image Zoom with Smooth Scale */
+.premium-card-3d img {
+  transition: transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.premium-card-3d:hover img {
+  transform: scale(1.08);
+}
+
+/* Magnetic button optimization */
+.magnetic-btn {
+  will-change: transform;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+/* Parallax optimization */
+.parallax-layer {
+  will-change: transform;
+}
+
+/* Scroll-triggered card grid — initially hidden */
+.tour-cards-grid > *,
+.ships-cards-grid > *,
+.operators-cards-grid > * {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+/* After animation completes, reset to prevent layout issues */
+.tour-cards-grid.animated > *,
+.ships-cards-grid.animated > *,
+.operators-cards-grid.animated > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Text gradient animation for headlines */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.text-gradient-animated {
+  background: linear-gradient(90deg, #ffffff 0%, #e0f2fe 25%, #ffffff 50%, #e0f2fe 75%, #ffffff 100%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 8s linear infinite;
+}
+
+/* Smooth section transitions with subtle lift */
+section {
+  transition: opacity 300ms ease;
+}
+
+/* Floating animation keyframes (for decorative elements) */
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.float-gentle {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+/* Disable premium motion on reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .premium-card-3d,
+  .premium-card-3d:hover {
+    transform: none !important;
+  }
+
+  .text-gradient-animated {
+    animation: none !important;
+    background: white;
+    -webkit-text-fill-color: white;
+  }
+
+  .float-gentle {
+    animation: none !important;
+  }
+}
+
+/* ========================================================================= */
+/* MORE-NUTRITION INSPIRED MARITIME DESIGN SYSTEM & BLUE PALETTE             */
+/* ========================================================================= */
+
+/* Exact Palette Utility Classes */
+.bg-deep-ocean { background-color: #082F5B; }
+.bg-midnight-navy { background-color: #061D36; }
+.bg-royal-blue { background-color: #1677C8; }
+.bg-sky-blue { background-color: #63B8F0; }
+.bg-ice-blue { background-color: #EAF4FB; }
+.bg-soft-white { background-color: #F8FCFF; }
+
+.text-deep-ocean { color: #082F5B; }
+.text-midnight-navy { color: #061D36; }
+.text-royal-blue { color: #1677C8; }
+.text-sky-blue { color: #63B8F0; }
+.text-ice-blue { color: #EAF4FB; }
+.text-soft-white { color: #F8FCFF; }
+.text-deep-navy { color: #102B46; }
+
+.border-deep-ocean { border-color: #082F5B; }
+.border-midnight-navy { border-color: #061D36; }
+.border-royal-blue { border-color: #1677C8; }
+.border-sky-blue { border-color: #63B8F0; }
+.border-ice-blue { border-color: #EAF4FB; }
+.border-soft-white { border-color: #F8FCFF; }
+
+/* More-Nutrition Signature Pill Buttons with Arrow Cycle */
+.more-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: #fff8dc;
+  color: #030d1c;
+  padding: 0.45rem 0.5rem 0.45rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
+  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+  border: 1px solid rgba(255, 248, 220, 0.6);
+  user-select: none;
+}
+
+.more-btn-primary:hover {
+  background-color: #f7edd0;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.45);
+}
+
+.more-btn-primary .arrow-circle {
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 9999px;
+  background: #051833;
+  color: #fff8dc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), background-color 250ms ease;
+  flex-shrink: 0;
+}
+
+.more-btn-primary:hover .arrow-circle {
+  transform: translateX(3px) rotate(-45deg);
+  background: #165ca6;
+  color: #fff8dc;
+}
+
+/* Oceanic Azure Glass Pill Button Variant */
+.more-btn-white {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: #071c38;
+  color: #fff8dc;
+  padding: 0.45rem 0.5rem 0.45rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 16px rgba(3, 13, 28, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.more-btn-white:hover {
+  background-color: #0d2e5a;
+  color: #fff8dc;
+  border-color: #38bdf8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(29, 124, 216, 0.35);
+}
+
+.more-btn-white .arrow-circle {
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 9999px;
+  background: #165ca6;
+  color: #fff8dc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), background-color 250ms ease;
+  flex-shrink: 0;
+}
+
+.more-btn-white:hover .arrow-circle {
+  transform: translateX(3px) rotate(-45deg);
+  background: #38bdf8;
+  color: #030d1c;
+}
+
+/* ========================================================================= */
+/* TEXT BORDER / STROKE SYSTEM                                               */
+/* White Background -> Black/Dark Border on text                             */
+/* Dark Background -> Crisp White Border on text                             */
+/* ========================================================================= */
+
+.text-stroke-black,
+.text-border-black {
+  -webkit-text-stroke: 1.2px #000000;
+  paint-order: stroke fill;
+}
+
+.text-stroke-dark,
+.text-border-dark {
+  -webkit-text-stroke: 1px #051833;
+  paint-order: stroke fill;
+}
+
+.text-stroke-navy {
+  -webkit-text-stroke: 1.2px #051833;
+  paint-order: stroke fill;
+}
+
+/* For cream/ivory text on light background needing crisp, prominent dark border */
+.text-stroke-cream-bordered,
+.text-cream-bordered {
+  color: #fff8dc !important;
+  -webkit-text-stroke: 1.5px #051833;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 3px rgba(5, 24, 51, 0.4);
+}
+
+/* For text on dark backgrounds (dark ribbons, image overlays, dark cards) */
+.text-stroke-white,
+.text-border-white {
+  color: #ffffff;
+  -webkit-text-stroke: 0.8px #ffffff;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.text-stroke-white-subtle {
+  -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.9);
+  paint-order: stroke fill;
+}
+
+.text-stroke-cream-white {
+  color: #fff8dc;
+  -webkit-text-stroke: 0.7px #ffffff;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* More-Nutrition Oversized Architectural Typography */
+.hero-heading-more {
+  font-family: 'Outfit', 'Inter', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.90;
+  text-transform: uppercase;
+  color: #051833;
+  -webkit-text-stroke: 1.2px #051833;
+  paint-order: stroke fill;
+}
+
+.section-heading-more {
+  font-family: 'Outfit', 'Inter', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.94;
+  color: #051833;
+  -webkit-text-stroke: 1px #051833;
+  paint-order: stroke fill;
+}
+
+/* Premium Light Marine Card */
+.card-marine-soft {
+  background-color: #ffffff;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  border-radius: 1.5rem;
+  color: #051833;
+  box-shadow: 0 4px 20px -2px rgba(5, 24, 51, 0.08), 0 1px 3px rgba(5, 24, 51, 0.04);
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1), border-color 300ms ease;
+}
+
+.card-marine-soft:hover {
+  transform: translateY(-4px);
+  border-color: rgba(2, 132, 199, 0.45);
+  box-shadow: 0 16px 36px -6px rgba(2, 132, 199, 0.15), 0 4px 12px rgba(5, 24, 51, 0.06);
+}
+
+/* Floating Circular Fact Badge */
+.fact-circle-badge {
+  width: 7.25rem;
+  height: 7.25rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 2px solid #38bdf8;
+  color: #051833;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.35), 0 0 35px rgba(56, 189, 248, 0.2), 0 8px 24px rgba(2, 132, 199, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms ease, border-color 300ms ease;
+  user-select: none;
+}
+
+.fact-circle-badge:hover {
+  transform: scale(1.08) translateY(-4px) !important;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 28px rgba(14, 165, 233, 0.55), 0 0 50px rgba(56, 189, 248, 0.35), 0 12px 32px rgba(2, 132, 199, 0.2);
+}
+
+/* "See the Difference" Comparison Matrix with Blue Light Glow Borders */
+.marine-compare-table {
+  background: #ffffff;
+  border: 2px solid #38bdf8;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(14, 165, 233, 0.35), 0 0 60px rgba(56, 189, 248, 0.2), 0 12px 36px -4px rgba(5, 24, 51, 0.08);
+  color: #051833;
+}
+
+.marine-compare-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr 1fr;
+  align-items: center;
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid rgba(2, 132, 199, 0.12);
+  transition: background-color 180ms ease;
+}
+
+.marine-compare-row:last-child {
+  border-bottom: none;
+}
+
+.marine-compare-row:hover {
+  background-color: rgba(2, 132, 199, 0.04);
+}
+
+/* ========================================================================= */
+/* MORE NUTRITION SIGNATURE MOTION & HAND-DRAWN CRAFT UTILITIES              */
+/* ========================================================================= */
+
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(1.2deg);
+  }
+}
+
+@keyframes pulse-glow-blue {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 184, 240, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(99, 184, 240, 0);
+  }
+}
+
+@keyframes marquee-glide {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-wiggle {
+  animation: wiggle 2.4s ease-in-out infinite;
+}
+
+.animate-wiggle-fast {
+  animation: wiggle 1.2s ease-in-out infinite;
+}
+
+.hover-wiggle:hover {
+  animation: wiggle 0.5s ease-in-out infinite;
+}
+
+.animate-float-1 {
+  animation: float-gentle 4.2s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: float-gentle 5s ease-in-out 0.8s infinite;
+}
+
+.animate-float-3 {
+  animation: float-gentle 4.6s ease-in-out 1.6s infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow-blue 2s infinite;
+}
+
+.animate-marquee-scroll {
+  display: flex;
+  width: max-content;
+  animation: marquee-glide 26s linear infinite;
+}
+
+.animate-marquee-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* Hand-Drawn Wavy Underline */
+.hand-drawn-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.hand-drawn-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 6px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 9' fill='none'%3E%3Cpath d='M2 6.5C40 2 80 8 120 4.5C160 1 190 6.5 198 5' stroke='%2363B8F0' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center bottom;
+  background-size: 100% 100%;
+}
+
+/* Dual-Cycle More Nutrition Button Variants */
+.more-btn-ocean {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #082F5B 0%, #061D36 100%);
+  color: #F8FCFF;
+  padding: 0.5rem 0.6rem 0.5rem 1.4rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 18px rgba(6, 29, 54, 0.3);
+  border: 1px solid rgba(99, 184, 240, 0.3);
+  transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.more-btn-ocean:hover {
+  background: linear-gradient(135deg, #1677C8 0%, #082F5B 100%);
+  transform: translateY(-2px);
+  border-color: rgba(99, 184, 240, 0.6);
+  box-shadow: 0 8px 26px rgba(22, 119, 200, 0.4);
+}
+
+.more-btn-ocean .arrow-circle {
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 9999px;
+  background: #63B8F0;
+  color: #061D36;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), background-color 250ms ease;
+  flex-shrink: 0;
+}
+
+.more-btn-ocean:hover .arrow-circle {
+  transform: translateX(3px) rotate(-45deg);
+  background: #F8FCFF;
+  color: #082F5B;
+}
+
+/* Curved Wave Ribbon Container with Blue Light Glow Borders */
+.wave-ribbon-container {
+  position: relative;
+  overflow: hidden;
+  background: #061D36;
+  border-top: 2px solid #38bdf8;
+  border-bottom: 2px solid #38bdf8;
+  box-shadow: 0 0 25px rgba(14, 165, 233, 0.4), 0 0 50px rgba(56, 189, 248, 0.2);
+}
+
+/* ========================================================================= */
+/* OPEN DESIGN LUXURY MOTION CRAFT & SPATIAL DEPTH                           */
+/* ========================================================================= */
+
+@keyframes od-drift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(0, -1.5%, 0); }
+}
+
+@keyframes od-pulse-gold {
+  0%, 100% { opacity: 0.35; transform: scaleY(0.6); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes od-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes od-gold-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-od-drift {
+  animation: od-drift 32s cubic-bezier(0.22, 0.61, 0.36, 1) infinite alternate;
+}
+
+.animate-od-pulse {
+  animation: od-pulse-gold 2.6s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+.animate-od-fade-up {
+  animation: od-fade-up 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Open Design Hyper-Luxury Buttons */
+.od-btn-gold {
+  background: #051833;
+  color: #fff8dc;
+  font-weight: 700;
+  border-radius: 9999px;
+  box-shadow: 0 10px 24px -6px rgba(5, 24, 51, 0.3);
+  transition: all 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.od-btn-gold:hover {
+  background: #0a2548;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -6px rgba(5, 24, 51, 0.45);
+}
+
+.od-btn-blue {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 9999px;
+  box-shadow: 0 10px 24px -6px rgba(2, 132, 199, 0.4);
+  transition: all 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.od-btn-blue:hover {
+  background: #0369a1;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -6px rgba(2, 132, 199, 0.55);
+}
+
+.od-btn-ghost {
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  color: #051833;
+  background: #ffffff;
+  border-radius: 9999px;
+  transition: all 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.od-btn-ghost:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+  background: #f0f9ff;
+  transform: translateY(-2px);
+}
+
+/* Open Design Luxury Glass Panels */
+.od-surface {
+  background: #ffffff;
+  border: 1px solid rgba(2, 132, 199, 0.16);
+  box-shadow: 0 12px 36px -10px rgba(5, 24, 51, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.od-surface-glass {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(2, 132, 199, 0.16);
+  box-shadow: 0 16px 40px -15px rgba(5, 24, 51, 0.08);
+}
+
+/* Open Design Interactive Ship Vector Deck Plan */
+.shipmap-container {
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  border-radius: 1.5rem;
+  background: #ffffff;
+  padding: 1.75rem;
+  box-shadow: 0 16px 40px -15px rgba(5, 24, 51, 0.08);
+}
+
+.ship-hull-shape {
+  fill: #0c182d;
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 1;
+}
+
+.ship-deck-band {
+  cursor: pointer;
+}
+.ship-deck-band rect {
+  fill: #14243e;
+  stroke: rgba(99, 184, 240, 0.25);
+  stroke-width: 1;
+  transition: fill 320ms cubic-bezier(0.22, 0.61, 0.36, 1), stroke 320ms ease;
+}
+.ship-deck-band:hover rect {
+  fill: #0a2548;
+  stroke: rgba(56, 189, 248, 0.6);
+}
+.ship-deck-band[data-active="true"] rect {
+  fill: rgba(56, 189, 248, 0.2);
+  stroke: #38bdf8;
+}
+.ship-deck-band text {
+  fill: #94a3b8;
+  font-family: 'Jost', 'Plus Jakarta Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  text-anchor: middle;
+  transition: fill 320ms ease;
+}
+.ship-deck-band:hover text {
+  fill: #fff8dc;
+}
+.ship-deck-band[data-active="true"] text {
+  fill: #fff8dc;
+}
+
+

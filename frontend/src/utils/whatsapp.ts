@@ -75,7 +75,7 @@ export function generateWhatsAppUrl(
 
   // Pre-filled message requirement:
   // "Hello, I am interested in booking [Ship Name] for [Date]."
-  const dateStr = targetDate && targetDate.trim() ? targetDate.trim() : 'an upcoming voyage';
+  const dateStr = targetDate && targetDate.trim() ? targetDate.trim() : 'an upcoming trip';
   let message = `Hello, I am interested in booking ${shipName} for ${dateStr}.`;
 
   if (guestsCount && guestsCount > 1) {

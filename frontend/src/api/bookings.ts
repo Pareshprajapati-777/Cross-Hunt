@@ -86,9 +86,15 @@ export async function updateBookingWhatsAppOpt(
 
 export async function sendTestWhatsAppReminder(
   bookingId: string
-): Promise<{ success: boolean; message: string; result?: any; booking?: Booking }> {
+): Promise<{ success: boolean; message: string; result?: any; booking?: Booking; wa_link?: string; is_live_api?: boolean; provider?: string }> {
   return apiRequest(`/api/bookings/${bookingId}/whatsapp-test/`, {
     method: 'POST',
   });
+}
+
+export async function getBookingWhatsAppLink(
+  bookingId: string
+): Promise<{ success: boolean; booking_id: string; recipient: string; recipient_masked?: string; wa_link: string; message_text: string }> {
+  return apiRequest(`/api/bookings/${bookingId}/whatsapp-link/`);
 }
 

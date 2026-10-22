@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Booking } from '../../api/types';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -12,7 +12,12 @@ import {
   FileText,
   X,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  Copy,
+  Check,
+  Globe,
+  Settings
 } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 
@@ -21,14 +26,48 @@ interface TicketPassProps {
   onPrint?: () => void;
   onViewInvoice?: () => void;
   onClose?: () => void;
+  isVerificationView?: boolean;
 }
 
 export const TicketPass: React.FC<TicketPassProps> = ({
   booking,
   onPrint,
   onViewInvoice,
-  onClose
+  onClose,
+  isVerificationView = false,
 }) => {
+  const [detectedLanUrl, setDetectedLanUrl] = useState<string>('');
+  const [customScanBase, setCustomScanBase] = useState<string>(() => {
+    try {
+      return localStorage.getItem('crosshunt_qr_scan_base') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [showConfig, setShowConfig] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setDetectedLanUrl(window.location.origin);
+      return;
+    }
+
+    fetch('/api/system/network-info/')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.active_base_url) {
+          setDetectedLanUrl(data.active_base_url);
+        }
+      })
+      .catch(() => {
+        if (typeof window !== 'undefined') {
+          setDetectedLanUrl(window.location.origin);
+        }
+      });
+  }, []);
+
   const handlePrint = () => {
     if (onPrint) {
       onPrint();
@@ -39,17 +78,39 @@ export const TicketPass: React.FC<TicketPassProps> = ({
 
   const isConfirmed = booking.status === 'CONFIRMED' || booking.status === 'COMPLETED';
   const verifyCode = booking.ticket_code || booking.qr_code_hash || booking.booking_id;
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://cross-hunt.com';
-  const verifyUrl = `${origin}/ticket/verify/${verifyCode}`;
+  const effectiveBase = (customScanBase.trim() || detectedLanUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173')).replace(/\/+$/, '');
+  const verifyUrl = `${effectiveBase}/ticket/verify/${encodeURIComponent(verifyCode)}`;
+
+  const handleCopyLink = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(verifyUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSaveCustomBase = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = customInput.trim();
+    setCustomScanBase(cleaned);
+    try {
+      if (cleaned) {
+        localStorage.setItem('crosshunt_qr_scan_base', cleaned);
+      } else {
+        localStorage.removeItem('crosshunt_qr_scan_base');
+      }
+    } catch {}
+    setShowConfig(false);
+  };
 
   return (
     <div className="max-w-2xl mx-auto my-4 print:m-0 print:max-w-full">
       {/* Printable Boarding Pass Card */}
-      <div className="relative rounded-3xl overflow-hidden bg-white border border-sky-300 shadow-2xl shadow-sky-900/15 print:border-black print:shadow-none">
-        {/* Top Header Strip */}
-        <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-800 p-6 text-white flex items-center justify-between relative">
+      <div className="relative rounded-3xl overflow-hidden bg-[#F8FCFF] border border-[#082F5B]/15 shadow-2xl shadow-[#082F5B]/15 print:border-black print:shadow-none">
+        {/* Top Header Strip - Midnight Oceanic Navy to Deep Ocean */}
+        <div className="bg-gradient-to-r from-[#030d1c] via-[#051833] to-[#0a2548] p-6 text-[#fff8dc] flex items-center justify-between relative border-b border-[#38bdf8]/20">
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-full bg-white border-2 border-white/60 flex items-center justify-center p-1.5 overflow-hidden shadow-sm shrink-0">
+            <div className="w-12 h-12 rounded-full bg-[#030d1c] border-2 border-[#38bdf8]/40 flex items-center justify-center p-1.5 overflow-hidden shadow-sm shrink-0">
               <img
                 src="/static/images/logo_icon.png"
                 alt="Emblem"
@@ -60,19 +121,19 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               />
             </div>
             <div>
-              <span className="text-[10px] tracking-widest font-mono uppercase text-sky-200 block">
+              <span className="text-[10px] tracking-widest font-mono uppercase text-[#38bdf8] block font-bold">
                 OFFICIAL DIGITAL BOARDING PASS
               </span>
-              <h2 className="text-xl font-display font-black tracking-tight">CROSS-HUNT VOYAGES</h2>
+              <h2 className="text-xl font-display font-black tracking-tight text-[#fff8dc]">CROSS-HUNT CRUISES & TRIPS</h2>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <span className="text-[10px] uppercase font-bold text-sky-200 block tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-[#38bdf8] block tracking-wider">
                 Booking Ref
               </span>
-              <span className="font-mono font-bold text-base bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl inline-block border border-white/20">
+              <span className="font-mono font-bold text-base bg-[#071c38]/80 backdrop-blur-md text-[#fff8dc] px-3 py-1 rounded-xl inline-block border border-[#38bdf8]/30">
                 {booking.booking_id}
               </span>
             </div>
@@ -81,7 +142,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer print:hidden"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-[#F8FCFF] flex items-center justify-center transition cursor-pointer print:hidden"
                 title="Close Boarding Pass"
               >
                 <X className="w-4 h-4" />
@@ -91,7 +152,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
         </div>
 
         {/* Status bar */}
-        <div className="px-6 py-3 bg-sky-50 border-b border-sky-100 flex items-center justify-between text-xs">
+        <div className="px-6 py-3 bg-[#EAF4FB] border-b border-[#082F5B]/10 flex items-center justify-between text-xs">
           <div className="flex items-center space-x-2">
             <span
               className={`inline-block px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase ${
@@ -100,100 +161,114 @@ export const TicketPass: React.FC<TicketPassProps> = ({
                   : 'bg-amber-100 text-amber-800 border border-amber-300'
               }`}
             >
-              {booking.status}
+              {booking.status === 'PENDING' ? 'PENDING APPROVAL' : booking.status}
             </span>
             {booking.tracking_status && (
-              <span className="text-slate-600 font-bold text-[11px]">
-                Voyage: <span className="text-sky-800 uppercase">{booking.tracking_status}</span>
+              <span className="text-[#102B46] font-bold text-[11px]">
+                Trip Status: <span className="text-[#1677C8] uppercase">{booking.tracking_status}</span>
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-1.5 text-slate-600">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span className="text-[11px] font-bold text-slate-700">Digital Gate Manifest Verified</span>
+          <div className="flex items-center space-x-1.5 text-[#102B46]">
+            {isConfirmed ? (
+              <>
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span className="text-[11px] font-bold text-emerald-800">Digital Gate Pass Verified</span>
+              </>
+            ) : (
+              <>
+                <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                <span className="text-[11px] font-bold text-amber-800">Awaiting Owner Approval</span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Main Trip Body */}
         <div className="p-6 sm:p-8 space-y-6">
           {/* Ship and Route Information */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#082F5B]/10 pb-6">
             <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Vessel / Ship
+              <span className="text-[10px] text-[#102B46]/60 font-bold uppercase tracking-wider block">
+                Ship / Boat
               </span>
-              <h3 className="text-2xl font-display font-extrabold text-slate-900 mt-0.5">
+              <h3 className="text-2xl font-display font-extrabold text-[#102B46] mt-0.5">
                 {booking.cruise_title || booking.cruise_name}
               </h3>
-              <p className="text-xs text-sky-700 font-bold flex items-center gap-1.5 mt-1">
-                <MapPin className="w-3.5 h-3.5 text-sky-600" />
+              <p className="text-xs text-[#1677C8] font-bold flex items-center gap-1.5 mt-1">
+                <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
                 <span>{booking.departure_port || 'Departure Port'} → {booking.destination}</span>
               </p>
             </div>
 
             <div className="sm:text-right">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+              <span className="text-[10px] text-[#102B46]/60 font-bold uppercase tracking-wider block">
                 Accommodations / Cabin
               </span>
-              <span className="text-base font-bold text-slate-800 block mt-0.5">
+              <span className="text-base font-bold text-[#102B46] block mt-0.5">
                 {booking.cabin_name || booking.cabin_type || 'Standard Ocean Cabin'}
               </span>
-              <span className="text-xs text-slate-500 font-medium">
+              <span className="text-xs text-[#102B46]/70 font-medium">
                 {booking.passengers_count || booking.number_of_people} Passenger(s) ({(booking.adults_count || 1)} Adults{booking.children_count ? `, ${booking.children_count} Kids` : ''})
               </span>
             </div>
           </div>
 
           {/* Schedule Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-sky-50/70 border border-sky-100 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-[#EAF4FB] border border-[#082F5B]/10 text-center">
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Embark Date
+              <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">
+                {booking.return_date && booking.return_date !== booking.booking_date ? 'Voyage Dates' : 'Embark Date'}
               </span>
-              <span className="font-bold text-slate-900 text-sm flex items-center justify-center gap-1 mt-0.5">
-                <Calendar className="w-3.5 h-3.5 text-sky-600" />
+              <span className="font-bold text-[#102B46] text-sm flex items-center justify-center gap-1 mt-0.5">
+                <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
                 {booking.booking_date}
               </span>
+              {booking.return_date && booking.return_date !== booking.booking_date && (
+                <span className="text-[10px] font-bold text-[#1677C8] block mt-0.5">
+                  to {booking.return_date}
+                </span>
+              )}
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">
                 Boarding Time
               </span>
-              <span className="font-bold text-slate-900 text-sm flex items-center justify-center gap-1 mt-0.5">
-                <Clock className="w-3.5 h-3.5 text-sky-600" />
+              <span className="font-bold text-[#102B46] text-sm flex items-center justify-center gap-1 mt-0.5">
+                <Clock className="w-3.5 h-3.5 text-[#1677C8]" />
                 {booking.start_time || '10:00'}
               </span>
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">
                 Duration
               </span>
-              <span className="font-bold text-slate-900 text-sm flex items-center justify-center gap-1 mt-0.5">
-                <Anchor className="w-3.5 h-3.5 text-sky-600" />
-                {booking.duration_days ? `${booking.duration_days} Days` : `${booking.duration_hours || 4} Hours`}
+              <span className="font-bold text-[#102B46] text-sm flex items-center justify-center gap-1 mt-0.5">
+                <Anchor className="w-3.5 h-3.5 text-[#1677C8]" />
+                {booking.duration_display || (booking.duration_days ? `${booking.duration_days} Days` : `${booking.duration_hours || 4} Hours`)}
               </span>
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-[#102B46]/60 block tracking-wider">
                 Passholder
               </span>
-              <span className="font-bold text-slate-900 text-xs sm:text-sm flex items-center justify-center gap-1 mt-0.5 truncate px-1">
-                <UserCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+              <span className="font-bold text-[#102B46] text-xs sm:text-sm flex items-center justify-center gap-1 mt-0.5 truncate px-1">
+                <UserCheck className="w-3.5 h-3.5 text-[#1677C8] shrink-0" />
                 <span className="truncate">{booking.customer_name || 'Verified Guest'}</span>
               </span>
             </div>
           </div>
 
           {/* Barcode / QR Code Strip */}
-          <div className="p-5 rounded-2xl bg-slate-50 border-2 border-dashed border-sky-200 flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="p-5 rounded-2xl bg-[#F8FCFF] border-2 border-dashed border-[#63B8F0]/50 flex flex-col sm:flex-row items-center justify-between gap-5">
             {/* Real High-Resolution Scannable QR Matrix */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <a
                 href={verifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Scan with smartphone or click to verify boarding ticket at maritime gate"
-                className="group relative p-2.5 bg-white rounded-2xl border-2 border-sky-300 shadow-sm hover:border-sky-500 hover:shadow-md transition shrink-0 block"
+                title="Scan with Google Lens, iPhone Camera, or QR app to open boarding pass"
+                className="group relative p-2.5 bg-white rounded-2xl border-2 border-[#1677C8]/40 shadow-sm hover:border-[#1677C8] hover:shadow-md transition shrink-0 block"
               >
                 <div className="w-24 h-24 flex items-center justify-center bg-white">
                   <QRCodeSVG
@@ -204,62 +279,134 @@ export const TicketPass: React.FC<TicketPassProps> = ({
                     className="w-full h-full"
                   />
                 </div>
-                <span className="block text-[8px] font-mono text-center text-sky-700 font-extrabold uppercase mt-1.5 group-hover:underline flex items-center justify-center gap-0.5">
-                  <span>Gate QR Scan</span>
+                <span className="block text-[8px] font-mono text-center text-[#1677C8] font-extrabold uppercase mt-1.5 group-hover:underline flex items-center justify-center gap-0.5">
+                  <Smartphone className="w-2.5 h-2.5" />
+                  <span>Scan with Phone</span>
                   <ExternalLink className="w-2.5 h-2.5" />
                 </span>
               </a>
 
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                  Ticket & Security ID
-                </span>
-                <span className="font-mono text-sm font-black text-sky-950 block">
+              <div className="space-y-1.5 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-[#102B46]/60 tracking-wider">
+                    Ticket Security ID
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-black tracking-wider uppercase">
+                    Lens Ready
+                  </span>
+                </div>
+                <span className="font-mono text-sm font-black text-[#082F5B] block">
                   {booking.ticket_code || `TK-${booking.booking_id.replace('CRS-', '')}`}
                 </span>
-                <span className="text-[10px] font-mono text-slate-500 block">
+                <span className="text-[10px] font-mono text-[#102B46]/60 block truncate max-w-[200px]">
                   Token: {(booking.qr_code_hash || booking.booking_id).slice(0, 16)}
                 </span>
-                <a
-                  href={verifyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-bold text-sky-600 hover:text-sky-800 underline inline-flex items-center gap-1 pt-0.5"
-                >
-                  Verify at Gate Portal
-                </a>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
+                  {!isVerificationView ? (
+                    <a
+                      href={verifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-[#1677C8] hover:text-[#082F5B] underline inline-flex items-center gap-1"
+                    >
+                      <span>Open Gate Pass</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : (
+                    <span className="text-[11px] font-bold text-emerald-700 inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Verified at Gate Portal</span>
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="px-2 py-0.5 rounded-md bg-white border border-[#1677C8]/30 hover:border-[#1677C8] text-[#1677C8] text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                    title="Copy direct verification link for mobile sharing"
+                  >
+                    {copied ? <Check className="w-2.5 h-2.5 text-emerald-600" /> : <Copy className="w-2.5 h-2.5" />}
+                    <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomInput(customScanBase || effectiveBase);
+                      setShowConfig(!showConfig);
+                    }}
+                    className="p-1 rounded-md text-[#102B46]/50 hover:text-[#1677C8] transition cursor-pointer print:hidden"
+                    title="Configure custom domain or tunnel URL for mobile scanning"
+                  >
+                    <Settings className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Optional Custom Scan URL Popover */}
+                {showConfig && (
+                  <form onSubmit={handleSaveCustomBase} className="mt-2 p-2.5 bg-white rounded-xl border border-sky-200 shadow-lg text-[11px] space-y-1.5 print:hidden">
+                    <span className="font-bold text-[#082F5B] block">QR Code Scan Domain / IP:</span>
+                    <input
+                      type="text"
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      placeholder="e.g. http://10.83.31.2:5173 or https://xyz.ngrok.io"
+                      className="w-full px-2 py-1 rounded bg-slate-50 border border-slate-300 text-[10px] font-mono focus:outline-none focus:border-sky-500"
+                    />
+                    <div className="flex items-center justify-between gap-1">
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 rounded bg-sky-600 text-white font-bold text-[10px] cursor-pointer"
+                      >
+                        Save URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomScanBase('');
+                          localStorage.removeItem('crosshunt_qr_scan_base');
+                          setShowConfig(false);
+                        }}
+                        className="text-[10px] text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                      >
+                        Reset to Auto
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
 
             {/* Visual Barcode Pattern */}
             <div className="flex flex-col items-center sm:items-end space-y-1">
-              <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">
+              <span className="text-[9px] font-mono text-[#102B46]/50 uppercase tracking-widest">
                 BOARDING PASS BARCODE
               </span>
-              <div className="h-10 flex items-center justify-center space-x-0.5 shrink-0 bg-white p-1.5 rounded-lg border border-slate-200">
+              <div className="h-10 flex items-center justify-center space-x-0.5 shrink-0 bg-white p-1.5 rounded-lg border border-[#082F5B]/15">
                 {[4, 2, 6, 3, 5, 2, 4, 6, 2, 4, 3, 5, 2, 6, 3, 4, 2, 5, 3, 4, 3, 5, 2, 4].map((w, idx) => (
-                  <div key={idx} className="bg-slate-900 h-full" style={{ width: `${w}px` }} />
+                  <div key={idx} className="bg-[#082F5B] h-full" style={{ width: `${w}px` }} />
                 ))}
               </div>
-              <span className="font-mono text-[10px] text-slate-600 font-bold">
+              <span className="font-mono text-[10px] text-[#102B46] font-bold">
                 *{booking.booking_id}*
               </span>
             </div>
           </div>
 
           {/* Total Paid & Booking Type */}
-          <div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between text-sm pt-2 border-t border-[#082F5B]/10">
             <div>
-              <span className="text-xs text-slate-500 font-semibold block">Experience Category</span>
-              <span className="font-bold text-slate-800">
+              <span className="text-xs text-[#102B46]/60 font-semibold block">Experience Category</span>
+              <span className="font-bold text-[#102B46]">
                 {booking.booking_type === 'EVENT' || booking.booking_type === 'PRIVATE_EVENT'
                   ? 'Private Ship Charter / Event'
                   : 'Public Cruise Tour Ticket'}
               </span>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-500 font-semibold block">Total Amount (INR)</span>
-              <span className="text-2xl font-display font-black text-sky-700">
+              <span className="text-xs text-[#102B46]/60 font-semibold block">Total Amount (INR)</span>
+              <span className="text-2xl font-display font-black text-[#1677C8]">
                 {formatINR(booking.total_price)}
               </span>
             </div>
@@ -267,8 +414,8 @@ export const TicketPass: React.FC<TicketPassProps> = ({
         </div>
 
         {/* Footer print & invoice action (hidden on paper print) */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-3 sm:items-center justify-between print:hidden">
-          <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+        <div className="px-6 py-4 bg-[#EAF4FB] border-t border-[#082F5B]/10 flex flex-col sm:flex-row gap-3 sm:items-center justify-between print:hidden">
+          <span className="text-xs text-[#102B46]/70 font-medium flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Present this pass or QR at terminal gate for immediate boarding.</span>
           </span>
@@ -277,16 +424,16 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               <button
                 type="button"
                 onClick={onViewInvoice}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold flex items-center gap-1.5 border border-slate-300 transition cursor-pointer shadow-sm"
+                className="px-4 py-2 rounded-full bg-[#F8FCFF] hover:bg-white text-[#102B46] text-xs font-bold flex items-center gap-1.5 border border-[#082F5B]/15 transition cursor-pointer shadow-sm"
               >
-                <FileText className="w-3.5 h-3.5 text-sky-600" />
+                <FileText className="w-3.5 h-3.5 text-[#1677C8]" />
                 <span>Tax Invoice</span>
               </button>
             )}
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+              className="px-5 py-2 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-[#1677C8]/20"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Boarding Pass</span>

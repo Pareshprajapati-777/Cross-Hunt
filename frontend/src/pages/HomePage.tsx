@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { RequirementSearch } from '../components/home/RequirementSearch';
 import { CruiseCard } from '../components/cruises/CruiseCard';
+import { CurvedMarqueeBanner } from '../components/home/CurvedMarqueeBanner';
+import { VesselShowcaseStage } from '../components/home/VesselShowcaseStage';
+import { VoyagerMediaSection } from '../components/home/VoyagerMediaSection';
+import { OpenDesignDeckShowcase } from '../components/home/OpenDesignDeckShowcase';
+import { OpenDesignPrivateEvents } from '../components/home/OpenDesignPrivateEvents';
 import { getCruises } from '../api/cruises';
 import { getTours } from '../api/tours';
 import { Cruise, PublicTour } from '../api/types';
@@ -20,10 +25,13 @@ import {
   Building2,
   Navigation,
   CheckCircle2,
+  XCircle,
   Play,
-  Headphones,
   Users,
   Ship,
+  HelpCircle,
+  ChevronDown,
+  Star,
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -46,6 +54,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [upcomingTours, setUpcomingTours] = useState<PublicTour[]>([]);
   const [operators, setOperators] = useState<PublicOperator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -75,174 +84,164 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
+  const handleVesselShowcaseBook = (vesselId: string, bookingDetails?: any) => {
+    const matched = featuredCruises.find(
+      (c) => (c.slug || c.id) === vesselId || c.title?.toLowerCase().includes(vesselId.replace(/-/g, ' '))
+    );
+    if (matched) {
+      onBookCruise(matched);
+    } else {
+      onNavigate('explore', JSON.stringify({ vessel_id: vesselId, ...bookingDetails }));
+    }
+  };
+
+  const faqs = [
+    {
+      q: 'How does real-time slot locking prevent double booking?',
+      a: 'When you begin a charter reservation, Cross-Hunt locks the vessel for your chosen departure date and time window server-side. No other customer or operator can confirm an overlapping reservation on that ship.'
+    },
+    {
+      q: 'What is the difference between Public Tours and Private Charters?',
+      a: 'Public Tours allow you to book individual passenger tickets or cabin berths on scheduled itineraries with inclusive catering and entertainment. Private Charters give you exclusive whole-boat booking for weddings, parties, or corporate retreats.'
+    },
+    {
+      q: 'Are all vessels and crew members licensed and verified?',
+      a: 'Yes. Every vessel registered on Cross-Hunt undergoes inspection for maritime seaworthiness, valid marine insurance, and passenger safety certifications with verified licensed captains.'
+    },
+    {
+      q: 'How do I receive my boarding pass and tax invoice?',
+      a: 'Immediately upon booking confirmation, your digital boarding pass with a secure QR code and official itemized GST tax invoice are generated in your Traveler Passport and can be downloaded or sent via WhatsApp.'
+    }
+  ];
+
   return (
-    <div className="relative min-h-screen bg-slate-50/70">
+    <div className="relative min-h-screen bg-[#f8f9fa] text-[#051833] selection:bg-[#0284c7]/20 selection:text-[#051833]">
       {/* ============================================================ */}
-      {/* 1. CINEMATIC LUXURY OCEAN HERO SECTION                       */}
+      {/* 1. CINEMATIC LUXURY HERO SECTION (OD STUDIO)                */}
       {/* ============================================================ */}
       <section
-        className="relative z-10 min-h-[96vh] flex flex-col justify-center pt-24 pb-12 overflow-hidden bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/hero_luxury_ocean_bg.jpg')` }}
+        className="relative z-10 min-h-[96vh] flex flex-col justify-center pt-28 pb-20 overflow-hidden bg-[#f8f9fa]"
+        style={{
+          background: 'radial-gradient(circle at 80% 20%, rgba(2, 132, 199, 0.08) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(255, 248, 220, 0.6) 0%, transparent 60%), #f8f9fa',
+        }}
       >
-        {/* Soft coastal ocean gradient overlay for crystal clear contrast & vibrant sunshine */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/30 via-transparent to-slate-950/45 pointer-events-none" />
-
-        {/* Decorative Top-Right Elements (Script + Watch Video) */}
-        <div className="hidden lg:flex flex-col items-end gap-3 absolute right-8 xl:right-16 top-28 z-20">
-          <div
-            className="text-3xl xl:text-4xl text-white drop-shadow-lg rotate-[-6deg] tracking-wider"
-            style={{ fontFamily: "'Caveat', cursive" }}
-          >
-            Explore India by Sea
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('tours')}
-            className="flex items-center gap-2.5 bg-slate-950/60 hover:bg-slate-900/80 backdrop-blur-md border border-white/25 text-white rounded-full pl-2 pr-4 py-1.5 shadow-2xl transition-all cursor-pointer group"
-          >
-            <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-            </div>
-            <div className="text-left">
-              <div className="text-xs font-bold leading-tight">Watch Video</div>
-              <div className="text-[9px] text-sky-200">Discover Experiences</div>
-            </div>
-          </button>
+        {/* Full-bleed maritime background with clear ship visibility */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-80 sm:opacity-85">
+          <img
+            src="/assets/hero-ship-sunset.jpg"
+            alt="Luxury Maritime Flagship"
+            className="w-full h-full object-cover object-[75%_center] lg:object-[68%_center] animate-od-drift"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.src.includes('photo1_cruise_hero_bg.jpg')) {
+                target.src = '/photo1_cruise_hero_bg.jpg';
+              }
+            }}
+          />
         </div>
 
+        {/* Soft directional gradient overlays:
+            1. Left-to-right fade gives maximum text readability on the left while leaving the ship in full view on the right
+            2. Subtle bottom fade blends seamlessly into the curved wave marquee */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/85 md:via-[#f8f9fa]/60 to-transparent pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#f8f9fa] via-transparent to-transparent pointer-events-none z-0" />
 
+        <div className="relative z-10 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-8">
+            {/* Left Headline Area */}
+            <div className="lg:col-span-8 space-y-5 text-left relative">
+              {/* Massive Oversized Luxury Headline with Hand-Drawn Wavy Underline */}
+              <h1 className="hero-heading-more text-5xl sm:text-7xl lg:text-8xl font-black text-[#051833] drop-shadow-sm font-serif text-stroke-dark">
+                Charter The Seas.<br />
+                <span className="text-[#0284c7] italic font-serif text-stroke-dark">Redefine Luxury.</span>
+              </h1>
 
-        {/* Main Content Area */}
-        <div className="relative z-10 max-w-[1360px] mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-5 pt-3 sm:pt-4">
-          {/* Top Crown Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/60 backdrop-blur-md border border-white/20 text-white text-xs sm:text-sm font-semibold shadow-lg">
-            <span>👑</span>
-            <span>India's No.1 Ship & Boat Rental Platform</span>
-          </div>
+              <p className="text-sm sm:text-base text-slate-600 max-w-xl font-medium leading-relaxed">
+                Cross Hunt OD Studio operates an exclusive verified fleet of luxury yachts, private party catamarans, and scheduled ocean trips across India’s premier coastal gateways.
+              </p>
 
-          {/* Hero Headline & Subtitle */}
-          <div className="space-y-3 max-w-3xl text-left">
-            <h1
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.08] drop-shadow-lg"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              Book Your Ship. <br />
-              Create The Journey.
-            </h1>
-            <p className="text-sm sm:text-base text-white/90 font-normal max-w-2xl leading-relaxed drop-shadow">
-              Explore scheduled public cruises or book private yachts and boats for family trips, parties, and special events across India.
-            </p>
-
-            {/* 4 Trust Badges Row (Matching reference circular glowing style) */}
-            <div className="flex flex-wrap items-center gap-5 sm:gap-7 pt-2">
-              {/* Badge 1: Real Ships */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 35%, #0284c7 0%, #034f84 55%, #022b54 100%)',
-                    border: '1.5px solid rgba(255, 255, 255, 0.95)',
-                    boxShadow: '0 0 0 2px rgba(56, 189, 248, 0.75), 0 0 20px rgba(56, 189, 248, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.4)',
-                  }}
+              {/* CTAs with OD Studio Luxury Buttons */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <button
+                  onClick={() => onNavigate('explore')}
+                  className="px-6 py-3 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-sm font-black transition flex items-center gap-2 shadow-lg shadow-[#051833]/15 cursor-pointer"
                 >
-                  <Ship className="w-5 h-5 text-white drop-shadow" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-bold text-white leading-tight drop-shadow-md tracking-wide">Real Ships</div>
-                  <div className="text-xs text-sky-200 font-medium drop-shadow-sm">Real Experiences</div>
-                </div>
+                  <span>Explore Fleet & Ships</span>
+                  <ArrowRight className="w-4 h-4 text-[#fff8dc]" />
+                </button>
+
+                <button
+                  onClick={() => onNavigate('tours')}
+                  className="px-6 py-3 rounded-full bg-white hover:bg-slate-50 text-[#051833] border border-[#0284c7]/25 text-sm font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Public Tours</span>
+                  <ArrowRight className="w-4 h-4 text-[#0284c7]" />
+                </button>
+
+                <button
+                  onClick={() => onNavigate('events')}
+                  className="px-6 py-3 rounded-full bg-sky-50 hover:bg-sky-100 text-[#0284c7] border border-[#0284c7]/30 text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <Sparkles className="w-4 h-4 text-[#0284c7]" />
+                  <span>Private Events</span>
+                </button>
               </div>
+            </div>
 
-              {/* Badge 2: Verified Operators */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 35%, #0284c7 0%, #034f84 55%, #022b54 100%)',
-                    border: '1.5px solid rgba(255, 255, 255, 0.95)',
-                    boxShadow: '0 0 0 2px rgba(56, 189, 248, 0.75), 0 0 20px rgba(56, 189, 248, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.4)',
-                  }}
-                >
-                  <ShieldCheck className="w-5 h-5 text-white drop-shadow" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-bold text-white leading-tight drop-shadow-md tracking-wide">Verified</div>
-                  <div className="text-xs text-sky-200 font-medium drop-shadow-sm">Operators</div>
-                </div>
+            {/* Right: Floating Circular Fact Badges with Blue Light Glow */}
+            <div className="lg:col-span-4 hidden lg:flex flex-col items-end gap-5">
+              <div className="fact-circle-badge animate-float-1 bg-white/95 border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.35),0_0_40px_rgba(56,189,248,0.2)] ring-1 ring-sky-300/40 text-[#051833]">
+                <span className="font-heading-more text-2xl font-black text-[#051833] leading-none">31+</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1">Verified Fleet</span>
               </div>
-
-              {/* Badge 3: Best Price */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 35%, #0284c7 0%, #034f84 55%, #022b54 100%)',
-                    border: '1.5px solid rgba(255, 255, 255, 0.95)',
-                    boxShadow: '0 0 0 2px rgba(56, 189, 248, 0.75), 0 0 20px rgba(56, 189, 248, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.4)',
-                  }}
-                >
-                  <Tag className="w-5 h-5 text-white drop-shadow" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-bold text-white leading-tight drop-shadow-md tracking-wide">Best Price</div>
-                  <div className="text-xs text-sky-200 font-medium drop-shadow-sm">& Transparent</div>
-                </div>
+              <div className="fact-circle-badge mr-8 animate-float-2 bg-white/95 border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.35),0_0_40px_rgba(56,189,248,0.2)] ring-1 ring-sky-300/40 text-[#051833]">
+                <span className="font-heading-more text-2xl font-black text-[#0284c7] leading-none">100%</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1">Licensed Crew</span>
               </div>
-
-              {/* Badge 4: Safe & Secure */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                  style={{
-                    background: 'radial-gradient(circle at 35% 35%, #0284c7 0%, #034f84 55%, #022b54 100%)',
-                    border: '1.5px solid rgba(255, 255, 255, 0.95)',
-                    boxShadow: '0 0 0 2px rgba(56, 189, 248, 0.75), 0 0 20px rgba(56, 189, 248, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.4)',
-                  }}
-                >
-                  <Users className="w-5 h-5 text-white drop-shadow" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-bold text-white leading-tight drop-shadow-md tracking-wide">Safe & Secure</div>
-                  <div className="text-xs text-sky-200 font-medium drop-shadow-sm">Booking</div>
-                </div>
+              <div className="fact-circle-badge animate-float-3 bg-white/95 border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.35),0_0_40px_rgba(56,189,248,0.2)] ring-1 ring-sky-300/40 text-[#051833]">
+                <span className="font-heading-more text-2xl font-black text-[#051833] leading-none">0%</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1">Overlap Risk</span>
               </div>
             </div>
           </div>
 
-          {/* Glassmorphic Search Widget (Moved to the left to give the Dolphin full visibility) */}
-          <div className="pt-1 max-w-3xl lg:max-w-[840px] xl:max-w-[880px] 2xl:max-w-[920px] w-full mr-auto">
+          {/* Integrated Search Widget */}
+          <div className="pt-2 max-w-4xl mr-auto">
             <RequirementSearch onSearch={handleRequirementSearch} />
           </div>
         </div>
-
       </section>
 
+      {/* ============================================================ */}
+      {/* 2. DYNAMIC CURVED WAVE MARQUEE TICKER (More-Nutrition Style) */}
+      {/* ============================================================ */}
+      <CurvedMarqueeBanner />
 
       {/* ============================================================ */}
-      {/* 2. UPCOMING PUBLIC CRUISE TOURS (PRODUCT B)                  */}
+      {/* 2. UPCOMING SCHEDULED PUBLIC CRUISE TOURS                    */}
       {/* ============================================================ */}
       {upcomingTours.length > 0 && (
         <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-bold uppercase tracking-wider mb-2 border border-sky-200">
-                <Waves className="w-3.5 h-3.5 text-sky-600" />
-                Product B — Scheduled Departures
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
+                <Waves className="w-3.5 h-3.5 text-[#0284c7]" />
+                Scheduled Cruise Expeditions
               </div>
-              <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
-                Upcoming Public Cruise Tours
+              <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
+                Upcoming Public Tours
               </h2>
-              <p className="text-slate-500 text-sm max-w-xl mt-1">
-                Purchase individual ticket seats on scheduled departures. All gourmet buffets, ocean deck shows, and island excursions included.
+              <p className="text-slate-600 text-sm max-w-xl mt-2 font-medium">
+                Reserve individual passenger tickets or cabin berths on scheduled departures with gourmet catering and island excursions.
               </p>
             </div>
 
             <button
               onClick={() => onNavigate('tours')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold shadow-sm transition cursor-pointer self-start md:self-auto"
+              className="px-5 py-2.5 rounded-full bg-white border border-[#0284c7]/25 text-[#051833] hover:bg-slate-50 transition flex items-center gap-2 text-xs font-bold self-start md:self-auto cursor-pointer shadow-sm"
             >
               <span>Explore All Tours</span>
-              <ArrowRight className="w-4 h-4 text-sky-600" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#0284c7]" />
             </button>
           </div>
 
@@ -250,14 +249,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             {upcomingTours.map((tour) => (
               <div
                 key={tour.id}
-                className="group bg-white/95 backdrop-blur-md rounded-3xl border border-sky-100 hover:border-sky-300 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                className="card-marine-soft group rounded-3xl bg-white border border-[#0284c7]/20 hover:border-[#0284c7]/50 text-[#051833] overflow-hidden flex flex-col justify-between shadow-md hover:shadow-xl transition-all duration-300"
               >
-                <div className="relative h-52 overflow-hidden bg-slate-100">
+                <div className="relative h-56 overflow-hidden bg-slate-100">
                   <img
                     src={tour.tour_image || tour.ship_image || tour.image_url || '/static/images/placeholder.png'}
                     alt={tour.tour_title}
                     loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                     onError={(e) => {
                       const target = e.currentTarget;
                       if (!target.src.includes('placeholder.png')) {
@@ -265,55 +264,56 @@ export const HomePage: React.FC<HomePageProps> = ({
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-black/10" />
-                  <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider">
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#051833]/90 via-[#051833]/25 to-transparent" />
+                  <div className="absolute top-3.5 left-3.5 right-3.5 flex justify-between items-center">
+                    <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#051833] text-[10px] font-bold uppercase tracking-wider border border-[#0284c7]/20 shadow-sm">
                       {tour.ship_name}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/90 text-white text-[10px] font-bold uppercase tracking-wider">
+                    <span className="px-2.5 py-1 rounded-full bg-[#0284c7] text-[#fff8dc] text-[10px] font-black uppercase tracking-wider shadow-sm">
                       {tour.remaining_capacity} Seats Left
                     </span>
                   </div>
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <p className="text-[11px] font-bold text-sky-300 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
+                  <div className="absolute bottom-3.5 left-3.5 right-3.5 text-white">
+                    <p className="text-[11px] font-bold text-sky-300 flex items-center gap-1 text-stroke-white-subtle">
+                      <MapPin className="w-3.5 h-3.5 text-sky-300" />
                       {tour.departure_port} → {tour.destination}
                     </p>
-                    <h3 className="font-bold text-sm font-serif line-clamp-1">{tour.tour_title}</h3>
+                    <h3 className="font-heading-more text-lg text-white font-bold line-clamp-1 mt-0.5 text-stroke-white">{tour.tour_title}</h3>
                   </div>
                 </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    <span className="flex items-center gap-1 text-slate-600">
-                      <Calendar className="w-3.5 h-3.5 text-sky-500" />
-                      {tour.departure_date}
+                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-[#f8f9fa] p-2.5 rounded-2xl border border-slate-200">
+                    <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <Calendar className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+                      <span className="font-mono-numbers">{tour.departure_date}</span>
                     </span>
-                    <span className="flex items-center gap-1 text-slate-600">
-                      <Clock className="w-3.5 h-3.5 text-sky-500" />
-                      {tour.duration_days} Days
+                    <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <Clock className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+                      <span className="font-mono-numbers">{tour.duration_days} Days</span>
                     </span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">From</span>
-                      <span className="text-lg font-black text-slate-900">{formatINR(tour.adult_price)}</span>
-                      <span className="text-[10px] text-slate-400 block">/ adult</span>
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">From</span>
+                      <span className="font-mono-numbers text-xl font-black text-[#051833]">{formatINR(tour.adult_price)}</span>
+                      <span className="text-[10px] text-slate-500 block">/ adult</span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => onSelectTour ? onSelectTour(tour) : onNavigate('tours')}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                        className="px-3.5 py-2 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#051833] hover:bg-slate-50 transition cursor-pointer shadow-sm"
                       >
                         Itinerary
                       </button>
                       <button
                         onClick={() => onBookTour ? onBookTour(tour) : onNavigate('tours')}
-                        className="px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                        className="px-4 py-2 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-[#051833]/15 cursor-pointer"
                       >
-                        Book Ticket
+                        <span>Book Ticket</span>
+                        <ArrowRight className="w-3 h-3 text-[#fff8dc]" />
                       </button>
                     </div>
                   </div>
@@ -325,29 +325,52 @@ export const HomePage: React.FC<HomePageProps> = ({
       )}
 
       {/* ============================================================ */}
-      {/* 3. FEATURED LUXURY SHIPS SECTION (PRODUCT A)                 */}
+      {/* 3. INTERACTIVE MORE-NUTRITION STYLE VESSEL SHOWCASE STAGE    */}
       {/* ============================================================ */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-slate-200/60">
+      <VesselShowcaseStage
+        onBookVessel={handleVesselShowcaseBook}
+        onExploreAll={() => onNavigate('explore')}
+      />
+
+      {/* ============================================================ */}
+      {/* 3B. OPEN DESIGN INTERACTIVE VESSEL DECK PLAN SHOWCASE        */}
+      {/* ============================================================ */}
+      <OpenDesignDeckShowcase
+        onExploreSuite={(_deckId) => onNavigate('explore')}
+        onBookVoyage={() => {
+          if (featuredCruises.length > 0) {
+            onBookCruise(featuredCruises[0]);
+          } else {
+            onNavigate('explore');
+          }
+        }}
+      />
+
+
+      {/* ============================================================ */}
+      {/* 4. FEATURED LUXURY SHIPS SECTION (OD STUDIO FLEET)           */}
+      {/* ============================================================ */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-[#0284c7]/15">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-bold uppercase tracking-wider mb-2 border border-sky-200">
-              <Anchor className="w-3.5 h-3.5 text-sky-600" />
-              Product A — Private Ships & Milestones
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
+              <Anchor className="w-3.5 h-3.5 text-[#0284c7]" />
+              OD Studio Private Fleet
             </div>
-            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
+            <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
               Featured Flagship Fleet
             </h2>
-            <p className="text-slate-500 text-sm max-w-xl mt-1">
-              Privately charter ocean ships and boats configured for grand weddings, executive conclaves, and milestone gatherings.
+            <p className="text-slate-600 text-sm max-w-xl mt-2 font-medium">
+              Privately charter ocean ships and boats configured for grand weddings, executive conclaves, and milestone celebrations.
             </p>
           </div>
 
           <button
             onClick={() => onNavigate('explore')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold shadow-sm transition cursor-pointer self-start md:self-auto"
+            className="px-5 py-2.5 rounded-full bg-white border border-[#0284c7]/25 text-[#051833] hover:bg-slate-50 transition flex items-center gap-2 text-xs font-bold self-start md:self-auto cursor-pointer shadow-sm"
           >
             <span>View All Ships</span>
-            <ArrowRight className="w-4 h-4 text-sky-600" />
+            <ArrowRight className="w-3.5 h-3.5 text-[#0284c7]" />
           </button>
         </div>
 
@@ -373,53 +396,149 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 3B. POPULAR COASTAL PORTS & MARITIME HUBS                    */}
+      {/* 4B. OPEN DESIGN PRIVATE MARITIME EVENTS & CHARTER CALCULATOR */}
       {/* ============================================================ */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-slate-200/60">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-200">
-              <Navigation className="w-3.5 h-3.5 text-emerald-600" />
-              Verified Coastal Port Gateways
+      <OpenDesignPrivateEvents
+        onNavigateToEvents={() => onNavigate('events')}
+        onInquireEvent={(details) => {
+          onNavigate('events', JSON.stringify(details));
+        }}
+      />
+
+      {/* ============================================================ */}
+      {/* 4. "SEE THE DIFFERENCE" — OD STUDIO MARITIME STANDARD        */}
+      {/* ============================================================ */}
+      <section className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
+            <Award className="w-3.5 h-3.5 text-[#0284c7]" />
+            Direct Maritime Standard
+          </div>
+          <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
+            See The Difference.
+          </h2>
+          <p className="text-slate-600 text-sm mt-2 font-medium">
+            How Cross-Hunt’s verified maritime booking platform compares to traditional unverified local agents.
+          </p>
+        </div>
+
+        <div className="marine-compare-table rounded-3xl overflow-hidden border-2 border-sky-400 bg-white shadow-[0_0_30px_rgba(14,165,233,0.35),0_0_60px_rgba(56,189,248,0.2)] ring-1 ring-sky-300/40">
+          {/* Header Row */}
+          <div className="marine-compare-row bg-sky-50/80 text-[#051833] font-bold text-xs uppercase tracking-wider border-b border-[#0284c7]/20">
+            <span>Platform Capabilities & Guarantees</span>
+            <span className="text-center text-[#0284c7] font-black">Cross-Hunt OD Studio</span>
+            <span className="text-center text-slate-500">Local Agents</span>
+          </div>
+
+          {/* Rows */}
+          {[
+            {
+              title: 'Real-Time Direct Slot Locking',
+              desc: 'Server-side timestamp reservation prevents double booking',
+              cross: true,
+              other: false,
+            },
+            {
+              title: '100% Certified Captains & Seaworthy Audits',
+              desc: 'Verified maritime licenses, marine insurance, and safety equipment',
+              cross: true,
+              other: false,
+            },
+            {
+              title: 'Itemized GST Tax Invoice & Clear Pricing',
+              desc: 'Official tax invoice with zero hidden pier charges or dock fees',
+              cross: true,
+              other: false,
+            },
+            {
+              title: 'Live WhatsApp Reminders & GPS Boarding QR Pass',
+              desc: 'Instant QR ticket scanning at jetty and automated departure updates',
+              cross: true,
+              other: false,
+            },
+            {
+              title: 'Guaranteed Full Vessel or Stateroom Berth',
+              desc: 'Direct contract ensuring your vessel is clean, fueled, and ready',
+              cross: true,
+              other: false,
+            },
+            {
+              title: '24/7 AI Maritime Concierge',
+              desc: 'Instant ticket lookup, weather checking, and itinerary assistance',
+              cross: true,
+              other: false,
+            },
+          ].map((item, idx) => (
+            <div key={idx} className="marine-compare-row border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors">
+              <div>
+                <h4 className="font-bold text-sm text-[#051833]">{item.title}</h4>
+                <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="w-8 h-8 rounded-full bg-sky-50 border border-[#0284c7]/30 flex items-center justify-center text-[#0284c7]">
+                  <CheckCircle2 className="w-5 h-5 fill-[#0284c7]/10" />
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500">
+                  <XCircle className="w-5 h-5" />
+                </div>
+              </div>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
+          ))}
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 5. POPULAR COASTAL PORTS & MARITIME HUBS                    */}
+      {/* ============================================================ */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-[#0284c7]/15">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
+              <Navigation className="w-3.5 h-3.5 text-[#0284c7]" />
+              Verified Coastal Gateways
+            </div>
+            <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
               Popular Maritime Hubs
             </h2>
-            <p className="text-slate-500 text-sm max-w-xl mt-1">
-              Select your departure port to instantly discover available charter boats, private catamarans, and scheduled passenger liners.
+            <p className="text-slate-600 text-sm max-w-xl mt-2 font-medium">
+              Select your departure port to discover available charter boats, private catamarans, and scheduled passenger liners.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
-            { name: 'Goa', port: 'Mandovi River & Mormugao', count: '10+ Ships', image: '/static/images/vessels/mandovi_river_cruise.jpg' },
+            { name: 'Goa', port: 'Mandovi River & Mormugao', count: '10+ Ships', image: '/static/images/vessels/mandovi_pride.jpg' },
             { name: 'Mumbai', port: 'International Cruise Terminal', count: '6+ Ships', image: '/static/images/vessels/cordelia_empress.jpg' },
-            { name: 'Andaman & Nicobar', port: 'Port Blair, Havelock & Neil', count: '8+ Ships', image: '/static/images/vessels/nautika_catamaran.jpg' },
-            { name: 'Lakshadweep', port: 'Agatti, Bangaram & Kavaratti', count: '4+ Ships', image: '/static/images/vessels/lacadives_catamaran.jpg' },
-            { name: 'Kochi', port: 'Willingdon Island & Backwaters', count: '4+ Ships', image: '/static/images/vessels/swastik_cruise.jpg' },
+            { name: 'Andaman & Nicobar', port: 'Port Blair & Havelock', count: '8+ Ships', image: '/static/images/vessels/nautika_catamaran.jpg' },
+            { name: 'Lakshadweep', port: 'Agatti & Kavaratti', count: '4+ Ships', image: '/static/images/vessels/lacadives_charter.jpg' },
+            { name: 'Kochi', port: 'Marine Drive & Backwaters', count: '4+ Ships', image: '/static/images/vessels/swastik_voyager.jpg' },
           ].map((hub) => (
             <button
               key={hub.name}
               onClick={() => onNavigate('explore', JSON.stringify({ location: hub.name }))}
-              className="group text-left bg-white rounded-2xl border border-slate-200 hover:border-sky-400 overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col"
+              className="card-marine-soft group text-left overflow-hidden cursor-pointer flex flex-col rounded-2xl bg-white border border-[#0284c7]/15 hover:border-[#0284c7]/60 shadow-md hover:shadow-xl transition-all"
             >
-              <div className="h-28 overflow-hidden relative bg-slate-100">
+              <div className="h-32 overflow-hidden relative bg-slate-100">
                 <img
                   src={hub.image}
                   alt={hub.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   onError={(e) => {
                     e.currentTarget.src = '/static/images/vessels/cordelia_empress.jpg';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
-                <span className="absolute bottom-2 left-2 text-[10px] font-bold text-sky-200 bg-slate-950/60 px-2 py-0.5 rounded backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#051833]/80 via-transparent to-transparent" />
+                <span className="absolute bottom-2 left-2 text-[10px] font-bold text-[#0284c7] bg-white/95 px-2 py-0.5 rounded-full backdrop-blur-sm border border-[#0284c7]/20 shadow-sm">
                   {hub.count}
                 </span>
               </div>
-              <div className="p-3">
-                <h3 className="font-bold text-sm text-slate-900 group-hover:text-sky-700 transition font-serif">{hub.name}</h3>
+              <div className="p-3.5">
+                <h3 className="font-heading-more text-base text-[#051833] group-hover:text-[#0284c7] transition">{hub.name}</h3>
                 <p className="text-[11px] text-slate-500 truncate mt-0.5">{hub.port}</p>
               </div>
             </button>
@@ -428,129 +547,59 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 3C. VERIFIED MARITIME OPERATORS & CRUISE LINES               */}
+      {/* 6. PRIVATE MARITIME EVENTS & CURATED PACKAGES                */}
       {/* ============================================================ */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-slate-200/60">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider mb-2 border border-blue-200">
-              <Building2 className="w-3.5 h-3.5 text-blue-600" />
-              Direct Marine Operator Catalogue
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
-              Verified Coastal Fleet Operators
-            </h2>
-            <p className="text-slate-500 text-sm max-w-xl mt-1">
-              Browse official fleet specifications and direct charter contacts for India's 11 verified cruise lines and boat rental companies.
-            </p>
-          </div>
+      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-sky-50 via-white to-sky-100 text-[#051833] border-t border-[#0284c7]/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white text-[#0284c7] border border-[#0284c7]/30 text-xs font-bold uppercase tracking-wider shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-[#0284c7]" />
+                Exclusive Private Charters
+              </span>
+              <h2 className="hero-heading-more text-4xl sm:text-6xl font-black text-[#051833] leading-tight font-serif">
+                Host Your Milestone at Sea.
+              </h2>
+              <p className="text-slate-700 text-sm sm:text-base leading-relaxed font-medium">
+                From sunset deck weddings with panoramic coastal horizons to corporate retreats and private DJ parties, our maritime rental platform turns celebrations into unforgettable memories.
+              </p>
 
-          <button
-            onClick={() => onNavigate('explore')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold shadow-sm transition cursor-pointer self-start md:self-auto"
-          >
-            <span>View Full Fleet Directory</span>
-            <ArrowRight className="w-4 h-4 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {operators.slice(0, 6).map((op) => (
-            <div
-              key={op.id}
-              className="bg-white rounded-3xl border border-slate-200/90 hover:border-sky-300 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200 uppercase">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Verified Operator
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {op.vessels_count} Ships Registered
-                  </span>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="p-5 rounded-2xl bg-white border border-[#0284c7]/20 shadow-md">
+                  <p className="font-mono-numbers font-black text-3xl text-[#0284c7]">30 – 350</p>
+                  <p className="text-xs text-slate-500 mt-1 font-semibold">Guest Capacities</p>
                 </div>
-                <h3 className="font-bold text-lg text-slate-900 font-serif">{op.name}</h3>
-                <p className="text-xs text-sky-700 font-semibold flex items-center gap-1 mt-0.5">
-                  <MapPin className="w-3 h-3 text-sky-600" />
-                  {op.location}
-                </p>
-                <p className="text-xs text-slate-600 mt-2 line-clamp-2 leading-relaxed">
-                  {op.description}
-                </p>
+                <div className="p-5 rounded-2xl bg-white border border-[#0284c7]/20 shadow-md">
+                  <p className="font-heading-more font-black text-3xl text-[#051833]">3 Curated</p>
+                  <p className="text-xs text-slate-500 mt-1 font-semibold">Luxury Event Packages</p>
+                </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-500">
-                  {op.tours_count ? `${op.tours_count} Scheduled Tours` : 'Private Charters'}
-                </span>
+              <div className="pt-2">
                 <button
-                  onClick={() => onNavigate('explore', JSON.stringify({ q: op.name }))}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition cursor-pointer"
+                  onClick={() => onNavigate('events')}
+                  className="px-6 py-3 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-sm font-black transition flex items-center gap-2 shadow-lg shadow-[#051833]/15 cursor-pointer"
                 >
-                  Explore Ships →
+                  <span>Explore Event Packages</span>
+                  <ArrowRight className="w-4 h-4 text-[#fff8dc]" />
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ============================================================ */}
-      {/* 4. PRIVATE MARITIME EVENTS TEASER                            */}
-      {/* ============================================================ */}
-      <section className="py-20 relative overflow-hidden bg-gradient-to-b from-[#f0f9ff] via-[#e0f2fe]/40 to-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-sky-200 shadow-xl relative overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-              <div className="space-y-6">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold uppercase tracking-wider">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  Exclusive Private Charters
-                </span>
-                <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-slate-900 leading-tight font-serif">
-                  Host Your Milestone Moment at Sea
-                </h2>
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                  From sunset deck weddings with coastal views to corporate retreats and private DJ parties, our boat and ship rental services make every celebration unforgettable.
+            <div className="relative rounded-3xl overflow-hidden aspect-[4/3] border border-[#0284c7]/30 shadow-2xl">
+              <img
+                src="/static/images/vessels/navora_yacht.jpg"
+                alt="Private Luxury Yacht Event"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#051833]/90 via-transparent to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-sky-300 text-stroke-white-subtle">
+                  Signature Charter Package
                 </p>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl bg-sky-50 border border-sky-100">
-                    <p className="font-display font-bold text-2xl text-sky-800 font-serif">30 - 350</p>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">Guest Capacities</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
-                    <p className="font-display font-bold text-2xl text-amber-700 font-serif">3 Curated</p>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">Luxury Event Packages</p>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => onNavigate('events')}
-                    className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-display font-bold text-xs tracking-wide shadow-md shadow-amber-500/20 transition cursor-pointer"
-                  >
-                    Explore Event Packages
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/3] border border-slate-200 shadow-xl">
-                <img
-                  src="/static/images/vessels/navora_yacht.jpg"
-                  alt="Private Luxury Yacht Event"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-sky-300">
-                    Signature Event Package
-                  </p>
-                  <p className="text-xl font-display font-bold text-white mt-1 font-serif">
-                    Diamond Horizon Royal Gala
-                  </p>
-                </div>
+                <p className="text-2xl font-serif font-black text-white mt-1 text-stroke-white">
+                  Diamond Horizon Royal Gala
+                </p>
               </div>
             </div>
           </div>
@@ -558,47 +607,106 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 5. FLEET EXCELLENCE & STANDARDS                              */}
+      {/* 7. CUSTOMER TESTIMONIALS & PASSENGER REVIEWS (MORE NUTRITION)*/}
       {/* ============================================================ */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-          <h2 className="text-3xl font-display font-extrabold text-slate-900 tracking-tight font-serif">
-            Built for Safe & Comfortable Trips
+      <VoyagerMediaSection />
+
+      {/* ============================================================ */}
+      {/* 8. FREQUENTLY ASKED QUESTIONS (FAQ ACCORDION)                */}
+      {/* ============================================================ */}
+      <section className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 border-t border-[#0284c7]/15">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
+            <HelpCircle className="w-3.5 h-3.5 text-[#0284c7]" />
+            Everything You Need To Know
+          </div>
+          <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
+            Frequently Asked Questions
           </h2>
-          <p className="text-slate-500 text-xs sm:text-sm">
-            Every boat and ship on Cross-Hunt is safety verified with transparent pricing in INR (₹).
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-sky-100 border border-sky-200 flex items-center justify-center text-sky-700">
-              <Shield className="w-6 h-6" />
+        <div className="space-y-3">
+          {faqs.map((faq, idx) => {
+            const isOpen = activeFaq === idx;
+            return (
+              <div
+                key={idx}
+                className="rounded-2xl bg-white border border-slate-200 overflow-hidden transition-all duration-200 hover:border-[#0284c7]/40 shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveFaq(isOpen ? null : idx)}
+                  className="w-full text-left p-5 flex items-center justify-between gap-4 font-bold text-sm text-[#051833] hover:text-[#0284c7] cursor-pointer"
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown className={`w-4 h-4 text-[#0284c7] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 text-xs text-slate-600 leading-relaxed font-medium border-t border-slate-100 pt-3">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 9. FINAL CINEMATIC CALL TO ACTION (OD Studio Deep Luxury)    */}
+      {/* ============================================================ */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-[#0284c7]/15 relative">
+        {/* Soft Ambient Blue Light Glow Aura */}
+        <div className="absolute inset-x-6 sm:inset-x-12 top-20 bottom-20 rounded-[2.5rem] bg-gradient-to-r from-sky-400 via-blue-500 to-cyan-300 opacity-35 blur-2xl pointer-events-none" />
+
+        <div className="rounded-[2.5rem] bg-gradient-to-r from-sky-50 via-white to-sky-100 p-10 sm:p-16 text-center text-[#051833] relative overflow-hidden border-2 border-sky-400 shadow-[0_0_30px_rgba(14,165,233,0.35),0_0_60px_rgba(56,189,248,0.2)] ring-1 ring-sky-300/40">
+          {/* Background Ship Watermark */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute inset-0 w-full h-full opacity-30 sm:opacity-35 pointer-events-none">
+              <img
+                src="/assets/footer-cool-ship.jpg"
+                alt="Luxury Cruise Ship Background"
+                className="w-full h-full object-cover object-[center_42%] filter saturate-125"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.includes('hero-ship-sunset.jpg')) {
+                    target.src = '/assets/hero-ship-sunset.jpg';
+                  }
+                }}
+              />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 font-serif">Guaranteed Booking</h3>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Real-time slot locking prevents double bookings. Your boat booking or cruise ticket is instantly confirmed.
-            </p>
+            {/* Soft luminous gradient overlay ensuring perfect text contrast */}
+            <div className="absolute inset-0 bg-gradient-to-r from-sky-50/85 via-white/80 to-sky-100/85 pointer-events-none" />
           </div>
 
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700">
-              <Award className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 font-serif">Food & Refreshments</h3>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Enjoy fresh meals, regional specialties, tea, snacks, and catering packages on all trips.
+          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white backdrop-blur-md border border-[#0284c7]/30 text-[#0284c7] text-xs font-bold uppercase tracking-wider shadow-sm">
+              Ready for the Ocean?
+            </span>
+            <h2 className="hero-heading-more text-4xl sm:text-6xl font-black font-serif text-[#051833]">
+              Reserve Your Trip Today.
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 font-medium leading-relaxed">
+              Explore 31+ luxury ocean vessels and scheduled cruise lines with verified crew, transparent tax invoices, and real-time slot locking.
             </p>
-          </div>
 
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700">
-              <Anchor className="w-6 h-6" />
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <button
+                onClick={() => onNavigate('explore')}
+                className="px-6 py-3 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-sm font-black transition flex items-center gap-2 shadow-lg shadow-[#051833]/15 cursor-pointer"
+              >
+                <span>Charter a Ship</span>
+                <ArrowRight className="w-4 h-4 text-[#fff8dc]" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('tours')}
+                className="px-6 py-3 rounded-full bg-white hover:bg-slate-50 text-[#051833] border border-[#0284c7]/30 text-sm font-bold transition flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <span>Explore Tours</span>
+                <ArrowRight className="w-4 h-4 text-[#0284c7]" />
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 font-serif">Verified Licensed Captains</h3>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Licensed operators and certified captains with experienced crew across Goa, Andaman, Kochi, and Mumbai.
-            </p>
           </div>
         </div>
       </section>

@@ -234,6 +234,9 @@ export interface TicketVerification {
   tracking_status?: string;
   can_mark_used: boolean;
   message?: string;
+  booking?: Booking;
+  duration_days?: number;
+  duration_display?: string;
 }
 
 export interface PublicTour {
@@ -361,6 +364,7 @@ export interface CharterShip {
   capacity: number;
   price: string;
   location: string;
+  image?: string;
 }
 
 export interface Booking {
@@ -379,9 +383,12 @@ export interface Booking {
   route?: string;
   duration_days: number;
   duration_hours?: number;
+  duration_display?: string;
   cruise_image: string;
   booking_date: string;
   booking_date_formatted?: string;
+  return_date?: string;
+  return_date_formatted?: string;
   start_time: string;
   end_time: string;
   passengers_count: number;
@@ -451,6 +458,10 @@ export interface WhatsAppConfig {
   configured_hours: number;
   provider: string;
   is_live_configured: boolean;
+  has_api_token?: boolean;
+  masked_token?: string;
+  phone_number_id?: string;
+  business_account_id?: string;
   total_scheduled: number;
   total_sent: number;
   total_failed: number;
@@ -470,5 +481,20 @@ export interface WhatsAppQueueItem {
   sent: boolean;
   sent_at?: string | null;
   in_window: boolean;
+  wa_link?: string;
+  message_preview?: string;
+}
+
+export interface WhatsAppCredentialsPayload {
+  api_token: string;
+  phone_number_id: string;
+  business_account_id?: string;
+}
+
+export interface WhatsAppConnectionTestResult {
+  success: boolean;
+  is_live: boolean;
+  message: string;
+  details?: any;
 }
 

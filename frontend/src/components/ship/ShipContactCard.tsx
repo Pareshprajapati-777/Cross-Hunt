@@ -382,7 +382,7 @@ export const ShipContactCard: React.FC<ShipContactCardProps> = ({
                     <span className="text-[10px] text-emerald-700 font-semibold">Recommended</span>
                   </div>
                   <p className="text-[11px] text-slate-600 italic bg-white p-2 rounded-lg border border-emerald-100">
-                    "Hello, I am interested in booking {cruise.title || cruise.name} for {modalDate || 'an upcoming voyage'}.{modalGuests > 1 ? ` Headcount: ${modalGuests} guests.` : ''}{modalMessage ? ` Note: ${modalMessage}` : ''}"
+                    "Hello, I am interested in booking {cruise.title || cruise.name} for {modalDate || 'an upcoming trip'}.{modalGuests > 1 ? ` Headcount: ${modalGuests} guests.` : ''}{modalMessage ? ` Note: ${modalMessage}` : ''}"
                   </p>
                   <a
                     href={waUrl}

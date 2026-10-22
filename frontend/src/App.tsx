@@ -166,7 +166,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between selection:bg-sky-500/20 selection:text-sky-800">
+    <div className="min-h-screen bg-[#f8f9fa] text-[#051833] flex flex-col justify-between selection:bg-[#0284c7]/20 selection:text-[#051833]">
       <ScrollToTop />
       {/* Universal Responsive Navbar */}
       <Navbar />
@@ -292,6 +292,8 @@ const AppContent: React.FC = () => {
           {/* QR Scan & Boarding Pass Verification (Prompt Requirement #12 & #13) */}
           <Route path="/ticket/verify/:code" element={<TicketVerifyPage />} />
           <Route path="/tickets/verify/:code" element={<TicketVerifyPage />} />
+          <Route path="/ticket/:code" element={<TicketVerifyPage />} />
+          <Route path="/boarding-pass/:code" element={<TicketVerifyPage />} />
 
           {/* Customer Dashboard */}
           <Route

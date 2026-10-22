@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
+import { getTourImageUrl } from '../utils/images';
 
 interface TourDetailPageProps {
   tour?: PublicTour | null;
@@ -123,7 +124,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
         {/* Hero Banner */}
         <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-200/80 bg-slate-900 text-white min-h-[380px] flex flex-col justify-end p-6 sm:p-10">
           <img
-            src={tour.tour_image || tour.ship_image || tour.image_url || '/static/images/placeholder.png'}
+            src={getTourImageUrl(tour.tour_image || tour.ship_image || tour.image_url)}
             alt={tour.tour_title}
             className="absolute inset-0 w-full h-full object-cover opacity-45"
             onError={(e) => {

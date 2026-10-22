@@ -235,10 +235,10 @@ export const WhatsAppReminderCard: React.FC<WhatsAppReminderCardProps> = ({
           />
           <div className="space-y-0.5">
             <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-emerald-800 transition">
-              I agree to receive automated WhatsApp tour reminders (24h before voyage)
+              I agree to receive automated WhatsApp tour reminders (24h before trip)
             </span>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Includes departure countdown, boarding pass link, vessel gate details, and weather alerts. You can opt-out at any time from your dashboard.
+              Includes departure countdown, boarding pass link, ship gate details, and weather alerts. You can opt-out at any time from your dashboard.
             </p>
           </div>
         </label>
@@ -250,7 +250,7 @@ export const WhatsAppReminderCard: React.FC<WhatsAppReminderCardProps> = ({
           <Lock className="w-3 h-3" />
         </div>
         <p className="leading-tight">
-          <strong className="text-slate-800 font-semibold">Privacy Protected:</strong> Your WhatsApp number is securely encrypted and will <span className="underline decoration-emerald-400">never</span> be displayed publicly on ticket pages or manifests.
+          <strong className="text-slate-800 font-semibold">Privacy Protected:</strong> Your WhatsApp number is securely encrypted and will <span className="underline decoration-emerald-400">never</span> be displayed publicly on ticket pages or passenger lists.
         </p>
       </div>
     </div>

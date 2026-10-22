@@ -22,7 +22,7 @@ import {
 import { formatINR } from '../utils/currency';
 import { WhatsAppReminderCard } from '../components/common/WhatsAppReminderCard';
 import { TicketPass } from '../components/ticket/TicketPass';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2, Printer, Clock } from 'lucide-react';
 
 interface BookTourPageProps {
   cruise?: Cruise | null;
@@ -328,20 +328,29 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   };
 
   if (confirmedBooking) {
+    const isPending = confirmedBooking.status === 'PENDING';
     return (
       <div className="min-h-screen pt-28 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-xl mb-6 text-center space-y-3">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8" />
+        <div className={`bg-white rounded-3xl p-6 sm:p-8 border shadow-xl mb-6 text-center space-y-3 ${
+          isPending ? 'border-amber-300 shadow-amber-500/5' : 'border-emerald-200'
+        }`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto ${
+            isPending ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-emerald-100 text-emerald-600'
+          }`}>
+            {isPending ? <Clock className="w-8 h-8 animate-pulse text-amber-600" /> : <CheckCircle2 className="w-8 h-8" />}
           </div>
-          <span className="text-[11px] font-mono tracking-widest font-black uppercase text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
-            Charter Confirmed • Ref #{confirmedBooking.booking_id}
+          <span className={`text-[11px] font-mono tracking-widest font-black uppercase px-3 py-1 rounded-full border inline-block ${
+            isPending ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          }`}>
+            {isPending ? 'Charter Request Submitted • Awaiting Owner Approval' : 'Charter Confirmed'} • Ref #{confirmedBooking.booking_id}
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-            Your Boarding Pass is Ready!
+            {isPending ? 'Reservation Request Submitted!' : 'Your Boarding Pass is Ready!'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-            Your private vessel charter reservation has been confirmed and locked. The official gate QR code on your boarding pass will grant terminal embarkation access.
+            {isPending
+              ? 'Your private vessel charter reservation has been submitted to the ship owner. It is currently in PENDING status awaiting owner review. Once approved, your reservation and boarding pass will update to Confirmed.'
+              : 'Your private vessel charter reservation has been confirmed and locked. The official gate QR code on your boarding pass will grant terminal embarkation access.'}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
             <button
@@ -691,7 +700,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
                 )}
               </div>
 
-              {/* WhatsApp Voyage Reminder Input & Consent */}
+              {/* WhatsApp Trip Reminder Input & Consent */}
               <WhatsAppReminderCard
                 whatsappNumber={customerWhatsApp}
                 onWhatsAppNumberChange={setCustomerWhatsApp}

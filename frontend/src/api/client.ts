@@ -14,6 +14,31 @@ function getCookie(name: string): string | null {
   return cookieValue;
 }
 
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  data: any;
+  endpoint: string;
+  isNetworkError: boolean;
+
+  constructor(
+    message: string,
+    status: number = 0,
+    statusText: string = '',
+    data: any = null,
+    endpoint: string = ''
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.statusText = statusText;
+    this.data = data;
+    this.endpoint = endpoint;
+    this.isNetworkError = status === 0;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
@@ -31,20 +56,55 @@ export async function apiRequest<T = any>(
     headers.set('X-CSRFToken', csrfToken);
   }
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers,
-    credentials: 'include', // vital for session cookies
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      ...options,
+      headers,
+      credentials: 'include', // vital for session cookies
+    });
+  } catch (networkErr: any) {
+    throw new ApiError(
+      networkErr?.message || 'Network error: Failed to reach the server. Please check your connection.',
+      0,
+      'NetworkError',
+      null,
+      endpoint
+    );
+  }
 
-  const data = await response.json().catch(() => null);
+  let data: any = null;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    try {
+      const text = await response.text();
+      data = { text };
+    } catch {
+      data = null;
+    }
+  }
 
   if (!response.ok) {
-    const errorMsg = data?.error || data?.detail || `API request failed with status ${response.status}`;
-    const err = new Error(errorMsg) as Error & { status?: number; data?: any };
-    err.status = response.status;
-    err.data = data;
-    throw err;
+    const errorMsg =
+      data?.error ||
+      data?.detail ||
+      data?.message ||
+      (typeof data?.text === 'string' && data.text.length < 200 ? data.text : null) ||
+      `API request failed with status ${response.status} (${response.statusText || 'Error'})`;
+
+    throw new ApiError(
+      errorMsg,
+      response.status,
+      response.statusText,
+      data,
+      endpoint
+    );
   }
 
   return data as T;

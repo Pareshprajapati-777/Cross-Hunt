@@ -161,17 +161,7 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
         {/* Left: Raised Glass Tab Dock */}
         <div
-          className="inline-flex items-center gap-1.5 p-1.5 rounded-t-[26px] relative z-10 -mb-[2px]"
-          style={{
-            background: 'linear-gradient(135deg, rgba(235, 246, 255, 0.85) 0%, rgba(220, 242, 255, 0.75) 100%)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            borderTop: '2px solid rgba(255, 255, 255, 0.95)',
-            borderLeft: '2px solid rgba(255, 255, 255, 0.95)',
-            borderRight: '2px solid rgba(255, 255, 255, 0.95)',
-            borderBottom: 'none',
-            boxShadow: '0 -6px 20px rgba(56, 189, 248, 0.3)',
-          }}
+          className="inline-flex items-center gap-1.5 p-1.5 rounded-t-[26px] relative z-10 -mb-[2px] bg-white/95 backdrop-blur-xl border-t-2 border-l-2 border-r-2 border-[#0284c7]/20 shadow-sm"
         >
           {/* Private Charter Tab */}
           <button
@@ -179,14 +169,14 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
             onClick={() => setMode('PRIVATE_CHARTER')}
             className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
               mode === 'PRIVATE_CHARTER'
-                ? 'bg-gradient-to-r from-[#0082f5] to-[#005cd8] text-white shadow-lg shadow-sky-500/35 border border-sky-300/40'
-                : 'bg-transparent hover:bg-white/40 text-slate-800'
+                ? 'bg-[#051833] text-[#fff8dc] shadow-md border border-[#051833]'
+                : 'bg-transparent hover:bg-slate-100 text-[#334155]'
             }`}
           >
             <Anchor className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.2]" />
             <div className="text-left leading-tight">
               <div className="text-xs sm:text-sm font-bold">Private Charter</div>
-              <div className={`text-[10px] font-normal ${mode === 'PRIVATE_CHARTER' ? 'text-sky-100' : 'text-slate-500'}`}>
+              <div className={`text-[10px] font-normal ${mode === 'PRIVATE_CHARTER' ? 'text-[#fff8dc]/80' : 'text-slate-500'}`}>
                 (Whole Boat)
               </div>
             </div>
@@ -198,44 +188,38 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
             onClick={() => setMode('PUBLIC_CRUISE')}
             className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
               mode === 'PUBLIC_CRUISE'
-                ? 'bg-gradient-to-r from-[#0082f5] to-[#005cd8] text-white shadow-lg shadow-sky-500/35 border border-sky-300/40'
-                : 'bg-transparent hover:bg-white/40 text-slate-800'
+                ? 'bg-[#051833] text-[#fff8dc] shadow-md border border-[#051833]'
+                : 'bg-transparent hover:bg-slate-100 text-[#334155]'
             }`}
           >
             <Ship className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 stroke-[2.2]" />
             <div className="text-left leading-tight">
               <div className="text-xs sm:text-sm font-bold">Public Cruise</div>
-              <div className={`text-[10px] font-normal ${mode === 'PUBLIC_CRUISE' ? 'text-sky-100' : 'text-slate-500'}`}>
+              <div className={`text-[10px] font-normal ${mode === 'PUBLIC_CRUISE' ? 'text-[#fff8dc]/80' : 'text-slate-500'}`}>
                 (Seat / Cabin)
               </div>
             </div>
           </button>
         </div>
 
-        {/* Right: Floating Special Events Pill (Compact, leaving right clear for dolphin) */}
+        {/* Right: Floating Special Events Pill */}
         <div className="relative shrink-0 pb-2">
           <button
             type="button"
             onClick={() => setShowEventMenu(!showEventMenu)}
-            className="flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition cursor-pointer hover:bg-white/90 whitespace-nowrap"
-            style={{
-              background: 'rgba(255, 255, 255, 0.65)',
-              backdropFilter: 'blur(16px)',
-              border: '1.5px solid rgba(255, 255, 255, 0.95)',
-              boxShadow: '0 0 20px rgba(56, 189, 248, 0.65), inset 0 0 8px rgba(56, 189, 248, 0.25)',
-            }}
+            className="flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold text-[#051833] transition cursor-pointer hover:bg-slate-100 whitespace-nowrap bg-white/95 border border-[#0284c7]/25 shadow-sm"
           >
-            <span className="font-bold text-slate-800 flex items-center gap-1">
+            <span className="font-bold text-[#051833] flex items-center gap-1">
               <span>🎁</span> Special Events
             </span>
             <span className="text-slate-300">|</span>
-            <span>Birthday</span>
+            <span className="text-slate-600">Birthday</span>
             <span className="text-slate-300">|</span>
-            <span>Wedding</span>
+            <span className="text-slate-600">Wedding</span>
             <span className="text-slate-300">|</span>
-            <span>Corporate</span>
+            <span className="text-slate-600">Corporate</span>
             <span className="text-slate-300">|</span>
-            <span className="text-sky-600 font-bold flex items-center gap-0.5">
+            <span className="text-[#0284c7] font-bold flex items-center gap-0.5">
               More <ChevronDown className="w-3.5 h-3.5" />
             </span>
           </button>
@@ -243,10 +227,10 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
           {/* Special Events Quick Menu */}
           {showEventMenu && (
             <div
-              className="absolute right-0 mt-2 w-64 bg-white rounded-2xl p-2.5 shadow-2xl border border-sky-100 z-50 animate-in fade-in zoom-in-95"
+              className="absolute right-0 mt-2 w-64 bg-white rounded-2xl p-2.5 shadow-2xl border border-[#0284c7]/20 z-50 animate-in fade-in zoom-in-95 text-[#051833]"
               onMouseLeave={() => setShowEventMenu(false)}
             >
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold px-2 py-1">
+              <p className="text-[10px] uppercase tracking-wider text-[#0284c7] font-bold px-2 py-1">
                 Special Celebration Packages
               </p>
               {[
@@ -270,10 +254,10 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
                       guests: 15,
                     });
                   }}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-sky-700 hover:bg-sky-50 transition flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-[#051833] hover:text-[#0284c7] hover:bg-sky-50 transition flex items-center justify-between"
                 >
                   <span>{pkg.label}</span>
-                  <ArrowRight className="w-3 h-3 text-sky-400" />
+                  <ArrowRight className="w-3 h-3 text-[#0284c7]" />
                 </button>
               ))}
             </div>
@@ -285,14 +269,7 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
       {/* 2. MAIN CARD BODY: Seamlessly Connected to Tab Dock Above  */}
       {/* ========================================================== */}
       <div
-        className="relative rounded-b-[24px] sm:rounded-b-[28px] rounded-tr-[24px] sm:rounded-tr-[28px] rounded-tl-none p-4 sm:p-5 transition-all duration-300"
-        style={{
-          background: 'linear-gradient(135deg, rgba(235, 246, 255, 0.8) 0%, rgba(218, 240, 255, 0.7) 50%, rgba(238, 248, 255, 0.82) 100%)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '2px solid rgba(255, 255, 255, 0.95)',
-          boxShadow: '0 0 35px rgba(56, 189, 248, 0.55), 0 20px 60px rgba(1, 30, 80, 0.25), inset 0 0 25px rgba(255, 255, 255, 0.45)',
-        }}
+        className="relative rounded-b-[24px] sm:rounded-b-[28px] rounded-tr-[24px] sm:rounded-tr-[28px] rounded-tl-none p-4 sm:p-5 bg-white border border-[#0284c7]/20 shadow-xl shadow-sky-950/5 text-[#051833] transition-all duration-300"
       >
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* SEARCH INPUTS ROW */}
@@ -300,18 +277,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
             <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-2">
               {/* City / Location */}
               <div className="flex-1 min-w-[130px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>City / Location</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center justify-between hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center justify-between hover:border-[#0284c7] transition h-[42px]">
                   <select
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer pr-1"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer pr-1"
                   >
                     {CITIES.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.id} value={c.id} className="bg-white text-[#051833]">
                         {c.label}
                       </option>
                     ))}
@@ -321,17 +298,17 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Charter Date */}
               <div className="flex-1 min-w-[125px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Calendar className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Charter Date</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center gap-1.5 hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 hover:border-[#0284c7] transition h-[42px]">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <input
                     type="date"
                     value={privateDate}
                     onChange={(e) => setPrivateDate(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer"
                     placeholder="dd-mm-yyyy"
                   />
                 </div>
@@ -339,18 +316,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Passengers / Guests */}
               <div className="w-full lg:w-[85px] shrink-0">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Users className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Users className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Guests</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 hover:border-sky-300 transition h-[42px] flex items-center">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 hover:border-[#0284c7] transition h-[42px] flex items-center">
                   <input
                     type="number"
                     min="1"
                     max="500"
                     value={passengers}
                     onChange={(e) => setPassengers(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none text-center"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none text-center"
                     placeholder="10"
                   />
                 </div>
@@ -358,18 +335,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Duration */}
               <div className="flex-1 min-w-[115px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Clock className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Duration</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center justify-between hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center justify-between hover:border-[#0284c7] transition h-[42px]">
                   <select
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer pr-1"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer pr-1"
                   >
                     {CHARTER_DURATIONS.map((d) => (
-                      <option key={d.id} value={d.id}>
+                      <option key={d.id} value={d.id} className="bg-white text-[#051833]">
                         {d.label}
                       </option>
                     ))}
@@ -379,18 +356,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Vessel Category */}
               <div className="flex-1 min-w-[125px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Ship className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Ship className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Category</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center justify-between hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center justify-between hover:border-[#0284c7] transition h-[42px]">
                   <select
                     value={vesselCategory}
                     onChange={(e) => setVesselCategory(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer pr-1"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer pr-1"
                   >
                     {VESSEL_CATEGORIES.map((v) => (
-                      <option key={v.id} value={v.id}>
+                      <option key={v.id} value={v.id} className="bg-white text-[#051833]">
                         {v.label}
                       </option>
                     ))}
@@ -402,11 +379,11 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
               <div className="w-full lg:w-auto shrink-0">
                 <button
                   type="submit"
-                  className="w-full lg:w-auto h-[42px] px-5 rounded-xl font-bold text-white text-xs sm:text-sm bg-gradient-to-r from-[#0082f5] to-[#005cd8] hover:from-[#0072e5] hover:to-[#004cc8] shadow-lg shadow-sky-500/40 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
+                  className="w-full lg:w-auto h-[42px] px-6 rounded-full font-black text-xs sm:text-sm bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] shadow-md shadow-[#051833]/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
                 >
                   <Search className="w-4 h-4 stroke-[2.5]" />
                   <span>Search Ships</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 text-[#fff8dc]" />
                 </button>
               </div>
             </div>
@@ -414,18 +391,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
             <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-2">
               {/* Departure Port */}
               <div className="flex-1 min-w-[140px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Departure Port</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center justify-between hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center justify-between hover:border-[#0284c7] transition h-[42px]">
                   <select
                     value={departurePort}
                     onChange={(e) => setDeparturePort(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer pr-1"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer pr-1"
                   >
                     {DEPARTURE_PORTS.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={p.id} value={p.id} className="bg-white text-[#051833]">
                         {p.label}
                       </option>
                     ))}
@@ -435,18 +412,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Destination */}
               <div className="flex-1 min-w-[140px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Compass className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Compass className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Destination</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center justify-between hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center justify-between hover:border-[#0284c7] transition h-[42px]">
                   <select
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer pr-1"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer pr-1"
                   >
                     {PUBLIC_DESTINATIONS.map((d) => (
-                      <option key={d.id} value={d.id}>
+                      <option key={d.id} value={d.id} className="bg-white text-[#051833]">
                         {d.label}
                       </option>
                     ))}
@@ -456,17 +433,17 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Sailing Date */}
               <div className="flex-1 min-w-[125px]">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Calendar className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Sailing Date</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 flex items-center gap-1.5 hover:border-sky-300 transition h-[42px]">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 hover:border-[#0284c7] transition h-[42px]">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <input
                     type="date"
                     value={publicDate}
                     onChange={(e) => setPublicDate(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none cursor-pointer"
                     placeholder="dd-mm-yyyy"
                   />
                 </div>
@@ -474,18 +451,18 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
 
               {/* Passenger Count */}
               <div className="w-full lg:w-[85px] shrink-0">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
-                  <Users className="w-3.5 h-3.5 text-[#0082f5]" />
+                <div className="text-[11px] font-bold text-[#0369a1] flex items-center gap-1 mb-1">
+                  <Users className="w-3.5 h-3.5 text-[#0284c7]" />
                   <span>Passengers</span>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs px-2.5 py-1.5 hover:border-sky-300 transition h-[42px] flex items-center">
+                <div className="bg-[#f8f9fa] rounded-xl border border-slate-200 px-2.5 py-1.5 hover:border-[#0284c7] transition h-[42px] flex items-center">
                   <input
                     type="number"
                     min="1"
                     max="50"
                     value={ticketCount}
                     onChange={(e) => setTicketCount(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none text-center"
+                    className="w-full bg-transparent text-xs font-semibold text-[#051833] outline-none text-center"
                     placeholder="2"
                   />
                 </div>
@@ -495,11 +472,11 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
               <div className="w-full lg:w-auto shrink-0">
                 <button
                   type="submit"
-                  className="w-full lg:w-auto h-[42px] px-5 rounded-xl font-bold text-white text-xs sm:text-sm bg-gradient-to-r from-[#0082f5] to-[#005cd8] hover:from-[#0072e5] hover:to-[#004cc8] shadow-lg shadow-sky-500/40 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
+                  className="w-full lg:w-auto h-[42px] px-6 rounded-full font-black text-xs sm:text-sm bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] shadow-md shadow-[#051833]/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
                 >
                   <Search className="w-4 h-4 stroke-[2.5]" />
                   <span>Search Cruises</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 text-[#fff8dc]" />
                 </button>
               </div>
             </div>
@@ -508,8 +485,8 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
           {/* ========================================================== */}
           {/* 3. POPULAR SEARCHES CHIPS ROW (Matching Photo 1)           */}
           {/* ========================================================== */}
-          <div className="pt-3 border-t border-sky-100/70 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-            <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
+          <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+            <span className="font-bold text-[#051833] flex items-center gap-1.5 text-xs sm:text-sm">
               🔥 Popular Searches:
             </span>
 
@@ -519,12 +496,12 @@ export const RequirementSearch: React.FC<RequirementSearchProps> = ({ onSearch }
                   key={idx}
                   type="button"
                   onClick={() => handleQuickSearch(item)}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 text-xs font-semibold transition-all shadow-xs border border-white/90 hover:border-sky-300 cursor-pointer hover:scale-105 active:scale-95 group"
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#f8f9fa] hover:bg-sky-50 text-[#051833] text-xs font-semibold transition-all border border-slate-200 hover:border-[#0284c7] cursor-pointer hover:scale-105 active:scale-95 group shadow-xs"
                 >
                   <img
                     src={item.image}
                     alt={item.label}
-                    className="w-6 h-6 rounded-full object-cover shadow-xs border border-white group-hover:scale-110 transition-transform"
+                    className="w-6 h-6 rounded-full object-cover border border-slate-200 group-hover:scale-110 transition-transform"
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}

@@ -1,11 +1,22 @@
-# Python / Django
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python / SQLite
 __pycache__/
 *.py[cod]
 *$py.class
 *.log
 local_settings.py
 db.sqlite3-journal
+db.sqlite3-shm
+db.sqlite3-wal
 db.sqlite3.backup
+cross_hunt.db
+*.db-shm
+*.db-wal
+
 
 # Virtual Environments
 venv/

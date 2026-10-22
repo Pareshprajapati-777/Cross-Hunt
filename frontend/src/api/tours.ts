@@ -5,6 +5,8 @@ export interface TourFilterParams {
   destination?: string;
   departure_port?: string;
   date?: string;
+  q?: string;
+  sort_by?: string;
 }
 
 export interface TourListResponse {
@@ -17,6 +19,8 @@ export async function getTours(params: TourFilterParams = {}): Promise<TourListR
   if (params.destination) query.set('destination', params.destination);
   if (params.departure_port) query.set('departure_port', params.departure_port);
   if (params.date) query.set('date', params.date);
+  if (params.q) query.set('q', params.q);
+  if (params.sort_by) query.set('sort_by', params.sort_by);
 
   const qs = query.toString();
   const url = qs ? `/api/tours/?${qs}` : '/api/tours/';

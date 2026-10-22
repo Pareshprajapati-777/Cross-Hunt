@@ -1,5 +1,8 @@
 import { apiRequest } from './client';
-import { Booking, Cruise, PublicTour, Offer, OperatorSummary, WhatsAppLog, WhatsAppConfig, WhatsAppQueueItem } from './types';
+import {
+  Booking, Cruise, PublicTour, Offer, OperatorSummary, WhatsAppLog, WhatsAppConfig, WhatsAppQueueItem,
+  WhatsAppCredentialsPayload, WhatsAppConnectionTestResult
+} from './types';
 
 export interface OperatorDashboardData {
   stats: {
@@ -150,6 +153,21 @@ export async function createOperatorShip(payload: Partial<Cruise>): Promise<{ su
   });
 }
 
+export async function deleteOperatorShip(shipId: number): Promise<{ success: boolean; message?: string }> {
+  return apiRequest(`/api/operator/ships/${shipId}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function uploadOperatorImage(file: File): Promise<{ success: boolean; url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest('/api/operator/upload-image/', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 export async function createOperatorTour(payload: any): Promise<{ success: boolean; tour: PublicTour }> {
   return apiRequest('/api/operator/tours/', {
     method: 'POST',
@@ -235,18 +253,97 @@ export async function getOperatorRevenue(): Promise<{
   return apiRequest('/api/operator/revenue/');
 }
 
-export async function getAdminUsers(params?: { q?: string; role?: string }): Promise<{ users: any[] }> {
-  const query = new URLSearchParams();
-  if (params?.q && params.q.trim()) query.append('q', params.q.trim());
-  if (params?.role && params.role.trim()) query.append('role', params.role.trim());
-  const qStr = query.toString();
-  return apiRequest(`/api/admin/users/${qStr ? `?${qStr}` : ''}`);
+export interface PaginationMetadata {
+  page: number;
+  page_size: number;
+  total_records: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_previous?: boolean;
 }
 
-export async function toggleAdminUserActive(userId: number): Promise<{ success: boolean; is_active: boolean; message: string }> {
+/**
+ * Robustly serializes an object of parameters into a clean URL query string.
+ * Trims values, removes null/undefined/empty string/default-all tokens,
+ * and encodes special characters safely.
+ */
+export function buildQueryParams(params?: Record<string, any>): string {
+  if (!params || typeof params !== 'object') return '';
+  const searchParams = new URLSearchParams();
+
+  for (const [key, rawVal] of Object.entries(params)) {
+    if (rawVal === null || rawVal === undefined) continue;
+
+    let val: string;
+    if (typeof rawVal === 'string') {
+      val = rawVal.trim();
+    } else if (typeof rawVal === 'number' || typeof rawVal === 'boolean') {
+      val = String(rawVal);
+    } else {
+      continue;
+    }
+
+    if (!val) continue;
+
+    const lower = val.toLowerCase();
+    if (lower === 'all' || lower === 'undefined' || lower === 'null' || lower === 'none') {
+      continue;
+    }
+
+    searchParams.append(key, val);
+  }
+
+  const str = searchParams.toString();
+  return str ? `?${str}` : '';
+}
+
+export async function getAdminUsers(params?: {
+  q?: string;
+  role?: string;
+  status?: string;
+  verified?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<{
+  users: any[];
+  stats?: {
+    total_users: number;
+    verified_users: number;
+    active_users: number;
+    blocked_users: number;
+    total_customers: number;
+    total_owners: number;
+  };
+  pagination?: PaginationMetadata;
+}> {
+  return apiRequest(`/api/admin/users/${buildQueryParams(params)}`);
+}
+
+export async function toggleAdminUserActive(userId: number, action?: 'block' | 'unblock' | 'toggle_active', reason?: string): Promise<{ success: boolean; is_active: boolean; block_reason?: string; message: string }> {
   return apiRequest('/api/admin/users/', {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId }),
+    body: JSON.stringify({ user_id: userId, action: action || 'toggle_active', reason }),
+  });
+}
+
+export async function adminVerifyUser(userId: number, action?: 'verify' | 'unverify' | 'toggle_verify'): Promise<{ success: boolean; is_verified: boolean; message: string }> {
+  return apiRequest('/api/admin/users/', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, action: action || 'toggle_verify' }),
+  });
+}
+
+export async function updateAdminUser(userId: number, payload: { full_name?: string; email?: string; phone?: string; whatsapp_number?: string; role?: string }): Promise<{ success: boolean; message: string; user?: any }> {
+  return apiRequest('/api/admin/users/', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, action: 'update_user', ...payload }),
+  });
+}
+
+export async function getAdminUserDetails(userId: number): Promise<{ success: boolean; user: any }> {
+  return apiRequest('/api/admin/users/', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, action: 'user_details' }),
   });
 }
 
@@ -261,15 +358,216 @@ export async function adminOwnerAction(ownerId: number, action: 'approve' | 'rej
   });
 }
 
-export async function getAdminShips(): Promise<{ ships: any[] }> {
-  return apiRequest('/api/admin/ships/');
+export async function getAdminShips(params?: {
+  q?: string;
+  category?: string;
+  status?: string;
+  location?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<{
+  ships: any[];
+  stats?: {
+    total_ships: number;
+    active_ships: number;
+    approved_ships: number;
+    pending_ships: number;
+    total_fleet_capacity: number;
+  };
+  pagination?: PaginationMetadata;
+}> {
+  return apiRequest(`/api/admin/ships/${buildQueryParams(params)}`);
 }
 
-export async function adminShipAction(shipId: number, action: 'approve' | 'toggle_active' | 'delete'): Promise<{ success: boolean; message: string }> {
+export async function adminShipAction(shipId: number, action: 'approve' | 'revoke_approval' | 'toggle_active' | 'delete'): Promise<{ success: boolean; message: string }> {
   return apiRequest('/api/admin/ships/', {
     method: 'POST',
     body: JSON.stringify({ ship_id: shipId, action }),
   });
+}
+
+export async function updateAdminShip(shipId: number, payload: any): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/api/admin/ships/', {
+    method: 'POST',
+    body: JSON.stringify({ ship_id: shipId, action: 'update_ship', ...payload }),
+  });
+}
+
+export async function createAdminShip(payload: any): Promise<{ success: boolean; message: string; ship?: any }> {
+  return apiRequest('/api/admin/ships/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'create_ship', ...payload }),
+  });
+}
+
+export interface AdminTransaction {
+  id: number;
+  booking_id: string;
+  invoice_number: string;
+  transaction_id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  ship_name: string;
+  booking_type: string;
+  booking_date: string;
+  gross_amount: number;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  owner_payout_amount: number;
+  platform_commission_amount: number;
+  net_platform_profit: number;
+  commission_rate: number;
+  payout_rate: number;
+  payment_method: string;
+  payment_gateway_ref: string;
+  payment_status: 'PAID' | 'PENDING' | 'REFUNDED' | 'FAILED';
+  payout_status: 'PENDING' | 'SETTLED' | 'ON_HOLD';
+  refund_amount: number;
+  refund_reason: string;
+  refund_date: string | null;
+  failure_reason: string;
+  created_at: string;
+}
+
+export async function getAdminTransactions(params?: {
+  q?: string;
+  status?: string;
+  payout_status?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<{
+  transactions: AdminTransaction[];
+  stats: {
+    gross_volume: number;
+    total_commission: number;
+    total_payouts: number;
+    total_refunds: number;
+    failed_count: number;
+    pending_settlements: number;
+    settled_payouts: number;
+  };
+  pagination?: PaginationMetadata;
+}> {
+  return apiRequest(`/api/admin/transactions/${buildQueryParams(params)}`);
+}
+
+export async function adminProcessRefund(bookingId: string, refundAmount: number, refundReason: string): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/api/admin/transactions/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'process_refund', booking_id: bookingId, refund_amount: refundAmount, refund_reason: refundReason }),
+  });
+}
+
+export async function adminSettlePayout(bookingId: string): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/api/admin/transactions/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'settle_payout', booking_id: bookingId }),
+  });
+}
+
+export async function adminHoldPayout(bookingId: string): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/api/admin/transactions/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'hold_payout', booking_id: bookingId }),
+  });
+}
+
+export async function adminRetryPayment(bookingId: string): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/api/admin/transactions/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'retry_payment', booking_id: bookingId }),
+  });
+}
+
+export interface PlatformNotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  notification_type: 'IMPORTANT_UPDATE' | 'OFFER' | 'ANNOUNCEMENT';
+  target_audience: 'ALL_USERS' | 'ALL_OWNERS' | 'SPECIFIC_USER';
+  target_user_id?: number | null;
+  target_user_name?: string;
+  action_link?: string;
+  sender_name: string;
+  is_read: boolean;
+  recipients_count: number;
+  created_at: string;
+}
+
+export async function getAdminNotifications(): Promise<{
+  notifications: PlatformNotificationItem[];
+  stats: {
+    total_sent: number;
+    updates_count: number;
+    offers_count: number;
+    announcements_count: number;
+    total_reach: number;
+  };
+}> {
+  return apiRequest('/api/admin/notifications/');
+}
+
+export async function createAdminNotification(payload: {
+  title: string;
+  message: string;
+  notification_type: 'IMPORTANT_UPDATE' | 'OFFER' | 'ANNOUNCEMENT';
+  target_audience: 'ALL_USERS' | 'ALL_OWNERS' | 'SPECIFIC_USER';
+  target_user_id?: number;
+  action_link?: string;
+  sender_name?: string;
+}): Promise<{ success: boolean; message: string; notification?: any }> {
+  return apiRequest('/api/admin/notifications/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getUserNotifications(): Promise<{
+  notifications: Array<{
+    id: number;
+    title: string;
+    message: string;
+    notification_type: string;
+    action_link: string;
+    sender_name: string;
+    is_read: boolean;
+    created_at: string;
+  }>;
+  unread_count: number;
+}> {
+  return apiRequest('/api/notifications/my-notifications/');
+}
+
+export async function markNotificationRead(notificationId: number): Promise<{ success: boolean }> {
+  return apiRequest(`/api/notifications/${notificationId}/read/`, {
+    method: 'POST',
+  });
+}
+
+export interface GeneratedReportResult {
+  report_type: string;
+  title: string;
+  range_label: string;
+  generated_at: string;
+  summary: Record<string, any>;
+  columns: string[];
+  rows: any[];
+}
+
+export async function generateAdminReport(params: {
+  report_type: 'financial_ledger' | 'bookings_manifest' | 'fleet_performance' | 'customer_growth';
+  preset?: string;
+  date_from?: string;
+  date_to?: string;
+}): Promise<GeneratedReportResult> {
+  const query = new URLSearchParams();
+  query.append('report_type', params.report_type);
+  if (params.preset) query.append('preset', params.preset);
+  if (params.date_from) query.append('date_from', params.date_from);
+  if (params.date_to) query.append('date_to', params.date_to);
+  return apiRequest(`/api/admin/reports/generate/?${query.toString()}`);
 }
 
 export async function getAdminBookings(params?: { type?: string; status?: string }): Promise<{ bookings: Booking[] }> {
@@ -287,8 +585,31 @@ export async function adminBookingAction(bookingId: string, status: string): Pro
   });
 }
 
-export async function getAdminTours(): Promise<{ tours: PublicTour[] }> {
-  return apiRequest('/api/admin/tours/');
+export interface AdminTourFilterParams {
+  q?: string;
+  destination?: string;
+  departure_port?: string;
+  status?: string;
+}
+
+export async function getAdminTours(params: AdminTourFilterParams = {}): Promise<{
+  tours: PublicTour[];
+  total?: number;
+  stats?: {
+    total_tours: number;
+    published_tours: number;
+    total_capacity: number;
+    remaining_capacity: number;
+    avg_ticket_price: number;
+  };
+}> {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.destination) query.set('destination', params.destination);
+  if (params.departure_port) query.set('departure_port', params.departure_port);
+  if (params.status) query.set('status', params.status);
+  const qs = query.toString();
+  return apiRequest(qs ? `/api/admin/tours/?${qs}` : '/api/admin/tours/');
 }
 
 export async function adminTourAction(tourId: number, action: 'toggle_publish' | 'cancel'): Promise<{ success: boolean; tour: PublicTour }> {
@@ -530,6 +851,32 @@ export async function triggerAdminWhatsAppDispatch(
 
 export async function getAdminWhatsAppLogs(): Promise<{ logs: WhatsAppLog[] }> {
   return apiRequest('/api/admin/whatsapp/logs/');
+}
+
+export async function getAdminWhatsAppCredentials(): Promise<{
+  is_live: boolean;
+  provider: string;
+  has_token: boolean;
+  masked_token: string;
+  phone_number_id: string;
+  business_account_id: string;
+}> {
+  return apiRequest('/api/admin/whatsapp/credentials/');
+}
+
+export async function updateAdminWhatsAppCredentials(
+  payload: WhatsAppCredentialsPayload
+): Promise<{ success: boolean; message: string; is_live: boolean; provider: string }> {
+  return apiRequest('/api/admin/whatsapp/credentials/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function testAdminWhatsAppConnection(): Promise<WhatsAppConnectionTestResult> {
+  return apiRequest('/api/admin/whatsapp/test-connection/', {
+    method: 'POST',
+  });
 }
 
 

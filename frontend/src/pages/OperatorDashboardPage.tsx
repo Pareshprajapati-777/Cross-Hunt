@@ -3,12 +3,14 @@ import {
   getOperatorDashboard,
   operatorBookingAction,
   createOperatorShip,
+  deleteOperatorShip,
   createOperatorTour,
   getOperatorExtras,
   createOperatorExtra,
   deleteOperatorExtra,
   getOperatorAvailability,
   getTourPassengers,
+  uploadOperatorImage,
   OperatorDashboardData
 } from '../api/dashboards';
 import {
@@ -32,7 +34,11 @@ import {
   Activity,
   Award,
   DollarSign,
-  Layers
+  Layers,
+  Receipt,
+  Upload,
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
@@ -57,6 +63,8 @@ export const OperatorDashboardPage: React.FC = () => {
   const [showAddTourModal, setShowAddTourModal] = useState(false);
   const [showAddExtraModal, setShowAddExtraModal] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [shipToDelete, setShipToDelete] = useState<any | null>(null);
+  const [deletingShip, setDeletingShip] = useState(false);
 
   // Extras state
   const [extrasList, setExtrasList] = useState<any[]>([]);
@@ -85,33 +93,81 @@ export const OperatorDashboardPage: React.FC = () => {
   const [fleetFilter, setFleetFilter] = useState<'ALL' | 'AVAILABLE' | 'BOOKED' | 'ON_TOUR' | 'MAINTENANCE'>('ALL');
 
   // Add Ship Form State
-  const [shipForm, setShipForm] = useState({
+  const initialShipForm = {
     name: '',
     category: 'Luxury Ocean Cruise',
-    location: 'Mumbai',
-    departure_port: 'Mumbai Cruise Terminal',
-    destination: 'Goa & Arabian Sea',
-    route: 'Mumbai - Goa - Mumbai',
-    price: 75000,
-    capacity: 150,
-    duration_days: 3,
-    ship_length_meters: 220,
-    beam_meters: 30,
-    decks_count: 8,
-    cabin_count: 90,
+    location: '',
+    departure_port: '',
+    destination: '',
+    route: '',
+    price: '' as unknown as number,
+    capacity: '' as unknown as number,
+    duration_days: '' as unknown as number,
+    ship_length_meters: '' as unknown as number,
+    beam_meters: '' as unknown as number,
+    decks_count: '' as unknown as number,
+    cabin_count: '' as unknown as number,
     description: '',
     image_url: '',
-    facilities: 'Wi-Fi, Swimming Pool, Fine Dining, DJ Audio Rigs, Sun Deck',
+    facilities: '',
     supports_private_charter: true,
     supports_public_tours: true,
     supports_weddings: true,
     supports_birthdays: true,
     supports_corporate: true,
     supports_parties: true,
-  });
+  };
+
+  const [shipForm, setShipForm] = useState(initialShipForm);
+  const [imageUploadMode, setImageUploadMode] = useState<'upload' | 'url'>('upload');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>('');
+
+  const handleOpenAddShipModal = () => {
+    setShipForm(initialShipForm);
+    setImagePreview('');
+    setImageUploadMode('upload');
+    setShowAddShipModal(true);
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+
+    setUploadingImage(true);
+    try {
+      const res = await uploadOperatorImage(file);
+      if (res.url) {
+        setShipForm((prev) => ({ ...prev, image_url: res.url }));
+        setImagePreview(res.url);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Image upload failed. You can also paste an image URL directly.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Add Tour Form State
-  const [tourForm, setTourForm] = useState({
+  const calculateTourDuration = (depDateStr: string, retDateStr: string) => {
+    if (!depDateStr || !retDateStr) return { days: 1, display: '1 Day' };
+    const dep = new Date(depDateStr);
+    const ret = new Date(retDateStr);
+    const diffTime = ret.getTime() - dep.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) {
+      return { days: 1, display: '1 Day' };
+    }
+    return {
+      days: diffDays,
+      display: `${diffDays} Days`
+    };
+  };
+
+  const initialTourForm = {
     ship_id: '',
     tour_title: '',
     departure_port: 'Mumbai Cruise Terminal',
@@ -120,32 +176,59 @@ export const OperatorDashboardPage: React.FC = () => {
     departure_time: '16:00',
     return_date: '',
     return_time: '11:00',
-    duration_days: 3,
+    duration_days: 1,
+    duration_display: '1 Day',
     total_capacity: 100,
     adult_price: 14999,
     child_price: 7999,
     itinerary: 'Day 1: Boarding & Sunset Deck Welcome\nDay 2: High Seas Cruising & Gala Dinner\nDay 3: Arrival at Port',
     meals_included: 'All Gourmet Buffet Meals Included',
-  });
+  };
+
+  const [tourForm, setTourForm] = useState(initialTourForm);
 
   const fetchDashboard = () => {
     setLoading(true);
     getOperatorDashboard()
       .then((res) => {
-        setData(res);
-        if (res.my_ships && res.my_ships.length > 0) {
+        const sortedShips = [...(res.my_ships || [])].sort((a, b) => {
+          const aTime = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+          const bTime = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+          if (bTime !== aTime) return bTime - aTime;
+          return (Number(b.id) || 0) - (Number(a.id) || 0);
+        });
+        const sortedTours = [...(res.my_tours || [])].sort((a, b) => {
+          const aTime = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+          const bTime = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+          if (bTime !== aTime) return bTime - aTime;
+          return (Number(b.id) || 0) - (Number(a.id) || 0);
+        });
+        const sortedBookings = [...(res.recent_bookings || [])].sort((a, b) => {
+          const aTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+          const bTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+          if (aTime !== bTime) return aTime - bTime;
+          return (Number(b.id) || 0) - (Number(a.id) || 0);
+        });
+        setData({
+          ...res,
+          my_ships: sortedShips,
+          vessels: sortedShips,
+          my_tours: sortedTours,
+          recent_bookings: sortedBookings,
+        });
+        if (sortedShips.length > 0) {
           if (!tourForm.ship_id) {
-            setTourForm((prev) => ({ ...prev, ship_id: res.my_ships[0].id.toString() }));
+            setTourForm((prev) => ({ ...prev, ship_id: sortedShips[0].id.toString() }));
           }
           if (!selectedShipIdForTimeline) {
-            setSelectedShipIdForTimeline(res.my_ships[0].id);
+            setSelectedShipIdForTimeline(sortedShips[0].id);
           }
           if (!newExtra.ship_id) {
-            setNewExtra((prev) => ({ ...prev, ship_id: res.my_ships[0].id.toString() }));
+            setNewExtra((prev) => ({ ...prev, ship_id: sortedShips[0].id.toString() }));
           }
         }
-        if (res.my_tours && res.my_tours.length > 0 && !selectedTourIdForManifest) {
-          setSelectedTourIdForManifest(res.my_tours[0].id);
+        if (sortedTours.length > 0 && !selectedTourIdForManifest) {
+          setSelectedTourIdForManifest(sortedTours[0].id);
         }
       })
       .catch((err) => console.error('Failed to load operator dashboard:', err))
@@ -297,21 +380,81 @@ export const OperatorDashboardPage: React.FC = () => {
     try {
       const payload = {
         ...shipForm,
-        facilities: shipForm.facilities.split(',').map((f) => f.trim()).filter(Boolean),
+        location: shipForm.location || shipForm.departure_port || 'Goa',
+        departure_port: shipForm.departure_port || 'Panaji Jetty',
+        destination: shipForm.destination || 'Goa & Arabian Sea',
+        route: shipForm.route || `${shipForm.departure_port || 'Mumbai'} - ${shipForm.destination || 'Goa'}`,
+        price: shipForm.price ? Number(shipForm.price) : 25000,
+        capacity: shipForm.capacity ? Number(shipForm.capacity) : 20,
+        ship_length_meters: shipForm.ship_length_meters ? Number(shipForm.ship_length_meters) : 200,
+        beam_meters: shipForm.beam_meters ? Number(shipForm.beam_meters) : 28,
+        decks_count: shipForm.decks_count ? Number(shipForm.decks_count) : 8,
+        cabin_count: shipForm.cabin_count ? Number(shipForm.cabin_count) : 80,
+        duration_days: shipForm.duration_days ? Number(shipForm.duration_days) : 3,
+        facilities: shipForm.facilities ? shipForm.facilities.split(',').map((f) => f.trim()).filter(Boolean) : ['Wi-Fi', 'Fine Dining', 'Sun Deck'],
       };
       await createOperatorShip(payload as any);
       setShowAddShipModal(false);
+      setImagePreview('');
+      setShipForm(initialShipForm);
       fetchDashboard();
     } catch (err: any) {
       alert(err.message || 'Failed to register ship');
     }
   };
 
+  const handleOpenAddTourModal = () => {
+    const defaultShip = data?.my_ships?.[0];
+    const defaultShipId = defaultShip ? defaultShip.id.toString() : '';
+    setTourForm({
+      ...initialTourForm,
+      ship_id: defaultShipId,
+      departure_port: defaultShip?.departure_port || defaultShip?.location || 'Mumbai Cruise Terminal',
+      destination: defaultShip?.destination || 'Goa (Mormugao)',
+      departure_date: '',
+      return_date: '',
+      duration_days: 1,
+      duration_display: '1 Day',
+    });
+    setShowAddTourModal(true);
+  };
+
+  const handleDepartureDateChange = (newDeparture: string) => {
+    const dur = calculateTourDuration(newDeparture, tourForm.return_date);
+    setTourForm((prev) => ({
+      ...prev,
+      departure_date: newDeparture,
+      duration_days: dur.days,
+      duration_display: dur.display,
+    }));
+  };
+
+  const handleReturnDateChange = (newReturn: string) => {
+    const dur = calculateTourDuration(tourForm.departure_date, newReturn);
+    setTourForm((prev) => ({
+      ...prev,
+      return_date: newReturn,
+      duration_days: dur.days,
+      duration_display: dur.display,
+    }));
+  };
+
   const handleAddTourSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (tourForm.departure_date && tourForm.return_date && tourForm.return_date < tourForm.departure_date) {
+      alert("Return date cannot be earlier than departure date.");
+      return;
+    }
     try {
-      await createOperatorTour(tourForm);
+      const dur = calculateTourDuration(tourForm.departure_date, tourForm.return_date);
+      const payload = {
+        ...tourForm,
+        duration_days: dur.days,
+        duration_display: dur.display,
+      };
+      await createOperatorTour(payload);
       setShowAddTourModal(false);
+      setTourForm(initialTourForm);
       fetchDashboard();
     } catch (err: any) {
       alert(err.message || 'Failed to create tour');
@@ -337,6 +480,20 @@ export const OperatorDashboardPage: React.FC = () => {
       getOperatorExtras().then((res) => setExtrasList(res.extras || []));
     } catch (err: any) {
       alert(err.message || 'Failed to delete extra');
+    }
+  };
+
+  const handleConfirmDeleteShip = async () => {
+    if (!shipToDelete) return;
+    setDeletingShip(true);
+    try {
+      await deleteOperatorShip(shipToDelete.id);
+      setShipToDelete(null);
+      fetchDashboard();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete ship');
+    } finally {
+      setDeletingShip(false);
     }
   };
 
@@ -407,18 +564,24 @@ export const OperatorDashboardPage: React.FC = () => {
   const totalFleetGuests = (analyticsData?.ship_performance || []).reduce((acc: number, s: any) => acc + s.guests, 0);
 
   return (
-    <div className="min-h-screen pt-28 pb-20 bg-slate-50/70 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* 1. OPERATOR IDENTITY & FLEET SUMMARY HEADER */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-200/80 shadow-sm mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div
+      className="min-h-screen pt-28 pb-20 bg-[#f8f9fa] text-[#051833] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 selection:bg-[#0284c7]/20 selection:text-[#051833]"
+      style={{
+        backgroundImage:
+          'radial-gradient(circle at 85% 15%, rgba(2, 132, 199, 0.07) 0%, transparent 45%), radial-gradient(circle at 15% 85%, rgba(255, 248, 220, 0.55) 0%, transparent 50%)',
+      }}
+    >
+      {/* 1. OPERATOR IDENTITY & FLEET SUMMARY HEADER (OD Studio Luxury Style) */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-[#0284c7]/20 shadow-xl shadow-[#051833]/5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider mb-2 border border-amber-300">
-            <Anchor className="w-3.5 h-3.5 text-amber-700" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/25">
+            <Anchor className="w-3.5 h-3.5 text-[#0284c7]" />
             Ship Owner & Operator Operations Suite
           </div>
-          <h1 className="text-2xl sm:text-4xl font-display font-black text-slate-900 tracking-tight font-serif">
+          <h1 className="text-2xl sm:text-4xl font-black font-serif text-[#051833] tracking-tight">
             Owner's Command Center
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1 font-medium">
             Manage your registered ships, charter bookings, public tour departures, and verified revenue in ₹ INR.
           </p>
         </div>
@@ -426,24 +589,24 @@ export const OperatorDashboardPage: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2.5">
           <button
-            onClick={() => setShowAddShipModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+            onClick={handleOpenAddShipModal}
+            className="px-5 py-2.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-[#051833]/20"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-[#fff8dc]" />
             <span>Add Ship</span>
           </button>
           <button
             onClick={() => setShowAddTourModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+            className="px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 text-[#051833] border border-black/80 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-[#0284c7]" />
             <span>Publish Tour</span>
           </button>
         </div>
       </div>
 
-      {/* 2. SUB-NAVIGATION TABS BAR */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-8 overflow-x-auto text-xs font-bold">
+      {/* 2. SUB-NAVIGATION TABS BAR (Clean White Dock & Deep Navy Pill) */}
+      <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full">
         {[
           { id: 'overview', label: 'Fleet Overview & Analytics', icon: BarChart3 },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },
@@ -459,10 +622,10 @@ export const OperatorDashboardPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as OperatorTab)}
-              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`px-5 py-2.5 rounded-full transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap text-xs ${
                 isActive
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[#051833] text-[#fff8dc] shadow-md shadow-[#051833]/25 font-black'
+                  : 'text-slate-600 hover:text-[#051833] hover:bg-slate-100 font-bold'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -476,27 +639,27 @@ export const OperatorDashboardPage: React.FC = () => {
       {activeTab === 'overview' && (
         <div className="space-y-8">
           {/* Header banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#082F5B]/10 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20">
+              <div className="w-11 h-11 rounded-2xl bg-[#082F5B] text-[#63B8F0] shadow-md flex items-center justify-center">
                 <BarChart3 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-[#102B46] tracking-tight">
                   Fleet Operations & Revenue Analytics
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Live performance metrics, monthly earnings trajectory, voyage split, and vessel utilization for your fleet.
+                <p className="text-xs text-[#102B46]/60">
+                  Live performance metrics, monthly earnings trajectory, trip split, and ship utilization for your fleet.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/10 text-xs font-bold shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#1677C8]" />
                 <span>Verified Owner Fleet (85% Payout)</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
-                <Activity className="w-3.5 h-3.5 text-amber-600" />
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/10 text-xs font-bold shadow-sm">
+                <Activity className="w-3.5 h-3.5 text-[#1677C8]" />
                 <span>{analyticsData.status_breakdown.total} Total Bookings</span>
               </span>
             </div>
@@ -504,26 +667,26 @@ export const OperatorDashboardPage: React.FC = () => {
 
           {/* Top 4 Fleet KPI Metric Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gross Fleet Revenue</span>
-              <span className="text-2xl sm:text-3xl font-black text-slate-900">{formatINR(stats.total_revenue)}</span>
-              <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Gross Fleet Revenue</span>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{formatINR(stats.total_revenue)}</span>
+              <p className="text-[11px] text-[#0284c7] font-bold flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5 text-[#0284c7]" />
                 Owner Payout: {formatINR(stats.owner_payout || stats.total_revenue * 0.85)}
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Fleet Ships</span>
-              <span className="text-2xl sm:text-3xl font-black text-amber-600">{stats.total_ships}</span>
+            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Fleet Ships</span>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{stats.total_ships}</span>
               <p className="text-[11px] text-slate-500 font-medium">
                 {stats.active_ships || stats.total_ships} Active in Commission
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Confirmed Bookings</span>
-              <span className="text-2xl sm:text-3xl font-black text-blue-600">
+            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Confirmed Bookings</span>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-emerald-600">
                 {analyticsData.status_breakdown.confirmed + analyticsData.status_breakdown.completed}
               </span>
               <p className="text-[11px] text-slate-500 font-medium">
@@ -531,9 +694,9 @@ export const OperatorDashboardPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Guests Hosted</span>
-              <span className="text-2xl sm:text-3xl font-black text-slate-900">{totalFleetGuests} Guests</span>
+            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Guests Hosted</span>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{totalFleetGuests} Guests</span>
               <p className="text-[11px] text-slate-500 font-medium">
                 {(stats.pending_bookings || 0) > 0 ? (
                   <span className="text-amber-600 font-bold">{stats.pending_bookings} Pending Actions</span>
@@ -546,44 +709,44 @@ export const OperatorDashboardPage: React.FC = () => {
 
           {/* Pending Charter Requests Alert Table (If Any) */}
           {pendingRequests.length > 0 && (
-            <div className="bg-amber-50/60 rounded-3xl p-6 border border-amber-200 space-y-4">
+            <div className="bg-[#F8FCFF] rounded-3xl p-6 border border-[#1677C8]/30 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-amber-950 font-serif flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                <h3 className="text-base font-extrabold text-[#102B46] flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-[#1677C8]" />
                   Urgent: Pending Charter Booking Requests ({pendingRequests.length})
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {pendingRequests.map((req) => (
-                  <div key={req.id} className="bg-white p-5 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                  <div key={req.id} className="bg-[#EAF4FB] p-5 rounded-2xl border border-[#082F5B]/10 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold text-[#082F5B] bg-[#F8FCFF] px-2.5 py-0.5 rounded-full border border-[#082F5B]/10">
                         #{req.booking_id}
                       </span>
-                      <span className="text-xs font-black text-slate-900">{formatINR(req.total_price)}</span>
+                      <span className="text-sm font-black text-[#102B46]">{formatINR(req.total_price)}</span>
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900 font-serif">{req.cruise_name}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <h4 className="font-bold text-sm text-[#102B46]">{req.cruise_name}</h4>
+                      <p className="text-xs text-[#102B46]/70 mt-0.5">
                         Customer: <strong>{req.customer_name}</strong> ({req.customer_phone || req.customer_email})
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[#102B46]/60">
                         Date: {req.booking_date} • Guests: {req.passengers_count || req.number_of_people}
                       </p>
                     </div>
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <div className="pt-2 border-t border-[#082F5B]/10 flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleAction(req.booking_id, 'confirm')}
                         disabled={actionLoading === `${req.booking_id}-confirm`}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition cursor-pointer shadow-sm"
+                        className="px-4 py-1.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] font-bold text-xs transition cursor-pointer shadow-sm"
                       >
                         Accept Booking
                       </button>
                       <button
                         onClick={() => handleAction(req.booking_id, 'cancel')}
                         disabled={actionLoading === `${req.booking_id}-cancel`}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs transition cursor-pointer"
+                        className="px-4 py-1.5 rounded-full bg-[#F8FCFF] text-rose-600 hover:bg-rose-50 border border-rose-200 font-bold text-xs transition cursor-pointer"
                       >
                         Reject
                       </button>
@@ -595,22 +758,22 @@ export const OperatorDashboardPage: React.FC = () => {
           )}
 
           {/* FINANCIAL ACCOUNTING & PAYOUT MODEL CARD */}
-          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6 border border-amber-900/40">
+          <div className="bg-gradient-to-r from-[#061D36] via-[#082F5B] to-[#1677C8] rounded-3xl p-6 sm:p-8 text-[#F8FCFF] shadow-xl space-y-6 border border-[#63B8F0]/30">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-1 border border-amber-500/30">
-                  <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[#63B8F0] text-xs font-bold uppercase tracking-wider mb-1 border border-white/20">
+                  <DollarSign className="w-3.5 h-3.5 text-[#63B8F0]" />
                   Owner Payout & Settlement Breakdown
                 </span>
-                <h3 className="text-2xl font-bold font-serif">Verified Fleet Revenue Distribution</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="text-2xl font-extrabold text-[#F8FCFF]">Verified Fleet Revenue Distribution</h3>
+                <p className="text-xs text-[#F8FCFF]/80">
                   Direct automated disbursement: 85% to Ship Owner account, 15% platform management & gateway fee.
                 </p>
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Owner Net Payout</span>
-                <span className="text-3xl font-black text-amber-400">
+                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block">Total Owner Net Payout</span>
+                <span className="text-3xl font-black text-[#63B8F0]">
                   {formatINR(stats.owner_payout || stats.total_revenue * 0.85)}
                 </span>
               </div>
@@ -618,21 +781,21 @@ export const OperatorDashboardPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wider">Gross Customer Paid</span>
+                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block tracking-wider">Gross Customer Paid</span>
                 <span className="text-2xl font-black text-white">{formatINR(stats.total_revenue)}</span>
-                <p className="text-[10px] text-slate-400">100% of all confirmed & completed orders</p>
+                <p className="text-[10px] text-[#F8FCFF]/60">100% of all confirmed & completed orders</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-amber-500/20 backdrop-blur-md border border-amber-500/40 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-amber-300 block tracking-wider">Owner Net Share (85%)</span>
-                <span className="text-2xl font-black text-amber-400">{formatINR(stats.owner_payout || stats.total_revenue * 0.85)}</span>
-                <p className="text-[10px] text-amber-200">Disbursed directly to your registered bank</p>
+              <div className="p-4 rounded-2xl bg-[#63B8F0]/20 backdrop-blur-md border border-[#63B8F0]/40 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#63B8F0] block tracking-wider">Owner Net Share (85%)</span>
+                <span className="text-2xl font-black text-[#F8FCFF]">{formatINR(stats.owner_payout || stats.total_revenue * 0.85)}</span>
+                <p className="text-[10px] text-[#F8FCFF]/80">Disbursed directly to your registered bank</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wider">Platform Fee (15%)</span>
-                <span className="text-2xl font-black text-slate-300">{formatINR(stats.platform_commission || stats.total_revenue * 0.15)}</span>
-                <p className="text-[10px] text-slate-400">Includes payment gateways & ticketing support</p>
+                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block tracking-wider">Platform Fee (15%)</span>
+                <span className="text-2xl font-black text-[#F8FCFF]/80">{formatINR(stats.platform_commission || stats.total_revenue * 0.15)}</span>
+                <p className="text-[10px] text-[#F8FCFF]/60">Includes payment gateways & ticketing support</p>
               </div>
             </div>
           </div>
@@ -640,63 +803,63 @@ export const OperatorDashboardPage: React.FC = () => {
           {/* ROW 1: CHARTS (Monthly Revenue Trend + Category Split) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Chart 1: Monthly Revenue & Trips Trend (2 cols) */}
-            <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div className="lg:col-span-2 bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                  <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-[#1677C8]" />
                     Monthly Fleet Revenue & Activity Trend
                   </h4>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#102B46]/60">
                     Gross bookings revenue and net owner payouts across past departures.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1.5 text-slate-600">
-                    <span className="w-3 h-3 rounded bg-amber-500 inline-block" />
+                  <span className="flex items-center gap-1.5 text-[#102B46] font-semibold">
+                    <span className="w-3 h-3 rounded-full bg-[#1677C8] inline-block" />
                     Gross Revenue
                   </span>
-                  <span className="flex items-center gap-1.5 text-slate-600">
-                    <span className="w-3 h-3 rounded bg-emerald-500 inline-block" />
+                  <span className="flex items-center gap-1.5 text-[#102B46] font-semibold">
+                    <span className="w-3 h-3 rounded-full bg-[#082F5B] inline-block" />
                     Owner Payout (85%)
                   </span>
                 </div>
               </div>
 
               {analyticsData.monthly_trend.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-slate-400 text-xs">
+                <div className="h-64 flex items-center justify-center text-[#102B46]/40 text-xs">
                   No monthly activity recorded yet.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="h-56 flex items-end justify-between gap-3 pt-6 pb-2 border-b border-slate-100">
+                  <div className="h-56 flex items-end justify-between gap-3 pt-6 pb-2 border-b border-[#082F5B]/10">
                     {analyticsData.monthly_trend.map((m, idx) => {
                       const revHeight = Math.max(6, Math.round((m.revenue / maxMonthlyRevenue) * 100));
                       const payHeight = Math.max(4, Math.round((m.payout / maxMonthlyRevenue) * 100));
                       return (
                         <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
                           {/* Tooltip on hover */}
-                          <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 bg-slate-900 text-white p-2 rounded-xl text-[10px] whitespace-nowrap shadow-xl border border-slate-800">
-                            <p className="font-bold text-amber-300">{m.month}: {formatINR(m.revenue)}</p>
-                            <p className="text-emerald-300">Net Payout: {formatINR(m.payout)}</p>
-                            <p className="text-slate-400">{m.bookings_count} bookings</p>
+                          <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 bg-[#061D36] text-[#F8FCFF] p-2 rounded-xl text-[10px] whitespace-nowrap shadow-xl border border-[#63B8F0]/30">
+                            <p className="font-bold text-[#63B8F0]">{m.month}: {formatINR(m.revenue)}</p>
+                            <p className="text-[#F8FCFF]">Net Payout: {formatINR(m.payout)}</p>
+                            <p className="text-[#F8FCFF]/60">{m.bookings_count} bookings</p>
                           </div>
 
                           {/* Dual Bar pair */}
                           <div className="w-full flex items-end justify-center gap-1 h-full">
                             <div
                               style={{ height: `${revHeight}%` }}
-                              className="w-full max-w-[18px] bg-gradient-to-t from-amber-600 to-amber-400 rounded-t-md transition-all duration-500 group-hover:brightness-110 shadow-sm"
+                              className="w-full max-w-[18px] bg-[#1677C8] hover:bg-[#63B8F0] rounded-t-md transition-all duration-300 shadow-sm"
                               title={`Gross: ${formatINR(m.revenue)}`}
                             />
                             <div
                               style={{ height: `${payHeight}%` }}
-                              className="w-full max-w-[18px] bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-md transition-all duration-500 group-hover:brightness-110 shadow-sm"
+                              className="w-full max-w-[18px] bg-[#082F5B] hover:bg-[#1677C8] rounded-t-md transition-all duration-300 shadow-sm"
                               title={`Owner Payout: ${formatINR(m.payout)}`}
                             />
                           </div>
 
-                          <span className="text-[11px] font-bold text-slate-600 truncate mt-1">
+                          <span className="text-[11px] font-bold text-[#102B46]/60 truncate mt-1">
                             {m.month}
                           </span>
                         </div>
@@ -704,7 +867,7 @@ export const OperatorDashboardPage: React.FC = () => {
                     })}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                  <div className="flex items-center justify-between text-xs text-[#102B46]/60 px-1">
                     <span>Peak Month: <strong>{analyticsData.monthly_trend.reduce((prev, curr) => curr.revenue > prev.revenue ? curr : prev, analyticsData.monthly_trend[0])?.month || 'N/A'}</strong></span>
                     <span>Max Monthly: <strong>{formatINR(maxMonthlyRevenue)}</strong></span>
                   </div>
@@ -713,59 +876,59 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
 
             {/* Chart 2: Category Split Ratio (1 col) */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+            <div className="bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-5 flex flex-col justify-between">
               <div>
-                <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-sky-600" />
-                  Voyage Category Ratio
+                <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                  <PieChart className="w-4 h-4 text-[#1677C8]" />
+                  Trip Category Ratio
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#102B46]/60">
                   Private Charters vs Public Tours breakdown.
                 </p>
               </div>
 
               {/* Progress Split Bar */}
               <div className="space-y-3">
-                <div className="w-full h-5 rounded-full bg-slate-100 overflow-hidden flex shadow-inner">
+                <div className="w-full h-5 rounded-full bg-[#EAF4FB] overflow-hidden flex shadow-inner">
                   <div
                     style={{ width: `${analyticsData.category_split.private_percent}%` }}
-                    className="bg-gradient-to-r from-amber-500 to-amber-400 h-full transition-all duration-500"
+                    className="bg-[#1677C8] hover:bg-[#63B8F0] h-full transition-all duration-500"
                     title={`Private Charters: ${analyticsData.category_split.private_percent}%`}
                   />
                   <div
                     style={{ width: `${analyticsData.category_split.tour_percent}%` }}
-                    className="bg-gradient-to-r from-sky-500 to-blue-500 h-full transition-all duration-500"
+                    className="bg-[#082F5B] hover:bg-[#1677C8] h-full transition-all duration-500"
                     title={`Public Tours: ${analyticsData.category_split.tour_percent}%`}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-amber-700">{analyticsData.category_split.private_percent}% Private Charters</span>
-                  <span className="text-sky-700">{analyticsData.category_split.tour_percent}% Public Tours</span>
+                  <span className="text-[#1677C8]">{analyticsData.category_split.private_percent}% Private Charters</span>
+                  <span className="text-[#082F5B]">{analyticsData.category_split.tour_percent}% Public Tours</span>
                 </div>
               </div>
 
               {/* Breakdown cards */}
               <div className="space-y-2.5">
-                <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-[#EAF4FB] border border-[#082F5B]/10 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-amber-900 block">Private Event Charters</span>
-                    <span className="text-[11px] text-amber-700">{analyticsData.category_split.private_count} contracts</span>
+                    <span className="text-xs font-bold text-[#102B46] block">Private Event Charters</span>
+                    <span className="text-[11px] text-[#102B46]/60">{analyticsData.category_split.private_count} contracts</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-black text-sm text-amber-900 block">{formatINR(analyticsData.category_split.private_revenue)}</span>
-                    <span className="text-[10px] text-amber-700 font-bold">Payout: {formatINR(analyticsData.category_split.private_revenue * 0.85)}</span>
+                    <span className="font-black text-sm text-[#1677C8] block">{formatINR(analyticsData.category_split.private_revenue)}</span>
+                    <span className="text-[10px] text-[#102B46]/70 font-bold">Payout: {formatINR(analyticsData.category_split.private_revenue * 0.85)}</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200 flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-[#EAF4FB] border border-[#082F5B]/10 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-sky-900 block">Scheduled Cruise Tours</span>
-                    <span className="text-[11px] text-sky-700">{analyticsData.category_split.tour_count} bookings</span>
+                    <span className="text-xs font-bold text-[#102B46] block">Scheduled Cruise Tours</span>
+                    <span className="text-[11px] text-[#102B46]/60">{analyticsData.category_split.tour_count} bookings</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-black text-sm text-sky-900 block">{formatINR(analyticsData.category_split.tour_revenue)}</span>
-                    <span className="text-[10px] text-sky-700 font-bold">Payout: {formatINR(analyticsData.category_split.tour_revenue * 0.85)}</span>
+                    <span className="font-black text-sm text-[#082F5B] block">{formatINR(analyticsData.category_split.tour_revenue)}</span>
+                    <span className="text-[10px] text-[#102B46]/70 font-bold">Payout: {formatINR(analyticsData.category_split.tour_revenue * 0.85)}</span>
                   </div>
                 </div>
               </div>
@@ -775,38 +938,38 @@ export const OperatorDashboardPage: React.FC = () => {
           {/* ROW 2: CHARTS (Reservation Status + Vessel Performance + Top Destinations) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Chart 3: Reservation Lifecycle Status */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-4">
               <div>
-                <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-600" />
+                <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[#1677C8]" />
                   Reservation Status Lifecycle
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#102B46]/60">
                   Distribution of all customer reservations for your fleet.
                 </p>
               </div>
 
               <div className="space-y-3.5 pt-2">
                 {[
-                  { label: 'Confirmed (Upcoming)', count: analyticsData.status_breakdown.confirmed, color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
-                  { label: 'Completed (Voyaged)', count: analyticsData.status_breakdown.completed, color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' },
-                  { label: 'Pending Confirmation', count: analyticsData.status_breakdown.pending, color: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50' },
-                  { label: 'Cancelled / Refunded', count: analyticsData.status_breakdown.cancelled, color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50' },
+                  { label: 'Confirmed (Upcoming)', count: analyticsData.status_breakdown.confirmed, color: 'bg-emerald-500' },
+                  { label: 'Completed Trips', count: analyticsData.status_breakdown.completed, color: 'bg-[#1677C8]' },
+                  { label: 'Pending Confirmation', count: analyticsData.status_breakdown.pending, color: 'bg-amber-500' },
+                  { label: 'Cancelled / Refunded', count: analyticsData.status_breakdown.cancelled, color: 'bg-rose-500' },
                 ].map((s, i) => {
                   const total = analyticsData.status_breakdown.total || 1;
                   const pct = Math.round((s.count / total) * 100);
                   return (
                     <div key={i} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-slate-700 flex items-center gap-2">
+                        <span className="font-medium text-[#102B46] flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${s.color}`} />
                           {s.label}
                         </span>
-                        <span className="font-bold text-slate-900">
-                          {s.count} <span className="text-[11px] font-normal text-slate-400">({pct}%)</span>
+                        <span className="font-bold text-[#102B46]">
+                          {s.count} <span className="text-[11px] font-normal text-[#102B46]/60">({pct}%)</span>
                         </span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="w-full h-2 rounded-full bg-[#EAF4FB] overflow-hidden">
                         <div
                           style={{ width: `${pct}%` }}
                           className={`h-full rounded-full ${s.color} transition-all duration-500`}
@@ -819,27 +982,27 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
 
             {/* Chart 4: Vessel Performance & Revenue Ranking (2 cols on large screens) */}
-            <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="lg:col-span-2 bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-600" />
+                  <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#1677C8]" />
                     Fleet Vessel Performance & Utilization
                   </h4>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#102B46]/60">
                     Revenue generated and bookings completed by individual fleet ships.
                   </p>
                 </div>
                 <button
                   onClick={() => setActiveTab('ships')}
-                  className="text-xs font-bold text-amber-700 hover:text-amber-800 cursor-pointer"
+                  className="text-xs font-bold text-[#1677C8] hover:text-[#082F5B] cursor-pointer"
                 >
                   Manage All Ships →
                 </button>
               </div>
 
               {analyticsData.ship_performance.length === 0 ? (
-                <div className="h-44 flex items-center justify-center text-slate-400 text-xs">
+                <div className="h-44 flex items-center justify-center text-[#102B46]/40 text-xs">
                   No fleet vessels registered yet.
                 </div>
               ) : (
@@ -847,33 +1010,33 @@ export const OperatorDashboardPage: React.FC = () => {
                   {analyticsData.ship_performance.slice(0, 5).map((ship, idx) => {
                     const revPct = Math.round((ship.revenue / maxShipRevenue) * 100);
                     return (
-                      <div key={ship.ship_id} className="p-3 rounded-2xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 transition space-y-2">
+                      <div key={ship.ship_id} className="p-3.5 rounded-2xl bg-[#EAF4FB] hover:bg-white border border-[#082F5B]/10 transition space-y-2">
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <div className="flex items-center gap-2.5 truncate">
-                            <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-800 font-black text-[11px] flex items-center justify-center shrink-0">
+                            <span className="w-6 h-6 rounded-full bg-[#1677C8] text-[#F8FCFF] font-black text-[11px] flex items-center justify-center shrink-0">
                               #{idx + 1}
                             </span>
                             <div className="truncate">
-                              <span className="font-bold text-slate-900 block truncate">{ship.ship_name}</span>
-                              <span className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="font-bold text-[#102B46] block truncate">{ship.ship_name}</span>
+                              <span className="text-[10px] text-[#102B46]/60 flex items-center gap-1 truncate">
+                                <MapPin className="w-3 h-3 text-[#1677C8] shrink-0" />
                                 {ship.location} • {ship.category} • {ship.guests} guests hosted
                               </span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="font-black text-slate-900 text-sm block">{formatINR(ship.revenue)}</span>
-                            <span className="text-[10px] text-emerald-700 font-bold block">
+                            <span className="font-black text-[#102B46] text-sm block">{formatINR(ship.revenue)}</span>
+                            <span className="text-[10px] text-[#1677C8] font-bold block">
                               Payout: {formatINR(ship.payout)} ({ship.bookings_count} trips)
                             </span>
                           </div>
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                        <div className="w-full h-1.5 rounded-full bg-white overflow-hidden">
                           <div
                             style={{ width: `${revPct}%` }}
-                            className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500"
+                            className="h-full rounded-full bg-[#1677C8] transition-all duration-500"
                           />
                         </div>
                       </div>
@@ -886,14 +1049,14 @@ export const OperatorDashboardPage: React.FC = () => {
 
           {/* ROW 3: Top Explored Maritime Destinations (Full Width) */}
           {analyticsData.top_destinations && analyticsData.top_destinations.length > 0 && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-[#F8FCFF] rounded-3xl p-6 sm:p-7 border border-[#082F5B]/10 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-base text-slate-900 font-serif flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-sky-600" />
+                  <h4 className="font-extrabold text-base text-[#102B46] flex items-center gap-2">
+                    <Compass className="w-4 h-4 text-[#1677C8]" />
                     Top Explored Maritime Destinations & Routes
                   </h4>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#102B46]/60">
                     Most visited sea routes and passenger destinations across your fleet.
                   </p>
                 </div>
@@ -903,21 +1066,21 @@ export const OperatorDashboardPage: React.FC = () => {
                 {analyticsData.top_destinations.map((d, i) => {
                   const pct = Math.round((d.count / maxDestCount) * 100);
                   return (
-                    <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                    <div key={i} className="p-4 rounded-2xl bg-[#EAF4FB] border border-[#082F5B]/10 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 text-[10px] font-bold uppercase">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#1677C8]/15 text-[#082F5B] text-[10px] font-bold uppercase">
                           Rank #{i + 1}
                         </span>
-                        <span className="text-xs font-black text-slate-900">{d.count} trips</span>
+                        <span className="text-xs font-black text-[#102B46]">{d.count} trips</span>
                       </div>
-                      <h5 className="font-bold text-sm text-slate-900 truncate" title={d.destination}>
+                      <h5 className="font-bold text-sm text-[#102B46] truncate" title={d.destination}>
                         {d.destination}
                       </h5>
-                      <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                        <div style={{ width: `${pct}%` }} className="h-full bg-sky-500 rounded-full" />
+                      <div className="w-full h-1.5 rounded-full bg-white overflow-hidden">
+                        <div style={{ width: `${pct}%` }} className="h-full bg-[#1677C8] rounded-full" />
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Revenue: <strong className="text-slate-800">{formatINR(d.revenue)}</strong>
+                      <p className="text-[11px] text-[#102B46]/60 font-medium">
+                        Revenue: <strong className="text-[#102B46]">{formatINR(d.revenue)}</strong>
                       </p>
                     </div>
                   );
@@ -933,21 +1096,21 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">My Cruise Fleet</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">My Cruise Fleet</h2>
+              <p className="text-xs text-[#102B46]/60 mt-0.5">
                 Manage ship specifications, pricing rates, deck capabilities, and operational status.
               </p>
             </div>
             <button
-              onClick={() => setShowAddShipModal(true)}
-              className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 self-start cursor-pointer shadow-sm"
+              onClick={handleOpenAddShipModal}
+              className="px-5 py-2.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] font-black text-xs flex items-center gap-1.5 self-start cursor-pointer shadow-md shadow-[#051833]/20"
             >
-              <Plus className="w-4 h-4" /> Add New Ship
+              <Plus className="w-4 h-4 text-[#fff8dc]" /> Add New Ship
             </button>
           </div>
 
-          {/* Status Filter Chips */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter Chips (Pill Design matching screenshot) */}
+          <div className="flex flex-wrap items-center gap-2.5">
             {[
               { id: 'ALL', label: 'All Fleet Ships', count: data?.my_ships?.length || 0 },
               { id: 'AVAILABLE', label: 'Available', count: stats.available_ships || 0 },
@@ -960,19 +1123,19 @@ export const OperatorDashboardPage: React.FC = () => {
                 <button
                   key={chip.id}
                   onClick={() => setFleetFilter(chip.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
                     isActive
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-sm shadow-[#0284c7]/25 font-black'
+                      : 'bg-white text-[#051833] border-[#0284c7]/25 hover:bg-sky-50/70 hover:border-[#0284c7]/40 shadow-sm'
                   }`}
                 >
                   <span>{chip.label}</span>
                   <span
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] ${
-                      isActive ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-sky-50 text-[#0284c7] border border-[#0284c7]/20'
                     }`}
                   >
-                    {chip.count}
+                    ({chip.count})
                   </span>
                 </button>
               );
@@ -983,71 +1146,73 @@ export const OperatorDashboardPage: React.FC = () => {
             {filteredShips.map((ship) => {
               const opStatus = ship.operational_status || (ship.is_active ? 'AVAILABLE' : 'MAINTENANCE');
               return (
-              <div key={ship.id} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                <div className="flex gap-4">
-                  <img
-                    src={ship.image || (ship as any).image_url || '/static/images/vessels/cordelia_empress.jpg'}
-                    alt={ship.name}
-                    className="w-28 h-28 rounded-2xl object-cover shrink-0"
-                  />
+              <div key={ship.id} className="bg-white rounded-3xl border border-[#0284c7]/20 shadow-sm p-6 sm:p-7 space-y-4 hover:border-[#0284c7]/50 hover:shadow-md transition group">
+                <div className="flex gap-4 sm:gap-5">
+                  <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0 bg-[#EAF4FB] border border-[#082F5B]/10">
+                    <img
+                      src={ship.image || (ship as any).image_url || '/static/images/vessels/cordelia_empress.jpg'}
+                      alt={ship.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  </div>
                   <div className="space-y-1 min-w-0">
                     {opStatus === 'AVAILABLE' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase inline-flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase inline-flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Available for Charter
                       </span>
                     )}
                     {opStatus === 'BOOKED' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 uppercase inline-flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 uppercase inline-flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                         Booked / Unavailable
                       </span>
                     )}
                     {opStatus === 'ON_TOUR' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300 uppercase inline-flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 uppercase inline-flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1677C8]" />
                         On Tour Departure
                       </span>
                     )}
                     {opStatus === 'MAINTENANCE' && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase inline-flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase inline-flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                         Maintenance / Drydock
                       </span>
                     )}
-                    <h3 className="font-bold text-lg text-slate-900 font-serif truncate">{ship.name}</h3>
-                    <p className="text-xs text-slate-500">
+                    <h3 className="font-extrabold text-lg text-[#102B46] truncate">{ship.name}</h3>
+                    <p className="text-xs text-[#102B46]/60">
                       {ship.departure_port} → {ship.destination}
                     </p>
-                    <p className="text-xs font-black text-slate-900 pt-1">
-                      {formatINR(ship.price)} <span className="text-[10px] font-normal text-slate-400">/ {ship.price_unit || 'day base charter'}</span>
+                    <p className="text-sm font-black text-[#102B46] pt-1">
+                      {formatINR(ship.price)} <span className="text-[10px] font-normal text-[#102B46]/50">/ {ship.price_unit || 'day base charter'}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Vessel Tech Specs */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-[#EAF4FB] p-3 rounded-2xl border border-[#082F5B]/10">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Capacity</span>
-                    <span className="font-bold text-slate-800">{ship.capacity} Guests</span>
+                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Capacity</span>
+                    <span className="font-bold text-[#102B46]">{ship.capacity} Guests</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Length / Beam</span>
-                    <span className="font-bold text-slate-800">{ship.ship_length_meters || 200}m / {ship.beam_meters || 28}m</span>
+                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Length / Beam</span>
+                    <span className="font-bold text-[#102B46]">{ship.ship_length_meters || 200}m / {ship.beam_meters || 28}m</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Decks / Cabins</span>
-                    <span className="font-bold text-slate-800">{ship.decks_count || 8} Decks • {ship.cabin_count || 80}</span>
+                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Decks / Cabins</span>
+                    <span className="font-bold text-[#102B46]">{ship.decks_count || 8} Decks • {ship.cabin_count || 80}</span>
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-wrap gap-2 justify-end">
+                <div className="pt-2 flex flex-wrap items-center gap-2 justify-end">
                   <button
                     onClick={() => {
                       setSelectedShipIdForTimeline(ship.id);
                       setActiveTab('availability');
                     }}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                    className="px-4 py-1.5 rounded-full bg-[#EAF4FB] hover:bg-[#F8FCFF] border border-[#082F5B]/15 text-xs font-bold text-[#102B46] transition cursor-pointer"
                   >
                     View Availability
                   </button>
@@ -1056,9 +1221,17 @@ export const OperatorDashboardPage: React.FC = () => {
                       setNewExtra((prev) => ({ ...prev, ship_id: ship.id.toString() }));
                       setActiveTab('extras');
                     }}
-                    className="px-3 py-1.5 rounded-xl border border-amber-200 text-xs font-bold text-amber-800 hover:bg-amber-50 transition cursor-pointer"
+                    className="px-4 py-1.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white text-xs font-bold transition cursor-pointer shadow-sm"
                   >
                     Configure Extras
+                  </button>
+                  <button
+                    onClick={() => setShipToDelete(ship)}
+                    className="px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold text-rose-700 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    title="Delete this ship"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
@@ -1073,14 +1246,14 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">Ship Add-on Extras</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">Ship Add-on Extras</h2>
+              <p className="text-xs text-[#102B46]/60 mt-0.5">
                 Configure owner-provided add-on services (DJ, Drone Photography, Fine Catering, Decoration) with pricing mode.
               </p>
             </div>
             <button
               onClick={() => setShowAddExtraModal(true)}
-              className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-5 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#1677C8]/20"
             >
               <Plus className="w-4 h-4" /> Add Extra Service
             </button>
@@ -1088,26 +1261,26 @@ export const OperatorDashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {extrasList.map((extra) => (
-              <div key={extra.id} className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm space-y-3 flex flex-col justify-between">
+              <div key={extra.id} className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-6 shadow-sm space-y-3 flex flex-col justify-between hover:border-[#63B8F0] transition">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 uppercase">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/10 uppercase">
                       {extra.pricing_mode === 'PER_PERSON' ? 'Per Guest' : extra.pricing_mode === 'PER_DAY' ? 'Per Day' : 'Flat Package'}
                     </span>
                     <button
                       onClick={() => handleDeleteExtra(extra.id)}
-                      className="text-slate-400 hover:text-rose-600 transition cursor-pointer p-1"
+                      className="text-[#102B46]/40 hover:text-rose-600 transition cursor-pointer p-1"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <h3 className="font-bold text-base text-slate-900 font-serif mt-2">{extra.name}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed mt-1">{extra.description || 'Custom boat/cruise service option.'}</p>
+                  <h3 className="font-extrabold text-base text-[#102B46] mt-2.5">{extra.name}</h3>
+                  <p className="text-xs text-[#102B46]/70 leading-relaxed mt-1">{extra.description || 'Custom boat/cruise service option.'}</p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-base font-black text-slate-900">{formatINR(extra.price)}</span>
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                <div className="pt-3 border-t border-[#082F5B]/10 flex items-center justify-between">
+                  <span className="text-base font-black text-[#102B46]">{formatINR(extra.price)}</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     Active
                   </span>
                 </div>
@@ -1122,18 +1295,18 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">Ship Availability Timeline</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">Ship Availability Timeline</h2>
+              <p className="text-xs text-[#102B46]/60 mt-0.5">
                 30-day chronological operational status derived directly from live database bookings and tour schedules.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-semibold">Select Ship:</span>
+              <span className="text-xs text-[#102B46]/70 font-semibold">Select Ship:</span>
               <select
                 value={selectedShipIdForTimeline || ''}
                 onChange={(e) => setSelectedShipIdForTimeline(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white text-slate-900"
+                className="px-4 py-2 rounded-full border border-[#082F5B]/15 text-xs font-bold bg-[#F8FCFF] text-[#102B46] focus:outline-none focus:border-[#1677C8]"
               >
                 {(data?.my_ships || []).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -1144,10 +1317,10 @@ export const OperatorDashboardPage: React.FC = () => {
 
           {timelineLoading ? (
             <div className="py-20 text-center">
-              <div className="w-10 h-10 mx-auto border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 mx-auto border-4 border-[#1677C8] border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+            <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-6 sm:p-7 shadow-sm">
               <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 gap-3">
                 {availabilityTimeline.map((item, idx) => {
                   const isAvailable = item.status === 'Available';
@@ -1155,19 +1328,19 @@ export const OperatorDashboardPage: React.FC = () => {
                   return (
                     <div
                       key={idx}
-                      className={`p-3.5 rounded-2xl border text-center transition ${
+                      className={`p-4 rounded-2xl border text-center transition ${
                         isAvailable
-                          ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
                           : isCharter
-                          ? 'bg-sky-50 border-sky-200 text-sky-900'
-                          : 'bg-purple-50 border-purple-200 text-purple-900'
+                          ? 'bg-[#EAF4FB] border-[#082F5B]/15 text-[#082F5B]'
+                          : 'bg-[#F8FCFF] border-[#63B8F0]/30 text-[#1677C8]'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">{item.day_name}</span>
+                      <span className="text-[10px] uppercase font-bold text-[#102B46]/50 block">{item.day_name}</span>
                       <span className="text-sm font-black block mt-0.5">{item.date.slice(5)}</span>
                       <span
-                        className={`text-[9px] font-bold uppercase tracking-wider block mt-1.5 px-1.5 py-0.5 rounded ${
-                          isAvailable ? 'bg-emerald-100 text-emerald-800' : isCharter ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800'
+                        className={`text-[9px] font-bold uppercase tracking-wider block mt-1.5 px-2 py-0.5 rounded-full ${
+                          isAvailable ? 'bg-emerald-100 text-emerald-800' : isCharter ? 'bg-[#1677C8] text-white' : 'bg-[#EAF4FB] text-[#082F5B]'
                         }`}
                       >
                         {item.status}
@@ -1186,15 +1359,18 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">Private Charter Reservations</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Review passenger requests, approve charter slots, track trip departures, and inspect tax invoices.
+              <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
+                Charter Bookings & Logistics
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">Private Charter Reservations</h2>
+              <p className="text-xs text-[#102B46]/65 mt-1 font-medium">
+                Review passenger requests, approve charter slots, track trip departures, and inspect GST tax invoices.
               </p>
             </div>
           </div>
 
-          {/* Status Filter Chips */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter Chips (Pill Design matching screenshot) */}
+          <div className="flex flex-wrap items-center gap-2.5">
             {[
               { id: 'ALL', label: 'All Reservations', count: data?.recent_bookings?.length || 0 },
               { id: 'PENDING', label: 'Pending Requests', count: (data?.recent_bookings || []).filter(b => b.status === 'PENDING').length },
@@ -1207,17 +1383,17 @@ export const OperatorDashboardPage: React.FC = () => {
                 <button
                   key={chip.id}
                   onClick={() => setBookingFilter(chip.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
                     isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-sm shadow-[#0284c7]/25 font-black'
+                      : 'bg-white text-[#051833] border-[#0284c7]/25 hover:bg-sky-50/70 hover:border-[#0284c7]/40 shadow-sm'
                   }`}
                 >
                   <span>{chip.label}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-100 text-slate-600'
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-sky-50 text-[#0284c7] border border-[#0284c7]/20'
                   }`}>
-                    {chip.count}
+                    ({chip.count})
                   </span>
                 </button>
               );
@@ -1226,57 +1402,68 @@ export const OperatorDashboardPage: React.FC = () => {
 
           <div className="space-y-4">
             {filteredBookings.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center text-slate-500">
-                <Clock className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                <p className="font-bold text-slate-700 text-sm">No reservations found</p>
-                <p className="text-xs text-slate-400 mt-1">There are no bookings matching the selected status filter.</p>
+              <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-12 text-center text-[#102B46]/60 shadow-[0_4px_20px_rgba(8,47,91,0.03)]">
+                <Clock className="w-12 h-12 text-[#1677C8]/40 mx-auto mb-3" />
+                <p className="font-bold text-[#102B46] text-base">No reservations found</p>
+                <p className="text-xs text-[#102B46]/60 mt-1 font-medium">There are no bookings matching the selected status filter.</p>
               </div>
             ) : (
               filteredBookings.map((b) => (
               <div
                 key={b.id}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+                className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
               >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                <div className="space-y-2 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black font-mono text-[#082F5B] bg-[#EAF4FB] px-2.5 py-0.5 rounded-full border border-[#082F5B]/10">
                       #{b.booking_id}
                     </span>
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
                         b.status === 'CONFIRMED'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           : b.status === 'PENDING'
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-200'
                           : b.status === 'COMPLETED'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-[#EAF4FB] text-[#1677C8] border border-[#63B8F0]/30'
+                          : 'bg-rose-100 text-rose-800 border border-rose-200'
                       }`}
                     >
                       {b.status}
                     </span>
-                    <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded uppercase">
+                    <span className="text-[10px] font-bold text-[#1677C8] bg-[#EAF4FB] px-2.5 py-0.5 rounded-full uppercase border border-[#1677C8]/20">
                       {b.booking_type === 'EVENT' ? 'Private Event Charter' : 'Public Tour Ticket'}
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-lg text-slate-900 font-serif">{b.cruise_name}</h3>
-                  <p className="text-xs text-slate-600">
-                    Customer: <strong>{b.customer_name}</strong> • Contact: {b.customer_email} {b.customer_phone ? `(${b.customer_phone})` : ''}
+                  <h3 className="font-black text-xl text-[#102B46] font-heading tracking-tight">{b.cruise_name}</h3>
+                  <p className="text-xs text-[#102B46]/75 font-medium">
+                    Passenger: <strong className="text-[#102B46] font-bold">{b.customer_name}</strong> • Contact: {b.customer_email} {b.customer_phone ? `(${b.customer_phone})` : ''}
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Trip Date: {b.booking_date} • Guests: {b.passengers_count || b.number_of_people} • Cabin: {b.cabin_name || b.cabin_type || 'Private Charter'}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/65 font-medium pt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
+                      Trip Date: <strong className="text-[#102B46]">{b.booking_date}</strong>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-[#1677C8]" />
+                      Guests: <strong className="text-[#102B46]">{b.passengers_count || b.number_of_people}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>Cabin: <strong className="text-[#102B46]">{b.cabin_name || b.cabin_type || 'Private Charter'}</strong></span>
+                  </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-3 shrink-0">
-                  <span className="text-xl font-black text-slate-900">{formatINR(b.total_price)}</span>
+                <div className="flex flex-col items-start md:items-end gap-3.5 shrink-0 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#082F5B]/10">
+                  <span className="text-2xl font-black text-[#102B46] font-heading tracking-tight">{formatINR(b.total_price)}</span>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => setSelectedInvoiceId(b.booking_id)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-full border border-[#082F5B]/20 text-xs font-bold text-[#082F5B] hover:bg-[#EAF4FB] transition-all cursor-pointer flex items-center gap-1.5"
                     >
+                      <Receipt className="w-3.5 h-3.5 text-[#1677C8]" />
                       Invoice
                     </button>
 
@@ -1285,14 +1472,14 @@ export const OperatorDashboardPage: React.FC = () => {
                         <button
                           onClick={() => handleAction(b.booking_id, 'confirm')}
                           disabled={actionLoading === `${b.booking_id}-confirm`}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition cursor-pointer shadow-sm"
+                          className="px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer shadow-sm hover:shadow"
                         >
                           Accept
                         </button>
                         <button
                           onClick={() => handleAction(b.booking_id, 'cancel')}
                           disabled={actionLoading === `${b.booking_id}-cancel`}
-                          className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs transition cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold text-xs transition-all cursor-pointer"
                         >
                           Reject
                         </button>
@@ -1300,32 +1487,32 @@ export const OperatorDashboardPage: React.FC = () => {
                     )}
 
                     {b.status === 'CONFIRMED' && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <button
                           onClick={() => handleAction(b.booking_id, 'board')}
                           disabled={actionLoading === `${b.booking_id}-board`}
-                          className="px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[11px] transition cursor-pointer"
+                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] hover:bg-[#1677C8] hover:text-white border border-[#082F5B]/10 font-bold text-[11px] transition-all cursor-pointer"
                         >
                           Boarding
                         </button>
                         <button
                           onClick={() => handleAction(b.booking_id, 'depart')}
                           disabled={actionLoading === `${b.booking_id}-depart`}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-[11px] transition cursor-pointer"
+                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#1677C8] hover:bg-[#1677C8] hover:text-white border border-[#1677C8]/20 font-bold text-[11px] transition-all cursor-pointer"
                         >
                           Depart
                         </button>
                         <button
                           onClick={() => handleAction(b.booking_id, 'arrive')}
                           disabled={actionLoading === `${b.booking_id}-arrive`}
-                          className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-bold text-[11px] transition cursor-pointer"
+                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] hover:bg-[#082F5B] hover:text-white border border-[#082F5B]/10 font-bold text-[11px] transition-all cursor-pointer"
                         >
                           Arrive
                         </button>
                         <button
                           onClick={() => handleAction(b.booking_id, 'complete')}
                           disabled={actionLoading === `${b.booking_id}-complete`}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[11px] transition cursor-pointer"
+                          className="px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all cursor-pointer shadow-sm"
                         >
                           Complete
                         </button>
@@ -1344,14 +1531,17 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">Scheduled Public Cruise Tours</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Multi-passenger scheduled departures with seat and cabin inventory management.
+              <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
+                Scheduled Departures
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">Public Cruise Tours</h2>
+              <p className="text-xs text-[#102B46]/65 mt-1 font-medium">
+                Multi-passenger scheduled coastal departures with real-time seat and cabin inventory management.
               </p>
             </div>
             <button
-              onClick={() => setShowAddTourModal(true)}
-              className="px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+              onClick={handleOpenAddTourModal}
+              className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Publish New Tour
             </button>
@@ -1359,47 +1549,48 @@ export const OperatorDashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {data?.my_tours?.map((tour) => (
-              <div key={tour.id} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold uppercase">
+              <div key={tour.id} className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all p-6 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 text-[10px] font-black uppercase tracking-wider">
                     {tour.ship_name}
                   </span>
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
+                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black uppercase tracking-wider">
                     {tour.remaining_capacity} Seats Remaining
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 font-serif">{tour.tour_title}</h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
+                  <h3 className="text-xl font-black text-[#102B46] font-heading tracking-tight">{tour.tour_title}</h3>
+                  <p className="text-xs text-[#102B46]/70 mt-1 font-medium">
                     {tour.departure_port} → {tour.destination} ({tour.departure_date})
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-[#EAF4FB]/60 p-3.5 rounded-2xl border border-[#082F5B]/10">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Duration</span>
-                    <span className="font-bold text-slate-800">{tour.duration_days} Days</span>
+                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Duration</span>
+                    <span className="font-black text-[#102B46] mt-0.5 block">{tour.duration_display || `${tour.duration_days} Days`}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Adult Rate</span>
-                    <span className="font-bold text-slate-800">{formatINR(tour.adult_price)}</span>
+                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Adult Rate</span>
+                    <span className="font-black text-[#1677C8] mt-0.5 block">{formatINR(tour.adult_price)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Booked / Total</span>
-                    <span className="font-bold text-slate-800">{tour.booked_capacity} / {tour.total_capacity}</span>
+                    <span className="text-[10px] font-black text-[#102B46]/50 block uppercase tracking-wider">Booked / Total</span>
+                    <span className="font-black text-[#102B46] mt-0.5 block">{tour.booked_capacity} / {tour.total_capacity}</span>
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end gap-2">
+                <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => {
                       setSelectedTourIdForManifest(tour.id);
                       setActiveTab('passengers');
                     }}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#082F5B] hover:bg-[#1677C8] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
                   >
-                    View Passenger Manifest
+                    <Users className="w-3.5 h-3.5" />
+                    View Passenger List
                   </button>
                 </div>
               </div>
@@ -1413,18 +1604,21 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 font-serif">Tour Passenger Manifest</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Authorized passenger list and ticket bookings for your scheduled cruise departures.
+              <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
+                Security & Boarding Protocol
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">Tour Passenger List</h2>
+              <p className="text-xs text-[#102B46]/65 mt-1 font-medium">
+                Authorized passenger list and verified ticket reservations for your scheduled cruise departures.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-semibold">Select Tour:</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-[#102B46]/70 font-bold">Select Tour:</span>
               <select
                 value={selectedTourIdForManifest || ''}
                 onChange={(e) => setSelectedTourIdForManifest(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white text-slate-900"
+                className="px-4 py-2 rounded-xl border border-[#082F5B]/20 text-xs font-bold bg-[#F8FCFF] text-[#102B46] focus:border-[#1677C8] focus:outline-none"
               >
                 {data?.my_tours?.map((t) => (
                   <option key={t.id} value={t.id}>{t.tour_title}</option>
@@ -1435,43 +1629,43 @@ export const OperatorDashboardPage: React.FC = () => {
 
           {manifestLoading ? (
             <div className="py-20 text-center">
-              <div className="w-10 h-10 mx-auto border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 mx-auto border-4 border-[#1677C8] border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : !manifestData || manifestData.passengers.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8">
-              <Users className="w-12 h-12 mx-auto text-slate-300" />
-              <h3 className="text-base font-bold text-slate-700 mt-2">No Passengers Booked Yet</h3>
-              <p className="text-xs text-slate-400 mt-1">Passenger reservations will appear here as customers book tickets.</p>
+            <div className="py-20 text-center bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-8 shadow-[0_4px_20px_rgba(8,47,91,0.03)]">
+              <Users className="w-12 h-12 mx-auto text-[#1677C8]/40" />
+              <h3 className="text-base font-bold text-[#102B46] mt-2">No Passengers Booked Yet</h3>
+              <p className="text-xs text-[#102B46]/60 mt-1 font-medium">Passenger reservations will appear here as customers book tickets for this departure.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-[#EAF4FB] border-b border-[#082F5B]/10 text-[#102B46] font-black uppercase tracking-wider text-[10px]">
                     <tr>
-                      <th className="py-3.5 px-4">Ticket Ref</th>
-                      <th className="py-3.5 px-4">Passenger Name</th>
-                      <th className="py-3.5 px-4">Contact</th>
-                      <th className="py-3.5 px-4">Cabin / Class</th>
-                      <th className="py-3.5 px-4">Party Size</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 text-right">Fare (₹)</th>
+                      <th className="py-3.5 px-5">Ticket Ref</th>
+                      <th className="py-3.5 px-5">Passenger Name</th>
+                      <th className="py-3.5 px-5">Contact</th>
+                      <th className="py-3.5 px-5">Cabin / Class</th>
+                      <th className="py-3.5 px-5">Party Size</th>
+                      <th className="py-3.5 px-5">Status</th>
+                      <th className="py-3.5 px-5 text-right">Fare (₹)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#082F5B]/5">
                     {manifestData.passengers.map((p: any) => (
-                      <tr key={p.booking_id} className="hover:bg-slate-50/80 transition">
-                        <td className="py-4 px-4 font-mono font-bold text-sky-700">#{p.booking_id}</td>
-                        <td className="py-4 px-4 font-bold text-slate-900">{p.passenger_name}</td>
-                        <td className="py-4 px-4 text-slate-500">{p.email}</td>
-                        <td className="py-4 px-4 text-slate-700">{p.cabin_type}</td>
-                        <td className="py-4 px-4 font-semibold text-slate-800">{p.adults_count} Adults, {p.children_count} Children</td>
-                        <td className="py-4 px-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                      <tr key={p.booking_id} className="hover:bg-[#EAF4FB]/50 transition-colors">
+                        <td className="py-4 px-5 font-mono font-bold text-[#1677C8]">#{p.booking_id}</td>
+                        <td className="py-4 px-5 font-bold text-[#102B46]">{p.passenger_name}</td>
+                        <td className="py-4 px-5 text-[#102B46]/70">{p.email}</td>
+                        <td className="py-4 px-5 text-[#102B46] font-medium">{p.cabin_type}</td>
+                        <td className="py-4 px-5 font-bold text-[#102B46]">{p.adults_count} Adults, {p.children_count} Children</td>
+                        <td className="py-4 px-5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase border border-emerald-200">
                             {p.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-right font-black text-slate-900">
+                        <td className="py-4 px-5 text-right font-black text-sm text-[#102B46]">
                           {formatINR(p.total_price)}
                         </td>
                       </tr>
@@ -1486,40 +1680,43 @@ export const OperatorDashboardPage: React.FC = () => {
 
       {/* ADD SHIP MODAL */}
       {showAddShipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061D36]/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#F8FCFF] rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#082F5B]/15 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#061D36] to-[#082F5B] p-6 sm:p-7 flex items-center justify-between text-white">
               <div>
-                <h3 className="font-display font-extrabold text-xl text-slate-900">Register New Ship in Fleet</h3>
-                <p className="text-xs text-slate-500">Configure naval specs, passenger capacity, and base INR pricing.</p>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#63B8F0] block mb-1">
+                  Fleet Registry
+                </span>
+                <h3 className="font-heading font-black text-xl text-white">Register New Ship in Fleet</h3>
+                <p className="text-xs text-white/70 mt-0.5">Configure naval specs, passenger capacity, and base INR charter pricing.</p>
               </div>
               <button
                 onClick={() => setShowAddShipModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddShipSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleAddShipSubmit} className="p-6 sm:p-7 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Ship Name</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Ship Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. MV Royal Arabian"
                     value={shipForm.name}
                     onChange={(e) => setShipForm({ ...shipForm, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8] focus:ring-2 focus:ring-[#1677C8]/20"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Ship Category</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Ship Category</label>
                   <select
                     value={shipForm.category}
                     onChange={(e) => setShipForm({ ...shipForm, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 bg-white"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   >
                     <option value="Luxury Ocean Cruise">Luxury Ocean Cruise</option>
                     <option value="Superyacht">Superyacht</option>
@@ -1529,92 +1726,212 @@ export const OperatorDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Home Port</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Home Port</label>
                   <input
                     type="text"
                     required
+                    placeholder="e.g. Mumbai Cruise Terminal"
                     value={shipForm.departure_port}
                     onChange={(e) => setShipForm({ ...shipForm, departure_port: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Destination Region</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Destination Region</label>
                   <input
                     type="text"
                     required
+                    placeholder="e.g. Goa & Arabian Sea"
                     value={shipForm.destination}
                     onChange={(e) => setShipForm({ ...shipForm, destination: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Base Price (₹/day)</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Price (₹/day)</label>
                   <input
                     type="number"
                     required
-                    value={shipForm.price}
-                    onChange={(e) => setShipForm({ ...shipForm, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 75000"
+                    value={shipForm.price ?? ''}
+                    onChange={(e) => setShipForm({ ...shipForm, price: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Capacity</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Capacity</label>
                   <input
                     type="number"
                     required
-                    value={shipForm.capacity}
-                    onChange={(e) => setShipForm({ ...shipForm, capacity: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 150"
+                    value={shipForm.capacity ?? ''}
+                    onChange={(e) => setShipForm({ ...shipForm, capacity: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Length (m)</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Length (m)</label>
                   <input
                     type="number"
-                    value={shipForm.ship_length_meters}
-                    onChange={(e) => setShipForm({ ...shipForm, ship_length_meters: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 220"
+                    value={shipForm.ship_length_meters ?? ''}
+                    onChange={(e) => setShipForm({ ...shipForm, ship_length_meters: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Decks</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Decks</label>
                   <input
                     type="number"
-                    value={shipForm.decks_count}
-                    onChange={(e) => setShipForm({ ...shipForm, decks_count: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 8"
+                    value={shipForm.decks_count ?? ''}
+                    onChange={(e) => setShipForm({ ...shipForm, decks_count: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Ship Photo URL</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={shipForm.image_url}
-                  onChange={(e) => setShipForm({ ...shipForm, image_url: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase text-[#102B46] block">
+                    Ship Photo
+                  </label>
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode('upload')}
+                      className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                        imageUploadMode === 'upload'
+                          ? 'bg-white text-[#1677C8] shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Local Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode('url')}
+                      className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                        imageUploadMode === 'url'
+                          ? 'bg-white text-[#1677C8] shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      Image URL
+                    </button>
+                  </div>
+                </div>
+
+                {imageUploadMode === 'upload' ? (
+                  <div className="space-y-3">
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#1677C8]/40 hover:border-[#1677C8] bg-sky-50/40 hover:bg-sky-50/70 transition-all rounded-2xl p-4 cursor-pointer text-center relative group">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                        className="hidden"
+                      />
+                      {uploadingImage ? (
+                        <div className="flex flex-col items-center py-3">
+                          <Loader2 className="w-8 h-8 text-[#1677C8] animate-spin mb-2" />
+                          <span className="text-xs font-bold text-[#102B46]">Uploading local photo...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center py-2">
+                          <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-[#1677C8] mb-2 group-hover:scale-110 transition-transform">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-bold text-[#102B46]">
+                            Click to browse image from computer
+                          </span>
+                          <span className="text-[11px] text-slate-500 mt-0.5">
+                            PNG, JPG, JPEG, WEBP (Max 15MB)
+                          </span>
+                        </div>
+                      )}
+                    </label>
+
+                    {(imagePreview || shipForm.image_url) && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <img
+                          src={imagePreview || shipForm.image_url}
+                          alt="Ship Preview"
+                          className="w-16 h-12 object-cover rounded-lg border border-slate-300 shadow-sm"
+                          onError={(e) => {
+                            e.currentTarget.src = '/static/images/placeholder.png';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold text-slate-800 block truncate">
+                            {uploadingImage ? 'Uploading...' : 'Selected photo ready'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 block truncate">
+                            {shipForm.image_url || 'Local file'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImagePreview('');
+                            setShipForm((prev) => ({ ...prev, image_url: '' }));
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                          title="Remove photo"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/photo-xxx..."
+                      value={shipForm.image_url}
+                      onChange={(e) => {
+                        setShipForm({ ...shipForm, image_url: e.target.value });
+                        setImagePreview(e.target.value);
+                      }}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
+                    />
+                    {shipForm.image_url && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <img
+                          src={shipForm.image_url}
+                          alt="Ship Preview"
+                          className="w-16 h-12 object-cover rounded-lg border border-slate-300 shadow-sm"
+                          onError={(e) => {
+                            e.currentTarget.src = '/static/images/placeholder.png';
+                          }}
+                        />
+                        <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                          {shipForm.image_url}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#082F5B]/10">
                 <button
                   type="button"
                   onClick={() => setShowAddShipModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-5 py-2.5 rounded-full text-xs font-bold text-[#102B46]/70 hover:bg-[#EAF4FB] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md"
+                  className="px-6 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                 >
                   Register Ship
                 </button>
@@ -1626,29 +1943,32 @@ export const OperatorDashboardPage: React.FC = () => {
 
       {/* PUBLISH TOUR MODAL */}
       {showAddTourModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061D36]/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#F8FCFF] rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#082F5B]/15 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#061D36] to-[#082F5B] p-6 flex items-center justify-between text-white">
               <div>
-                <h3 className="font-display font-extrabold text-xl text-slate-900">Publish Public Scheduled Tour</h3>
-                <p className="text-xs text-slate-500">Sell passenger tickets and cabins on a scheduled departure.</p>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#63B8F0] block mb-1">
+                  Tour Departure Creator
+                </span>
+                <h3 className="font-heading font-black text-xl text-white">Publish Public Scheduled Tour</h3>
+                <p className="text-xs text-white/70 mt-0.5">Sell passenger tickets and cabins on a scheduled departure.</p>
               </div>
               <button
                 onClick={() => setShowAddTourModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddTourSubmit} className="space-y-4">
+            <form onSubmit={handleAddTourSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Select Ship</label>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Select Ship</label>
                 <select
                   required
                   value={tourForm.ship_id}
                   onChange={(e) => setTourForm({ ...tourForm, ship_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500 bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                 >
                   {(data?.my_ships || []).map((s) => (
                     <option key={s.id} value={s.id}>{s.name} ({s.location})</option>
@@ -1657,74 +1977,93 @@ export const OperatorDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Tour Title</label>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Tour Title</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Mumbai to Goa Coastal Carnival Cruise"
                   value={tourForm.tour_title}
                   onChange={(e) => setTourForm({ ...tourForm, tour_title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Departure Date</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Departure Date</label>
                   <input
                     type="date"
                     required
                     value={tourForm.departure_date}
-                    onChange={(e) => setTourForm({ ...tourForm, departure_date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500"
+                    onChange={(e) => handleDepartureDateChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Return Date</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Return Date</label>
                   <input
                     type="date"
                     required
                     value={tourForm.return_date}
-                    onChange={(e) => setTourForm({ ...tourForm, return_date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500"
+                    onChange={(e) => handleReturnDateChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
               </div>
 
+              {tourForm.departure_date && tourForm.return_date && (
+                <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  tourForm.return_date < tourForm.departure_date
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-[#EAF4FB] text-[#082F5B] border-[#1677C8]/25'
+                }`}>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#1677C8]" />
+                    {tourForm.return_date < tourForm.departure_date
+                      ? 'Invalid: Return date is before departure date'
+                      : 'Calculated Tour Duration:'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white font-black text-[#1677C8] border border-[#1677C8]/20 shadow-xs">
+                    {tourForm.duration_display} ({tourForm.duration_days} {tourForm.duration_days === 1 ? 'day' : 'days'})
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Adult Fare (₹/person)</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Adult Fare (₹/person, min ₹2,000)</label>
                   <input
                     type="number"
+                    min="2000"
                     required
                     value={tourForm.adult_price}
                     onChange={(e) => setTourForm({ ...tourForm, adult_price: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Total Seat Capacity</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Total Seat Capacity</label>
                   <input
                     type="number"
                     required
                     value={tourForm.total_capacity}
                     onChange={(e) => setTourForm({ ...tourForm, total_capacity: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-sky-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#082F5B]/10">
                 <button
                   type="button"
                   onClick={() => setShowAddTourModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-5 py-2.5 rounded-full text-xs font-bold text-[#102B46]/70 hover:bg-[#EAF4FB] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-md"
+                  className="px-6 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                 >
                   Publish Public Tour
                 </button>
@@ -1736,23 +2075,31 @@ export const OperatorDashboardPage: React.FC = () => {
 
       {/* ADD EXTRA MODAL */}
       {showAddExtraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-lg text-slate-900">Add Ship Extra Service</h3>
-              <button onClick={() => setShowAddExtraModal(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061D36]/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#F8FCFF] rounded-3xl max-w-md w-full shadow-2xl border border-[#082F5B]/15 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#061D36] to-[#082F5B] p-6 flex items-center justify-between text-white">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#63B8F0] block mb-0.5">
+                  Ancillary Catalog
+                </span>
+                <h3 className="font-heading font-black text-lg text-white">Add Ship Extra Service</h3>
+              </div>
+              <button
+                onClick={() => setShowAddExtraModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateExtraSubmit} className="space-y-4">
+            <form onSubmit={handleCreateExtraSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Assigned Ship</label>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Assigned Ship</label>
                 <select
                   required
                   value={newExtra.ship_id}
                   onChange={(e) => setNewExtra({ ...newExtra, ship_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                 >
                   {(data?.my_ships || []).map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -1761,44 +2108,44 @@ export const OperatorDashboardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Extra Service Name</label>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Extra Service Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Drone Videography & Saxophone Solo"
                   value={newExtra.name}
                   onChange={(e) => setNewExtra({ ...newExtra, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Description</label>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={newExtra.description}
                   onChange={(e) => setNewExtra({ ...newExtra, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+                  className="w-full px-4 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Rate in INR (₹)</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Rate in INR (₹)</label>
                   <input
                     type="number"
                     required
                     value={newExtra.price}
                     onChange={(e) => setNewExtra({ ...newExtra, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase text-slate-700 block mb-1">Pricing Mode</label>
+                  <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">Pricing Mode</label>
                   <select
                     value={newExtra.pricing_mode}
                     onChange={(e) => setNewExtra({ ...newExtra, pricing_mode: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
+                    className="w-full px-3 py-2 rounded-xl border border-[#082F5B]/20 text-sm bg-white text-[#102B46] focus:outline-none focus:border-[#1677C8]"
                   >
                     <option value="FLAT">Flat Fee</option>
                     <option value="PER_PERSON">Per Person</option>
@@ -1807,17 +2154,17 @@ export const OperatorDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#082F5B]/10">
                 <button
                   type="button"
                   onClick={() => setShowAddExtraModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600"
+                  className="px-4 py-2 text-xs font-bold text-[#102B46]/70 hover:bg-[#EAF4FB] rounded-full transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-sm"
+                  className="px-5 py-2 bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs rounded-full shadow-md transition-all cursor-pointer"
                 >
                   Add Extra
                 </button>
@@ -1833,6 +2180,84 @@ export const OperatorDashboardPage: React.FC = () => {
           bookingId={selectedInvoiceId}
           onClose={() => setSelectedInvoiceId(null)}
         />
+      )}
+
+      {/* DELETE SHIP CONFIRMATION MODAL */}
+      {shipToDelete && (
+        <div className="fixed inset-0 z-50 bg-[#051833]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-rose-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 bg-gradient-to-r from-rose-50 to-orange-50 border-b border-rose-100 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-200 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-extrabold text-lg text-slate-900">Delete Ship</h3>
+                <p className="text-xs text-slate-500 mt-0.5">This action cannot be undone.</p>
+              </div>
+              <button
+                onClick={() => !deletingShip && setShipToDelete(null)}
+                disabled={deletingShip}
+                className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-slate-500 transition-all cursor-pointer disabled:opacity-40"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <img
+                  src={shipToDelete.image || (shipToDelete as any).image_url || '/static/images/vessels/cordelia_empress.jpg'}
+                  alt={shipToDelete.name}
+                  className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-sm text-slate-900 truncate">{shipToDelete.name}</h4>
+                  <p className="text-xs text-slate-500 truncate">{shipToDelete.departure_port} → {shipToDelete.destination}</p>
+                  <p className="text-[11px] font-bold text-slate-600 mt-0.5">{shipToDelete.capacity} Guests • {formatINR(shipToDelete.price)}</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200/60 text-xs text-rose-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Important Notice</span>
+                </div>
+                <p className="leading-relaxed">
+                  Are you sure you want to delete <span className="font-bold">{shipToDelete.name}</span>? All associated tours, availability schedules, and configured extras attached to this ship will also be permanently removed.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShipToDelete(null)}
+                  disabled={deletingShip}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-full transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteShip}
+                  disabled={deletingShip}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-md shadow-rose-600/20 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                >
+                  {deletingShip ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Ship</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

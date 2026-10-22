@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "A high-end, cinematic Cruise Ship Tour + Travel Ticket + Private Maritime Event Booking Platform",
   "scripts": {
-    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,cyan\" \"node run-backend.js\" \"npm run dev --prefix frontend\"",
-    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "node run-dev.js",
+    "dev:concurrently": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,cyan\" --restart-tries -1 --restart-after 2000 \"node run-backend.js\" \"node run-frontend.js\"",
+    "dev:frontend": "node run-frontend.js",
     "dev:backend": "node run-backend.js",
     "build": "npm run build --prefix frontend",
     "install:all": "npm install && npm install --prefix frontend"

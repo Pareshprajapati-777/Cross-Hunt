@@ -13,16 +13,29 @@ import {
   Eye,
   EyeOff,
   Radio,
-  FileText
+  FileText,
+  Key,
+  ExternalLink,
+  Settings,
+  ArrowUpRight,
+  HelpCircle
 } from 'lucide-react';
 import {
   getAdminWhatsAppConfig,
   updateAdminWhatsAppConfig,
   triggerAdminWhatsAppDispatch,
-  getAdminWhatsAppLogs
+  getAdminWhatsAppLogs,
+  getAdminWhatsAppCredentials,
+  updateAdminWhatsAppCredentials,
+  testAdminWhatsAppConnection
 } from '../../api/dashboards';
 import { sendTestWhatsAppReminder } from '../../api/bookings';
-import { WhatsAppConfig, WhatsAppQueueItem, WhatsAppLog } from '../../api/types';
+import {
+  WhatsAppConfig,
+  WhatsAppQueueItem,
+  WhatsAppLog,
+  WhatsAppConnectionTestResult
+} from '../../api/types';
 
 export const AdminWhatsAppView: React.FC = () => {
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
@@ -34,6 +47,17 @@ export const AdminWhatsAppView: React.FC = () => {
   const [hoursInput, setHoursInput] = useState<number>(24);
   const [savingHours, setSavingHours] = useState<boolean>(false);
   const [configSuccessMsg, setConfigSuccessMsg] = useState<string | null>(null);
+
+  // Credentials State
+  const [apiTokenInput, setApiTokenInput] = useState<string>('');
+  const [phoneIdInput, setPhoneIdInput] = useState<string>('');
+  const [businessIdInput, setBusinessIdInput] = useState<string>('');
+  const [showToken, setShowToken] = useState<boolean>(false);
+  const [savingCreds, setSavingCreds] = useState<boolean>(false);
+  const [credsSuccessMsg, setCredsSuccessMsg] = useState<string | null>(null);
+  const [credsErrorMsg, setCredsErrorMsg] = useState<string | null>(null);
+  const [testingConn, setTestingConn] = useState<boolean>(false);
+  const [connResult, setConnResult] = useState<WhatsAppConnectionTestResult | null>(null);
 
   // Dispatch Action State
   const [isDryRun, setIsDryRun] = useState<boolean>(false);
@@ -47,12 +71,19 @@ export const AdminWhatsAppView: React.FC = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const res = await getAdminWhatsAppConfig();
-      setConfig(res.config);
-      setQueue(res.upcoming_queue || []);
-      setLogs(res.recent_logs || []);
-      if (res.config?.configured_hours) {
-        setHoursInput(res.config.configured_hours);
+      const [resConfig, resCreds] = await Promise.all([
+        getAdminWhatsAppConfig(),
+        getAdminWhatsAppCredentials().catch(() => null)
+      ]);
+      setConfig(resConfig.config);
+      setQueue(resConfig.upcoming_queue || []);
+      setLogs(resConfig.recent_logs || []);
+      if (resConfig.config?.configured_hours) {
+        setHoursInput(resConfig.config.configured_hours);
+      }
+      if (resCreds) {
+        if (resCreds.phone_number_id) setPhoneIdInput(resCreds.phone_number_id);
+        if (resCreds.business_account_id) setBusinessIdInput(resCreds.business_account_id);
       }
     } catch (err: any) {
       console.error('Failed to load WhatsApp admin config:', err);
@@ -86,6 +117,47 @@ export const AdminWhatsAppView: React.FC = () => {
     }
   };
 
+  const handleSaveCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCreds(true);
+    setCredsSuccessMsg(null);
+    setCredsErrorMsg(null);
+    setConnResult(null);
+    try {
+      const res = await updateAdminWhatsAppCredentials({
+        api_token: apiTokenInput || '[UNCHANGED]',
+        phone_number_id: phoneIdInput.trim(),
+        business_account_id: businessIdInput.trim()
+      });
+      setCredsSuccessMsg(res.message);
+      setApiTokenInput('');
+      await fetchAllData();
+      setTimeout(() => setCredsSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setCredsErrorMsg(err.message || 'Failed to save credentials.');
+    } finally {
+      setSavingCreds(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConn(true);
+    setConnResult(null);
+    try {
+      const res = await testAdminWhatsAppConnection();
+      setConnResult(res);
+      await fetchAllData();
+    } catch (err: any) {
+      setConnResult({
+        success: false,
+        is_live: false,
+        message: err.message || 'Connection test failed.'
+      });
+    } finally {
+      setTestingConn(false);
+    }
+  };
+
   const handleTriggerDispatch = async () => {
     if (!window.confirm(`Run automated reminder dispatch now for bookings departing within ${hoursInput} hours? (Dry Run: ${isDryRun ? 'YES' : 'NO'})`)) {
       return;
@@ -103,11 +175,17 @@ export const AdminWhatsAppView: React.FC = () => {
     }
   };
 
-  const handleSendSingleTest = async (bookingId: string) => {
+  const handleSendSingleTest = async (bookingId: string, itemWaLink?: string) => {
     setTestingBookingId(bookingId);
     try {
       const res = await sendTestWhatsAppReminder(bookingId);
-      alert(res.message);
+      const link = res.wa_link || itemWaLink;
+      if (link) {
+        window.open(link, '_blank');
+        alert(`${res.message}\n\n✅ Opening WhatsApp Web / App with prefilled reminder so the message delivers directly to the traveler's phone!`);
+      } else {
+        alert(res.message);
+      }
       await fetchAllData();
     } catch (err: any) {
       alert(err.message || 'Failed to send test reminder.');
@@ -140,10 +218,10 @@ export const AdminWhatsAppView: React.FC = () => {
               WhatsApp Business Engine & Embarkation Automation
             </div>
             <h2 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
-              Automated WhatsApp Voyage Reminders
+              Automated WhatsApp Trip Reminders
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Dispatches automated maritime embarkation reminders before scheduled cruise departures with vessel name, boarding gate & jetty instructions, route, passenger names, and verified digital boarding passes.
+              Dispatches automated trip embarkation reminders before scheduled cruise departures with ship name, boarding gate & jetty instructions, route, passenger names, and verified digital boarding passes.
             </p>
           </div>
 
@@ -190,7 +268,7 @@ export const AdminWhatsAppView: React.FC = () => {
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Scheduled in Queue</span>
           <span className="text-3xl font-black text-sky-700">{config?.total_scheduled || 0}</span>
-          <p className="text-[11px] text-slate-500">Opted-in upcoming voyages</p>
+          <p className="text-[11px] text-slate-500">Opted-in upcoming trips</p>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
@@ -207,189 +285,346 @@ export const AdminWhatsAppView: React.FC = () => {
       </div>
 
       {/* 3. Configuration & Dispatch Controls Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Timing Configuration Card */}
+      <div className="space-y-8">
+        {/* Meta WhatsApp Cloud API Settings Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-              Admin Configuration
-            </span>
-            <h3 className="text-xl font-bold text-slate-900 font-serif mt-2 flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-emerald-600" />
-              Automated Reminder Timing
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Configure how many hours prior to departure the automated reminder engine will dispatch messages to customers. Default is <strong className="text-slate-800">24 hours</strong>.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                Meta Cloud API Integration
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 font-serif mt-2 flex items-center gap-2">
+                <Key className="w-5 h-5 text-emerald-600" />
+                Meta WhatsApp Business API Credentials
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Configure your Meta WhatsApp Business Cloud credentials for automatic background server-to-phone delivery, or use the direct 1-click WhatsApp buttons below.
+              </p>
+            </div>
+            <div className={`self-start sm:self-auto px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center gap-2 ${
+              config?.is_live_configured
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                : 'bg-amber-50 text-amber-700 border-amber-300'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${config?.is_live_configured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+              <span>{config?.is_live_configured ? 'LIVE META API ACTIVE' : 'DIRECT / SIMULATOR MODE'}</span>
+            </div>
           </div>
 
-          {configSuccessMsg && (
+          {credsSuccessMsg && (
             <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{configSuccessMsg}</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{credsSuccessMsg}</span>
             </div>
           )}
 
-          {/* Preset Buttons */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              Quick Presets
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {timingPresets.map((h) => {
-                const isSelected = hoursInput === h;
-                return (
-                  <button
-                    key={h}
-                    type="button"
-                    onClick={() => {
-                      setHoursInput(h);
-                      handleSaveHours(h);
-                    }}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {h} Hours {h === 24 && '(Default)'}
-                  </button>
-                );
-              })}
+          {credsErrorMsg && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{credsErrorMsg}</span>
             </div>
-          </div>
+          )}
 
-          {/* Custom Input & Save */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              Custom Timing (Hours)
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  min="1"
-                  max="168"
-                  value={hoursInput}
-                  onChange={(e) => setHoursInput(parseInt(e.target.value) || 24)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  Hours Before
-                </span>
+          <form onSubmit={handleSaveCredentials} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5 md:col-span-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Meta Access Token
+                  </label>
+                  {config?.has_api_token && (
+                    <span className="text-[10px] font-mono text-emerald-600 font-bold">
+                      Saved: {config.masked_token}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={apiTokenInput}
+                    onChange={(e) => setApiTokenInput(e.target.value)}
+                    placeholder={config?.has_api_token ? 'Leave blank to keep existing' : 'EAAB... (Bearer token)'}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                  >
+                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
+
+              <div className="space-y-1.5 md:col-span-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                  Phone Number ID
+                </label>
+                <input
+                  type="text"
+                  value={phoneIdInput}
+                  onChange={(e) => setPhoneIdInput(e.target.value)}
+                  placeholder="e.g. 108264908901234"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1.5 md:col-span-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                  Business Account ID (WABA)
+                </label>
+                <input
+                  type="text"
+                  value={businessIdInput}
+                  onChange={(e) => setBusinessIdInput(e.target.value)}
+                  placeholder="e.g. 104578192837465"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={savingCreds}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>{savingCreds ? 'Saving Keys...' : 'Save Meta Credentials'}</span>
+              </button>
+
               <button
                 type="button"
-                disabled={savingHours}
-                onClick={() => handleSaveHours()}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
+                disabled={testingConn}
+                onClick={handleTestConnection}
+                className="px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                {savingHours ? 'Saving...' : 'Save Timing'}
+                <RefreshCw className={`w-3.5 h-3.5 ${testingConn ? 'animate-spin' : ''}`} />
+                <span>{testingConn ? 'Testing Meta Connection...' : 'Test Connection'}</span>
               </button>
+
+              <div className="text-[11px] text-slate-400 italic">
+                Saves automatically to database and synced to root <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">.env</code> file.
+              </div>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Valid range: 1 hour up to 168 hours (7 days) prior to embarkation.
-            </p>
-          </div>
+          </form>
 
-          {/* Security & Anti-Spam note */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-slate-800">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Anti-Duplicate Protection
-            </div>
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              The dispatch engine records <code className="bg-slate-200 px-1 rounded font-mono">whatsapp_reminder_sent = True</code> in the database once sent. Customers will never receive duplicate notifications for the same reservation.
-            </p>
-          </div>
-        </div>
-
-        {/* Live Batch Dispatch Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full">
-              Automated Dispatch Engine
-            </span>
-            <h3 className="text-xl font-bold text-slate-900 font-serif mt-2 flex items-center gap-2">
-              <Send className="w-5 h-5 text-sky-600" />
-              Manual Batch Execution
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Trigger a batch reminder run right now across all candidate bookings departing within the next {hoursInput} hours.
-            </p>
-          </div>
-
-          {/* Dry Run Toggle */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">Dry Run Simulation Mode</span>
-                <span className="text-[11px] text-slate-500">
-                  Evaluates eligible bookings without actually marking them as sent
-                </span>
+          {connResult && (
+            <div className={`p-4 rounded-2xl border text-xs space-y-1.5 ${
+              connResult.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                : 'bg-rose-50 border-rose-200 text-rose-950'
+            }`}>
+              <div className="font-bold flex items-center gap-1.5">
+                {connResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span>{connResult.message}</span>
               </div>
-              <input
-                type="checkbox"
-                checked={isDryRun}
-                onChange={(e) => setIsDryRun(e.target.checked)}
-                className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 accent-sky-600 cursor-pointer"
-              />
-            </label>
-          </div>
-
-          {/* Trigger Button */}
-          <button
-            type="button"
-            disabled={dispatching}
-            onClick={handleTriggerDispatch}
-            className={`w-full py-4 rounded-2xl text-white font-bold text-xs uppercase tracking-wider shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
-              isDryRun
-                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            <span>
-              {dispatching
-                ? 'Executing Dispatch Engine...'
-                : isDryRun
-                ? `Run Dry Run Evaluation (${hoursInput}h Window)`
-                : `Trigger Batch Reminders Now (${hoursInput}h Window)`}
-            </span>
-          </button>
-
-          {/* Dispatch Feedback Display */}
-          {dispatchResult && (
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs space-y-2">
-              <div className="font-bold flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Dispatch Engine Execution Completed
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div>Total Evaluated: <strong>{dispatchResult.total_evaluated}</strong></div>
-                <div>Eligible in {dispatchResult.hours_before}h: <strong>{dispatchResult.eligible_in_window}</strong></div>
-                <div>Dispatched Successfully: <strong className="text-emerald-700">{dispatchResult.sent}</strong></div>
-                <div>Failed: <strong className="text-rose-600">{dispatchResult.failed}</strong></div>
-              </div>
-              {dispatchResult.results && dispatchResult.results.length > 0 && (
-                <div className="max-h-32 overflow-y-auto space-y-1 text-[11px] bg-white/70 p-2 rounded-xl border border-emerald-100">
-                  {dispatchResult.results.map((r: any, idx: number) => (
-                    <div key={idx} className="flex justify-between">
-                      <span className="font-mono">{r.booking_id} ({r.customer})</span>
-                      <span className={`font-bold ${r.status === 'SENT' ? 'text-emerald-700' : 'text-slate-600'}`}>{r.status}</span>
-                    </div>
-                  ))}
+              {connResult.details && (
+                <div className="text-[11px] font-mono space-y-0.5 pt-1 border-t border-emerald-200/50">
+                  {connResult.details.verified_name && (
+                    <div>Verified Business Name: <strong>{connResult.details.verified_name}</strong></div>
+                  )}
+                  {connResult.details.phone_number && (
+                    <div>Display Mobile: <strong>{connResult.details.phone_number}</strong></div>
+                  )}
+                  {connResult.details.quality_rating && (
+                    <div>Quality Rating: <strong>{connResult.details.quality_rating}</strong></div>
+                  )}
                 </div>
               )}
             </div>
           )}
+        </div>
 
-          {/* CLI Management Command helper */}
-          <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-300 text-xs font-mono space-y-1">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest block">Automated Cron / CLI Command</span>
-            <code className="text-emerald-400 text-[11px] block select-all">
-              python manage.py send_whatsapp_reminders --hours {hoursInput}
-            </code>
+        {/* 2-Column Grid: Timing & Batch Execution */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* Timing Configuration Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                Admin Configuration
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 font-serif mt-2 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-600" />
+                Automated Reminder Timing
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Configure how many hours prior to departure the automated reminder engine will dispatch messages to customers. Default is <strong className="text-slate-800">24 hours</strong>.
+              </p>
+            </div>
+
+            {configSuccessMsg && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{configSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Preset Buttons */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                Quick Presets
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {timingPresets.map((h) => {
+                  const isSelected = hoursInput === h;
+                  return (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => {
+                        setHoursInput(h);
+                        handleSaveHours(h);
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {h} Hours {h === 24 && '(Default)'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom Input & Save */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                Custom Timing (Hours)
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={hoursInput}
+                    onChange={(e) => setHoursInput(parseInt(e.target.value) || 24)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    Hours Before
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={savingHours}
+                  onClick={() => handleSaveHours()}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {savingHours ? 'Saving...' : 'Save Timing'}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Valid range: 1 hour up to 168 hours (7 days) prior to embarkation.
+              </p>
+            </div>
+
+            {/* Security & Anti-Spam note */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                Anti-Duplicate Protection
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                The dispatch engine records <code className="bg-slate-200 px-1 rounded font-mono">whatsapp_reminder_sent = True</code> in the database once sent. Customers will never receive duplicate notifications for the same reservation.
+              </p>
+            </div>
+          </div>
+
+          {/* Live Batch Dispatch Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full">
+                Automated Dispatch Engine
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 font-serif mt-2 flex items-center gap-2">
+                <Send className="w-5 h-5 text-sky-600" />
+                Manual Batch Execution
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Trigger a batch reminder run right now across all candidate bookings departing within the next {hoursInput} hours.
+              </p>
+            </div>
+
+            {/* Dry Run Toggle */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Dry Run Simulation Mode</span>
+                  <span className="text-[11px] text-slate-500">
+                    Evaluates eligible bookings without actually marking them as sent
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isDryRun}
+                  onChange={(e) => setIsDryRun(e.target.checked)}
+                  className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 accent-sky-600 cursor-pointer"
+                />
+              </label>
+            </div>
+
+            {/* Trigger Button */}
+            <button
+              type="button"
+              disabled={dispatching}
+              onClick={handleTriggerDispatch}
+              className={`w-full py-4 rounded-2xl text-white font-bold text-xs uppercase tracking-wider shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                isDryRun
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              <span>
+                {dispatching
+                  ? 'Executing Dispatch Engine...'
+                  : isDryRun
+                  ? `Run Dry Run Evaluation (${hoursInput}h Window)`
+                  : `Trigger Batch Reminders Now (${hoursInput}h Window)`}
+              </span>
+            </button>
+
+            {/* Dispatch Feedback Display */}
+            {dispatchResult && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Dispatch Engine Execution Completed
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>Total Evaluated: <strong>{dispatchResult.total_evaluated}</strong></div>
+                  <div>Eligible in {dispatchResult.hours_before}h: <strong>{dispatchResult.eligible_in_window}</strong></div>
+                  <div>Dispatched Successfully: <strong className="text-emerald-700">{dispatchResult.sent}</strong></div>
+                  <div>Failed: <strong className="text-rose-600">{dispatchResult.failed}</strong></div>
+                </div>
+                {dispatchResult.results && dispatchResult.results.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto space-y-1 text-[11px] bg-white/70 p-2 rounded-xl border border-emerald-100">
+                    {dispatchResult.results.map((r: any, idx: number) => (
+                      <div key={idx} className="flex justify-between">
+                        <span className="font-mono">{r.booking_id} ({r.customer})</span>
+                        <span className={`font-bold ${r.status === 'SENT' ? 'text-emerald-700' : 'text-slate-600'}`}>{r.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CLI Management Command helper */}
+            <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-300 text-xs font-mono space-y-1">
+              <span className="text-[10px] text-slate-500 uppercase tracking-widest block">Automated Cron / CLI Command</span>
+              <code className="text-emerald-400 text-[11px] block select-all">
+                python manage.py send_whatsapp_reminders --hours {hoursInput}
+              </code>
+            </div>
           </div>
         </div>
       </div>
@@ -430,15 +665,15 @@ export const AdminWhatsAppView: React.FC = () => {
 
             <p>
               Hello *Rahul Sharma*,<br />
-              Your upcoming maritime voyage is scheduled to depart soon! Here are your official tour & boarding details:
+              Your upcoming trip is scheduled to depart soon! Here are your official tour & boarding details:
             </p>
 
             <div className="space-y-1 font-mono text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div>📋 *Booking Ref:* #CRS-2026-B8F12A</div>
               <div>🎫 *Boarding Pass Code:* <strong className="text-emerald-700">*TK-B8F12A*</strong></div>
-              <div>🛳️ *Vessel / Tour:* Mumbai → Goa Royal Sunset Voyage</div>
+              <div>🛳️ *Ship / Tour:* Mumbai → Goa Royal Sunset Trip</div>
               <div>📍 *Route:* Mumbai Cruise Terminal → Mormugao Port</div>
-              <div>📅 *Embarkation Date:* Saturday, 24 October 2026</div>
+              <div>📅 *Trip Date:* Saturday, 24 October 2026</div>
               <div>⏰ *Departure Time:* 04:00 PM (IST)</div>
               <div>⚓ *Boarding Location:* Yellow Gate, Mumbai Domestic Terminal</div>
               <div>👥 *Party Headcount:* 2 Passengers</div>
@@ -457,7 +692,7 @@ export const AdminWhatsAppView: React.FC = () => {
             </div>
 
             <p className="text-slate-600 pt-1 text-xs">
-              We wish you a wonderful and safe voyage across Indian waters!<br />
+              We wish you a wonderful and safe trip across Indian waters!<br />
               🌊 *Team Cross-Hunt India*
             </p>
 
@@ -558,15 +793,31 @@ export const AdminWhatsAppView: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      <button
-                        type="button"
-                        disabled={testingBookingId === item.booking_id}
-                        onClick={() => handleSendSingleTest(item.booking_id)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer ml-auto disabled:opacity-50"
-                      >
-                        <Send className="w-3 h-3 text-emerald-600" />
-                        <span>{testingBookingId === item.booking_id ? 'Sending...' : 'Send Test'}</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {item.wa_link && (
+                          <a
+                            href={item.wa_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm shadow-emerald-600/30 cursor-pointer"
+                            title="Directly opens WhatsApp Web or Mobile with complete reminder prefilled"
+                          >
+                            <MessageSquare className="w-3 h-3 fill-white" />
+                            <span>Open WhatsApp</span>
+                            <ArrowUpRight className="w-3 h-3 opacity-80" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          disabled={testingBookingId === item.booking_id}
+                          onClick={() => handleSendSingleTest(item.booking_id, item.wa_link)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          title="Dispatch via Meta Cloud API / Simulator"
+                        >
+                          <Send className="w-3 h-3 text-slate-600" />
+                          <span>{testingBookingId === item.booking_id ? 'Sending...' : 'Send Test'}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

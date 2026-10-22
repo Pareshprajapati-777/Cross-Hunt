@@ -68,10 +68,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-sky-200 shadow-xl relative z-10">
-        {/* Emblem & Title */}
-        <div className="text-center mb-8 space-y-2">
-          <div className="w-16 h-16 mx-auto rounded-full bg-white border-2 border-sky-400 flex items-center justify-center p-2 shadow-md overflow-hidden">
+      {/* Login / Register Card with Blue Light Glow Effect */}
+      <div className="relative w-full max-w-md z-10">
+        {/* Soft Ambient Blue Light Glow Aura */}
+        <div className="absolute -inset-1.5 rounded-[32px] bg-gradient-to-r from-sky-400 via-blue-500 to-cyan-400 opacity-50 blur-xl pointer-events-none animate-pulse" />
+
+        {/* Card with Blue Glowing Border */}
+        <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl p-8 border-2 border-sky-400 shadow-[0_0_25px_rgba(14,165,233,0.35),0_10px_40px_rgba(2,132,199,0.15)] ring-1 ring-sky-300/50">
+          {/* Emblem & Title */}
+          <div className="text-center mb-8 space-y-2">
+            <div className="w-16 h-16 mx-auto rounded-full bg-white border-2 border-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.4)] flex items-center justify-center p-2 overflow-hidden">
             <img
               src="/static/images/logo_icon.png"
               alt="Cross Hunt Emblem"
@@ -249,5 +255,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };

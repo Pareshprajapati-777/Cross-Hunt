@@ -203,7 +203,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
       </div>
 
       {/* 2. SPATIAL HERO CHART: REVENUE & PLATFORM PROFIT TRAJECTORY */}
-      <div className="spatial-card spatial-card-hover rounded-3xl p-6 sm:p-8 space-y-5 border border-slate-200/90">
+      <div className="spatial-card spatial-card-hover rounded-3xl p-6 sm:p-8 space-y-5 border border-slate-200/90 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -235,16 +235,24 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-5 text-xs font-bold pt-1">
-          <div className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-sky-400 to-cyan-500 shadow-sm shadow-sky-400/30" />
-            <span className="text-slate-700">Gross Customer Revenue</span>
+        {/* Legend & Scroll Hint */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold pt-1">
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-sky-400 to-cyan-500 shadow-sm shadow-sky-400/30" />
+              <span className="text-slate-700">Gross Customer Revenue</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm shadow-emerald-400/30" />
+              <span className="text-slate-700">Platform Net Profit</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm shadow-emerald-400/30" />
-            <span className="text-slate-700">Platform Net Profit</span>
-          </div>
+          {charts?.revenue_trend && charts.revenue_trend.length > 14 && (
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+              <span>Scroll horizontally to view all {charts.revenue_trend.length} days</span>
+            </div>
+          )}
         </div>
 
         {renderRevenueTrendBarChart(charts?.revenue_trend || [])}
@@ -473,41 +481,61 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
     }
 
     const maxRev = Math.max(...items.map((i) => i.gross_revenue), 1000);
+    const isDense = items.length > 14;
 
     return (
-      <div className="pt-4 pb-2">
-        <div className="h-64 flex items-end justify-between gap-1.5 sm:gap-2.5 border-b border-slate-200/80 px-2">
-          {items.map((m, idx) => {
-            const revHeight = Math.max(5, Math.round((m.gross_revenue / maxRev) * 100));
-            const profHeight = Math.max(3, Math.round((m.platform_profit / maxRev) * 100));
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative">
-                {/* Floating Spatial Glass Tooltip */}
-                <div className="absolute -top-20 opacity-0 group-hover:opacity-100 transition-all pointer-events-none spatial-glass-dark text-white text-[11px] rounded-2xl p-3 whitespace-nowrap z-40 shadow-2xl border border-white/15 scale-95 group-hover:scale-100">
-                  <p className="font-bold text-white border-b border-white/10 pb-1 mb-1.5">
-                    {m.label} · <span className="font-normal text-slate-300">{m.bookings_count} bookings</span>
-                  </p>
-                  <p className="text-cyan-300 font-mono-numbers font-bold">Gross: {formatINR(m.gross_revenue)}</p>
-                  <p className="text-emerald-300 font-mono-numbers font-bold">Profit: {formatINR(m.platform_profit)}</p>
-                </div>
+      <div className="pt-2 pb-2 w-full max-w-full overflow-hidden">
+        <div className="w-full overflow-x-auto pb-3 pt-14">
+          <div
+            className="h-64 flex items-end justify-between gap-1.5 sm:gap-2 border-b border-slate-200/80 px-2"
+            style={{
+              minWidth: isDense ? `${Math.max(720, items.length * 36)}px` : '100%',
+            }}
+          >
+            {items.map((m, idx) => {
+              const revHeight = Math.max(5, Math.round((m.gross_revenue / maxRev) * 100));
+              const profHeight = Math.max(3, Math.round((m.platform_profit / maxRev) * 100));
+              const tooltipAlignClass =
+                idx === 0
+                  ? 'left-0 translate-x-0'
+                  : idx === items.length - 1
+                  ? 'right-0 left-auto translate-x-0'
+                  : 'left-1/2 -translate-x-1/2';
 
-                {/* Spatial Dual Bars */}
-                <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full">
+              return (
+                <div
+                  key={idx}
+                  className="flex-1 min-w-[24px] sm:min-w-[32px] flex flex-col items-center gap-1 h-full justify-end group relative"
+                >
+                  {/* Floating Spatial Glass Tooltip */}
                   <div
-                    className="w-1/2 spatial-bar-sky cursor-pointer"
-                    style={{ height: `${revHeight}%` }}
-                  />
-                  <div
-                    className="w-1/2 spatial-bar-emerald cursor-pointer"
-                    style={{ height: `${profHeight}%` }}
-                  />
+                    className={`absolute -top-16 opacity-0 group-hover:opacity-100 transition-all pointer-events-none spatial-glass-dark text-white text-[11px] rounded-2xl p-3 whitespace-nowrap z-50 shadow-2xl border border-white/15 scale-95 group-hover:scale-100 ${tooltipAlignClass}`}
+                  >
+                    <p className="font-bold text-white border-b border-white/10 pb-1 mb-1.5">
+                      {m.label} · <span className="font-normal text-slate-300">{m.bookings_count} bookings</span>
+                    </p>
+                    <p className="text-cyan-300 font-mono-numbers font-bold">Gross: {formatINR(m.gross_revenue)}</p>
+                    <p className="text-emerald-300 font-mono-numbers font-bold">Profit: {formatINR(m.platform_profit)}</p>
+                  </div>
+
+                  {/* Spatial Dual Bars */}
+                  <div className="w-full max-w-[28px] sm:max-w-[34px] flex items-end justify-center gap-1 sm:gap-1.5 h-full">
+                    <div
+                      className="w-1/2 spatial-bar-sky cursor-pointer"
+                      style={{ height: `${revHeight}%` }}
+                    />
+                    <div
+                      className="w-1/2 spatial-bar-emerald cursor-pointer"
+                      style={{ height: `${profHeight}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-2 block truncate max-w-[38px] sm:max-w-[44px] text-center font-mono-numbers">
+                    {m.label}
+                  </span>
                 </div>
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-2 block truncate max-w-[42px] sm:max-w-none text-center font-mono-numbers">
-                  {m.label}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -526,26 +554,37 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = () => {
     const maxProfit = Math.max(...items.map((i) => i.platform_profit), 1000);
 
     return (
-      <div className="space-y-3 pt-2">
-        <div className="h-52 flex items-end justify-between gap-2 border-b border-slate-200/80 px-2 pt-2">
-          {items.map((m, idx) => {
-            const barH = Math.max(5, Math.round((m.platform_profit / maxProfit) * 100));
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative">
-                <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-all pointer-events-none spatial-glass-dark text-white text-[11px] rounded-2xl p-2.5 whitespace-nowrap z-40 shadow-xl border border-white/15">
-                  <p className="font-bold">{m.month_label}</p>
-                  <p className="text-emerald-300 font-mono-numbers font-bold">Profit: {formatINR(m.platform_profit)}</p>
-                  <p className="text-slate-300 font-mono-numbers text-[10px]">Margin: {m.margin_percentage}%</p>
-                </div>
+      <div className="space-y-3 pt-2 w-full max-w-full overflow-hidden">
+        <div className="w-full overflow-x-auto pb-2 pt-14">
+          <div className="h-52 flex items-end justify-between gap-2 border-b border-slate-200/80 px-2 min-w-full">
+            {items.map((m, idx) => {
+              const barH = Math.max(5, Math.round((m.platform_profit / maxProfit) * 100));
+              const tooltipAlignClass =
+                idx === 0
+                  ? 'left-0 translate-x-0'
+                  : idx === items.length - 1
+                  ? 'right-0 left-auto translate-x-0'
+                  : 'left-1/2 -translate-x-1/2';
 
-                <div
-                  className="w-3/4 max-w-[34px] bg-gradient-to-t from-emerald-600 via-teal-500 to-cyan-300 rounded-t-lg transition-all duration-500 cursor-pointer hover:brightness-110 shadow-sm shadow-emerald-500/20"
-                  style={{ height: `${barH}%` }}
-                />
-                <span className="text-[10px] font-bold text-slate-500 mt-2 block font-mono-numbers">{m.month}</span>
-              </div>
-            );
-          })}
+              return (
+                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-1 h-full justify-end group relative">
+                  <div
+                    className={`absolute -top-16 opacity-0 group-hover:opacity-100 transition-all pointer-events-none spatial-glass-dark text-white text-[11px] rounded-2xl p-2.5 whitespace-nowrap z-50 shadow-xl border border-white/15 ${tooltipAlignClass}`}
+                  >
+                    <p className="font-bold">{m.month_label}</p>
+                    <p className="text-emerald-300 font-mono-numbers font-bold">Profit: {formatINR(m.platform_profit)}</p>
+                    <p className="text-slate-300 font-mono-numbers text-[10px]">Margin: {m.margin_percentage}%</p>
+                  </div>
+
+                  <div
+                    className="w-3/4 max-w-[34px] bg-gradient-to-t from-emerald-600 via-teal-500 to-cyan-300 rounded-t-lg transition-all duration-500 cursor-pointer hover:brightness-110 shadow-sm shadow-emerald-500/20"
+                    style={{ height: `${barH}%` }}
+                  />
+                  <span className="text-[10px] font-bold text-slate-500 mt-2 block font-mono-numbers truncate max-w-[44px] text-center">{m.month}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
