@@ -1242,23 +1242,103 @@ async def admin_tour_action(
 
 
 @router.get("/reviews/")
+@router.get("/reviews/")
 @router.get("/reviews")
 def list_admin_reviews(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    reviews = db.query(CrossReview).order_by(desc(CrossReview.created_at), desc(CrossReview.id)).limit(50).all()
+    reviews = db.query(CrossReview).order_by(desc(CrossReview.created_at), desc(CrossReview.id)).limit(100).all()
     rev_list = []
     for r in reviews:
+        ship = r.cross
+        owner = ship.owner if (ship and ship.owner_id) else None
         rev_list.append({
             'id': r.id,
-            'ship_name': r.cross.name if r.cross else 'Cruiser',
-            'author': r.user.full_name or r.user.username if r.user else 'Anonymous',
+            'ship_id': r.cross_id,
+            'ship_name': ship.name if ship else 'Cruiser',
+            'ship_image': ship.display_image_url if ship else '',
+            'owner_id': ship.owner_id if ship else None,
+            'owner_name': (owner.full_name or owner.username) if owner else ('Platform Fleet Admin' if ship else 'N/A'),
+            'owner_email': owner.email if owner else '',
+            'owner_phone': owner.phone if owner else '',
+            'author': (r.user.full_name or r.user.username) if r.user else 'Anonymous',
+            'author_email': r.user.email if r.user else '',
+            'booking_id': r.booking.booking_id if r.booking else '',
             'rating': r.rating,
             'comment': r.comment,
-            'created_at': r.created_at.strftime('%Y-%m-%d') if r.created_at else ''
+            'has_complaint': bool(r.has_complaint),
+            'complaint_category': r.complaint_category or '',
+            'complaint_text': r.complaint_text or '',
+            'complaint_status': r.complaint_status or ('PENDING' if r.has_complaint else 'NONE'),
+            'warning_message': r.warning_message or '',
+            'warning_sent_at': r.warning_sent_at.strftime('%Y-%m-%d %H:%M') if r.warning_sent_at else None,
+            'created_at': r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else ''
         })
     return {'reviews': rev_list}
+
+
+@router.post("/reviews/warn-owner/")
+@router.post("/reviews/warn-owner")
+async def admin_warn_ship_owner(
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    review_id = data.get("review_id")
+    warning_text = (data.get("warning_message") or "").strip()
+
+    if not review_id:
+        raise HTTPException(status_code=400, detail="Review ID is required.")
+
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Review / Complaint record not found.")
+
+    ship = r.cross
+    ship_name = ship.name if ship else "Charter Vessel"
+    owner = ship.owner if (ship and ship.owner_id) else None
+
+    if not warning_text:
+        warning_text = (
+            f"Official Compliance Warning from Platform Moderation regarding passenger complaint on vessel '{ship_name}'. "
+            f"Category: {r.complaint_category or 'Passenger Experience'}. "
+            f"Details: {r.complaint_text or r.comment}. "
+            f"Please take prompt remedial action. Continued passenger grievances may lead to vessel suspension."
+        )
+
+    r.complaint_status = "WARNING_SENT"
+    r.warning_message = warning_text
+    r.warning_sent_at = datetime.utcnow()
+
+    # Create Platform Notification for ship owner
+    target_user_id = ship.owner_id if ship else None
+    notif = PlatformNotification(
+        title=f"⚠️ Safety Warning: Passenger Complaint on {ship_name}",
+        message=warning_text,
+        notification_type="COMPLAINT_WARNING",
+        target_audience="OPERATOR" if target_user_id else "ALL_USERS",
+        target_user_id=target_user_id,
+        action_link="/operator/dashboard",
+        sender_name="Cross Hunt Safety & Moderation Administration",
+        is_read=False,
+        recipients_count=1,
+        created_at=datetime.utcnow()
+    )
+    db.add(notif)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Official warning dispatched successfully to the owner of {ship_name}.",
+        "owner_name": (owner.full_name or owner.username) if owner else "Platform Admin",
+        "warning_sent_at": r.warning_sent_at.strftime("%Y-%m-%d %H:%M")
+    }
 
 
 @router.delete("/reviews/")

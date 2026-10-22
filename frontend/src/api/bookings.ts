@@ -55,11 +55,22 @@ export async function cancelBooking(bookingId: string, reason?: string): Promise
 export async function submitReview(
   bookingId: string,
   rating: number,
-  comment: string
-): Promise<{ success: boolean; message: string }> {
+  comment: string,
+  complaintData?: {
+    has_complaint?: boolean;
+    complaint_category?: string;
+    complaint_text?: string;
+  }
+): Promise<{ success: boolean; message: string; review?: any }> {
   return apiRequest(`/api/bookings/${bookingId}/review/`, {
     method: 'POST',
-    body: JSON.stringify({ rating, comment }),
+    body: JSON.stringify({
+      rating,
+      comment,
+      has_complaint: complaintData?.has_complaint ?? false,
+      complaint_category: complaintData?.complaint_category || '',
+      complaint_text: complaintData?.complaint_text || '',
+    }),
   });
 }
 

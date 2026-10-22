@@ -436,6 +436,12 @@ export interface Booking {
   review?: {
     rating: number;
     comment: string;
+    has_complaint?: boolean;
+    complaint_category?: string;
+    complaint_text?: string;
+    complaint_status?: string;
+    warning_message?: string;
+    warning_sent_at?: string | null;
   } | null;
 }
 

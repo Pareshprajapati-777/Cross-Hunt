@@ -37,6 +37,30 @@ from backend.app.routers import (
 # Ensure tables exist (e.g. user_favorites)
 Base.metadata.create_all(bind=engine)
 
+def ensure_db_migrations():
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        if "crosses_crossreview" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("crosses_crossreview")]
+            new_columns = [
+                ("has_complaint", "BOOLEAN DEFAULT 0 NOT NULL"),
+                ("complaint_category", "VARCHAR(100) DEFAULT '' NOT NULL"),
+                ("complaint_text", "TEXT DEFAULT '' NOT NULL"),
+                ("complaint_status", "VARCHAR(50) DEFAULT 'NONE' NOT NULL"),
+                ("warning_message", "TEXT DEFAULT '' NOT NULL"),
+                ("warning_sent_at", "DATETIME NULL"),
+            ]
+            with engine.connect() as conn:
+                for col_name, col_type in new_columns:
+                    if col_name not in columns:
+                        conn.execute(text(f"ALTER TABLE crosses_crossreview ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+    except Exception as e:
+        pass
+
+ensure_db_migrations()
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Cross-Hunt India Ship & Cruise Rental Marketplace REST API (FastAPI + SQLAlchemy)",

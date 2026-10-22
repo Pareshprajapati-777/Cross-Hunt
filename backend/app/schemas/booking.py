@@ -34,6 +34,9 @@ class CancelBookingPayload(BaseModel):
 class ReviewPayload(BaseModel):
     rating: int
     comment: str
+    has_complaint: Optional[bool] = False
+    complaint_category: Optional[str] = ""
+    complaint_text: Optional[str] = ""
 
 
 class WhatsAppOptPayload(BaseModel):

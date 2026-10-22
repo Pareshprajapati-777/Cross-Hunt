@@ -109,7 +109,8 @@ class Booking(Base):
 
     @property
     def can_be_reviewed(self) -> bool:
-        return self.status == "COMPLETED" and self.review is None
+        # Can review during voyage (CONFIRMED) or after voyage (COMPLETED)
+        return self.status in ("CONFIRMED", "COMPLETED") and self.review is None
 
 
 class SystemSetting(Base):

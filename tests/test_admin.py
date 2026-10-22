@@ -205,3 +205,158 @@ def test_ship_revoke_action_deactivates_without_altering_approval(client):
     db.commit()
     db.close()
 
+
+def test_user_review_complaint_and_admin_warn_owner(client):
+    from backend.app.database.session import SessionLocal
+    from backend.app.models.user import User
+    from backend.app.models.cross import Cross
+    from backend.app.models.booking import Booking, PlatformNotification
+    from backend.app.models.offer import CrossReview
+    import uuid
+
+    db = SessionLocal()
+    # 1. Create owner, customer, vessel, and booking
+    owner = db.query(User).filter(User.role == "OWNER").first()
+    from backend.app.core.security import get_password_hash
+    if not owner:
+        owner = User(
+            username=f"owner_{uuid.uuid4().hex[:6]}",
+            email=f"owner_{uuid.uuid4().hex[:6]}@example.com",
+            role="OWNER",
+            is_active=True,
+            password=get_password_hash("Owner@12345")
+        )
+        db.add(owner)
+        db.commit()
+        db.refresh(owner)
+
+    customer = User(
+        username=f"cust_{uuid.uuid4().hex[:6]}",
+        email=f"cust_{uuid.uuid4().hex[:6]}@example.com",
+        role="CUSTOMER",
+        is_active=True,
+        password=get_password_hash("Cust@12345")
+    )
+    db.add(customer)
+    db.commit()
+    db.refresh(customer)
+
+    vessel = Cross(
+        name=f"Complaint Test Yacht {uuid.uuid4().hex[:4]}",
+        slug=f"complaint-yacht-{uuid.uuid4().hex[:6]}",
+        category="YACHT",
+        location="Goa",
+        price=30000,
+        capacity=15,
+        is_active=True,
+        is_approved=True,
+        owner_id=owner.id
+    )
+    db.add(vessel)
+    db.commit()
+    db.refresh(vessel)
+
+    import datetime
+    b_id = f"CH-COMP-{uuid.uuid4().hex[:6].upper()}"
+    booking = Booking(
+        booking_id=b_id,
+        user_id=customer.id,
+        cross_id=vessel.id,
+        booking_date=datetime.date.today(),
+        start_time=datetime.time(10, 0),
+        end_time=datetime.time(14, 0),
+        booking_type="EVENT",
+        status="CONFIRMED", # During travel
+        base_price=30000,
+        total_price=30000
+    )
+    db.add(booking)
+    db.commit()
+    db.refresh(booking)
+
+    customer_id = customer.id
+    customer_username = customer.username
+    vessel_id = vessel.id
+    vessel_name = vessel.name
+    owner_id = owner.id
+    owner_display = owner.full_name or owner.username
+    booking_id_val = booking.id
+    db.close()
+
+    # 2. Customer logs in and submits review with a formal complaint during travel
+    client.post("/api/auth/login/", json={"username": customer_username, "password": "Cust@12345"})
+    review_res = client.post(f"/api/bookings/{b_id}/review/", json={
+        "rating": 2,
+        "comment": "Crew was unhelpful and AC stopped functioning mid-voyage.",
+        "has_complaint": True,
+        "complaint_category": "Safety & Security Concerns",
+        "complaint_text": "AC stopped working, heavy smoke smell in cabin, and crew ignored requests."
+    })
+    assert review_res.status_code == 200
+    res_data = review_res.json()
+    assert res_data["success"] is True
+    review_id = res_data["review"]["id"]
+
+    # Verify review in DB
+    db = SessionLocal()
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    assert r is not None
+    assert r.has_complaint is True
+    assert r.complaint_status == "PENDING"
+    assert r.complaint_category == "Safety & Security Concerns"
+    db.close()
+
+    # 3. Admin logs in and checks reviews list
+    client.post("/api/auth/login/", json={"username": "admin", "password": "Admin@12345"})
+    admin_rev_res = client.get("/api/admin/reviews/")
+    assert admin_rev_res.status_code == 200
+    admin_reviews = admin_rev_res.json()["reviews"]
+    found = next((item for item in admin_reviews if item["id"] == review_id), None)
+    assert found is not None
+    assert found["has_complaint"] is True
+    assert found["complaint_status"] == "PENDING"
+    assert found["ship_name"] == vessel_name
+    assert found["owner_name"] == owner_display
+
+    # 4. Admin issues warning to ship owner
+    warn_text = "Official Safety Notice: Please service vessel air conditioning and inspect cabin immediately."
+    warn_res = client.post("/api/admin/reviews/warn-owner/", json={
+        "review_id": review_id,
+        "warning_message": warn_text
+    })
+    assert warn_res.status_code == 200
+    assert warn_res.json()["success"] is True
+
+    # 5. Verify review status updated to WARNING_SENT
+    db = SessionLocal()
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    assert r.complaint_status == "WARNING_SENT"
+    assert r.warning_message == warn_text
+    assert r.warning_sent_at is not None
+
+    # 6. Verify PlatformNotification was created for the owner
+    notif = db.query(PlatformNotification).filter(
+        PlatformNotification.target_user_id == owner_id,
+        PlatformNotification.notification_type == "COMPLAINT_WARNING"
+    ).order_by(PlatformNotification.id.desc()).first()
+    assert notif is not None
+    assert warn_text in notif.message
+
+    # Clean up test entities
+    b_cleanup = db.query(Booking).filter(Booking.id == booking_id_val).first()
+    v_cleanup = db.query(Cross).filter(Cross.id == vessel_id).first()
+    c_cleanup = db.query(User).filter(User.id == customer_id).first()
+    if r:
+        db.delete(r)
+    if b_cleanup:
+        db.delete(b_cleanup)
+    if v_cleanup:
+        db.delete(v_cleanup)
+    if notif:
+        db.delete(notif)
+    if c_cleanup:
+        db.delete(c_cleanup)
+    db.commit()
+    db.close()
+
+

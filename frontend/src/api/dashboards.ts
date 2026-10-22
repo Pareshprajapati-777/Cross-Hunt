@@ -632,6 +632,16 @@ export async function adminDeleteReview(reviewId: number): Promise<{ success: bo
   });
 }
 
+export async function adminWarnShipOwner(
+  reviewId: number,
+  warningMessage?: string
+): Promise<{ success: boolean; message: string; owner_name?: string; warning_sent_at?: string }> {
+  return apiRequest('/api/admin/reviews/warn-owner/', {
+    method: 'POST',
+    body: JSON.stringify({ review_id: reviewId, warning_message: warningMessage }),
+  });
+}
+
 export async function getAdminReports(): Promise<{
   popular_ships: Array<{ name: string; bookings_count: number; location: string }>;
   popular_destinations: Array<{ destination: string; count: number }>;

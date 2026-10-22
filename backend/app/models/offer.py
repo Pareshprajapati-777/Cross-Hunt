@@ -66,6 +66,12 @@ class CrossReview(Base):
     booking_id: Mapped[int] = mapped_column(Integer, ForeignKey("bookings_booking.id"), unique=True, nullable=False)
     rating: Mapped[int] = mapped_column(SmallInteger, default=5, nullable=False)
     comment: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    has_complaint: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    complaint_category: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    complaint_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    complaint_status: Mapped[str] = mapped_column(String(50), default="NONE", nullable=False)
+    warning_message: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    warning_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     cross = relationship("Cross", back_populates="reviews")
@@ -75,10 +81,19 @@ class CrossReview(Base):
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "ship_id": self.cross_id,
+            "ship_name": self.cross.name if self.cross else "Cruiser",
             "author": self.user.full_name if self.user else "Anonymous",
             "user": self.user.username if self.user else "Anonymous",
             "rating": self.rating,
             "comment": self.comment or "",
+            "has_complaint": bool(self.has_complaint),
+            "complaint_category": self.complaint_category or "",
+            "complaint_text": self.complaint_text or "",
+            "complaint_status": self.complaint_status or ("PENDING" if self.has_complaint else "NONE"),
+            "warning_message": self.warning_message or "",
+            "warning_sent_at": self.warning_sent_at.strftime("%Y-%m-%d %H:%M") if self.warning_sent_at else None,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else "",
             "date": self.created_at.strftime("%Y-%m-%d") if self.created_at else "",
         }
+

@@ -510,10 +510,10 @@ async def api_review_booking(
             detail="Booking not found."
         )
 
-    if booking.status != "COMPLETED":
+    if booking.status not in ("CONFIRMED", "COMPLETED"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only completed voyages can be reviewed."
+            detail="Reviews and complaints can only be submitted during travel or after voyage completion."
         )
 
     existing = db.query(CrossReview).filter(CrossReview.booking_id == booking.id).first()
@@ -530,17 +530,28 @@ async def api_review_booking(
             detail="Review comment cannot be empty."
         )
 
+    has_complaint = bool(payload.has_complaint)
+    complaint_category = (payload.complaint_category or "Service & Quality").strip()
+    complaint_text = (payload.complaint_text or "").strip()
+    if has_complaint and not complaint_text:
+        complaint_text = comment
+
     review = CrossReview(
         cross_id=booking.cross_id,
         user_id=user.id,
         booking_id=booking.id,
         rating=max(1, min(5, payload.rating)),
-        comment=comment
+        comment=comment,
+        has_complaint=has_complaint,
+        complaint_category=complaint_category if has_complaint else "",
+        complaint_text=complaint_text if has_complaint else "",
+        complaint_status="PENDING" if has_complaint else "NONE"
     )
     db.add(review)
     db.commit()
 
-    return {"success": True, "message": "Review published successfully!"}
+    msg = "Review & Complaint submitted successfully. Platform administration will review your report." if has_complaint else "Review published successfully!"
+    return {"success": True, "message": msg, "review": review.to_dict()}
 
 
 @router.post("/bookings/{booking_id}/whatsapp-opt/")

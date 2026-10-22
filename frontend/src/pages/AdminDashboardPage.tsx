@@ -15,6 +15,7 @@ import {
   adminTourAction,
   getAdminReviews,
   adminDeleteReview,
+  adminWarnShipOwner,
   getAdminReports,
   getAdminOperators,
   updateAdminOperator,
@@ -52,7 +53,10 @@ import {
   RotateCcw,
   Percent,
   Layers,
-  Send
+  Send,
+  AlertTriangle,
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
@@ -112,6 +116,10 @@ export const AdminDashboardPage: React.FC = () => {
   const [toursList, setToursList] = useState<PublicTour[]>([]);
   const [offersList, setOffersList] = useState<Offer[]>([]);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [reviewFilterTab, setReviewFilterTab] = useState<'all' | 'complaints' | 'reviews'>('all');
+  const [warningModalReview, setWarningModalReview] = useState<any | null>(null);
+  const [warningMessageInput, setWarningMessageInput] = useState<string>('');
+  const [warningSending, setWarningSending] = useState<boolean>(false);
   const [reportsData, setReportsData] = useState<any | null>(null);
   const [operatorsList, setOperatorsList] = useState<OperatorSummary[]>([]);
   const [resyncLoading, setResyncLoading] = useState(false);
@@ -289,6 +297,30 @@ export const AdminDashboardPage: React.FC = () => {
       getAdminReviews().then((res) => setReviewsList(res.reviews || []));
     } catch (err: any) {
       alert(err.message || 'Action failed');
+    }
+  };
+
+  const handleOpenWarnModal = (review: any) => {
+    setWarningModalReview(review);
+    const grievanceDesc = review.complaint_text || review.comment || 'Safety and service compliance issue';
+    const categoryDesc = review.complaint_category || 'Service Quality & Standards';
+    const defaultMsg = `Official Compliance Warning from Platform Moderation regarding passenger complaint on vessel "${review.ship_name}": Passenger reported ${categoryDesc} ("${grievanceDesc}"). Please investigate and resolve this issue immediately. Failure to adhere to safety and service standards may result in fleet listing suspension.`;
+    setWarningMessageInput(defaultMsg);
+  };
+
+  const handleSendWarning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!warningModalReview) return;
+    setWarningSending(true);
+    try {
+      const res = await adminWarnShipOwner(warningModalReview.id, warningMessageInput);
+      alert(res.message || 'Warning successfully dispatched to ship owner!');
+      setWarningModalReview(null);
+      getAdminReviews().then((res) => setReviewsList(res.reviews || []));
+    } catch (err: any) {
+      alert(err.message || 'Failed to dispatch warning to owner.');
+    } finally {
+      setWarningSending(false);
     }
   };
 
@@ -987,58 +1019,260 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 9: REVIEWS MODERATION */}
-      {activeTab === 'reviews' && (
-        <div className="space-y-6">
-          <div>
-            <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
-              Quality Assurance & Ratings
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">Customer Review Moderation</h2>
-            <p className="text-xs text-[#102B46]/65 mt-0.5 font-medium">Review passenger feedback, verify ratings, and remove inappropriate content.</p>
-          </div>
+      {/* TAB 9: REVIEWS & COMPLAINTS MODERATION */}
+      {activeTab === 'reviews' && (() => {
+        const complaintsCount = reviewsList.filter((r) => r.has_complaint).length;
+        const pendingComplaintsCount = reviewsList.filter((r) => r.has_complaint && r.complaint_status !== 'WARNING_SENT').length;
+        const warnedCount = reviewsList.filter((r) => r.complaint_status === 'WARNING_SENT').length;
+        const avgRating = reviewsList.length
+          ? (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / reviewsList.length).toFixed(1)
+          : '5.0';
 
-          <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#EAF4FB] border-b border-[#082F5B]/10 text-[#102B46] font-black uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3.5 px-5">Ship</th>
-                    <th className="py-3.5 px-5">Author</th>
-                    <th className="py-3.5 px-5">Rating</th>
-                    <th className="py-3.5 px-5">Comment</th>
-                    <th className="py-3.5 px-5">Date</th>
-                    <th className="py-3.5 px-5 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#082F5B]/5">
-                  {reviewsList.map((r) => (
-                    <tr key={r.id} className="hover:bg-[#EAF4FB]/50 transition-colors">
-                      <td className="py-4 px-5 font-bold text-[#102B46] font-heading">{r.ship_name}</td>
-                      <td className="py-4 px-5 text-[#102B46]/80">{r.author}</td>
-                      <td className="py-4 px-5">
-                        <span className="flex items-center gap-1 font-bold text-amber-500">
-                          <Star className="w-3.5 h-3.5 fill-amber-400" /> {r.rating}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-[#102B46]/70 max-w-md">{r.comment}</td>
-                      <td className="py-4 px-5 text-[#102B46]/50">{r.created_at}</td>
-                      <td className="py-4 px-5 text-right">
-                        <button
-                          onClick={() => handleDeleteReview(r.id)}
-                          className="px-3.5 py-1 rounded-full text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 font-bold text-[11px] cursor-pointer transition-all"
-                        >
-                          Remove
-                        </button>
-                      </td>
+        const displayedReviews = reviewsList.filter((r) => {
+          if (reviewFilterTab === 'complaints') return r.has_complaint;
+          if (reviewFilterTab === 'reviews') return !r.has_complaint;
+          return true;
+        });
+
+        return (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
+                  Quality Assurance, Reviews & Safety Moderation
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">
+                  Passenger Reviews & Ship Complaints
+                </h2>
+                <p className="text-xs text-[#102B46]/65 mt-0.5 font-medium">
+                  Inspect passenger feedback, investigate vessel complaints, and issue official compliance warnings directly to ship owners.
+                </p>
+              </div>
+
+              {pendingComplaintsCount > 0 && (
+                <div className="flex items-center gap-2 bg-rose-50 border border-rose-300 text-rose-800 px-4 py-2 rounded-2xl shadow-xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
+                  <span className="text-xs font-black">
+                    {pendingComplaintsCount} Pending Grievance{pendingComplaintsCount > 1 ? 's' : ''} Require Warning
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Total Submissions</div>
+                <div className="text-2xl font-black text-[#102B46] font-mono-numbers">{reviewsList.length}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Verified passenger reports</div>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-rose-50/70 border border-rose-200 shadow-xs">
+                <div className="text-[10px] font-black uppercase tracking-wider text-rose-700 mb-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Passenger Complaints</span>
+                </div>
+                <div className="text-2xl font-black text-rose-900 font-mono-numbers">{complaintsCount}</div>
+                <div className="text-[11px] text-rose-700 font-semibold mt-0.5">{pendingComplaintsCount} pending review</div>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-amber-50/70 border border-amber-200 shadow-xs">
+                <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 mb-1 flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Warnings Sent to Owners</span>
+                </div>
+                <div className="text-2xl font-black text-amber-950 font-mono-numbers">{warnedCount}</div>
+                <div className="text-[11px] text-amber-800 mt-0.5 font-medium">Compliance notices logged</div>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Avg Fleet Rating</div>
+                <div className="text-2xl font-black text-[#102B46] font-mono-numbers flex items-center gap-1.5">
+                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                  <span>{avgRating}</span>
+                  <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Overall passenger score</div>
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setReviewFilterTab('all')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer ${
+                  reviewFilterTab === 'all'
+                    ? 'bg-[#102B46] text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                All Feedback ({reviewsList.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReviewFilterTab('complaints')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  reviewFilterTab === 'complaints'
+                    ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Complaints Only ({complaintsCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReviewFilterTab('reviews')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  reviewFilterTab === 'reviews'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>Standard Reviews ({reviewsList.length - complaintsCount})</span>
+              </button>
+            </div>
+
+            {/* Data Table */}
+            <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#EAF4FB] border-b border-[#082F5B]/10 text-[#102B46] font-black uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3.5 px-5">Ship & Owner</th>
+                      <th className="py-3.5 px-5">Passenger</th>
+                      <th className="py-3.5 px-5">Rating</th>
+                      <th className="py-3.5 px-5">Review Comment</th>
+                      <th className="py-3.5 px-5">Complaint / Grievance</th>
+                      <th className="py-3.5 px-5">Date</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#082F5B]/5">
+                    {displayedReviews.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400 text-xs font-medium">
+                          No feedback entries found in this category.
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedReviews.map((r) => (
+                        <tr
+                          key={r.id}
+                          className={`transition-colors ${
+                            r.has_complaint ? 'bg-rose-50/20 hover:bg-rose-50/40' : 'hover:bg-[#EAF4FB]/50'
+                          }`}
+                        >
+                          {/* Ship & Owner */}
+                          <td className="py-4 px-5 align-top">
+                            <div className="font-bold text-[#102B46] text-sm font-heading">{r.ship_name}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              <span className="font-semibold text-slate-700">Owner:</span> {r.owner_name}
+                            </div>
+                            {r.owner_email && (
+                              <div className="text-[10px] text-slate-400">{r.owner_email}</div>
+                            )}
+                          </td>
+
+                          {/* Passenger */}
+                          <td className="py-4 px-5 align-top">
+                            <div className="font-bold text-[#102B46]">{r.author}</div>
+                            {r.booking_id && (
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">Booking #{r.booking_id}</div>
+                            )}
+                          </td>
+
+                          {/* Rating */}
+                          <td className="py-4 px-5 align-top whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span>{r.rating} / 5</span>
+                            </span>
+                          </td>
+
+                          {/* Comment */}
+                          <td className="py-4 px-5 align-top text-slate-700 max-w-xs leading-relaxed">
+                            {r.comment}
+                          </td>
+
+                          {/* Complaint Details */}
+                          <td className="py-4 px-5 align-top max-w-sm">
+                            {r.has_complaint ? (
+                              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                                    {r.complaint_category || 'Grievance'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-rose-950 font-medium leading-snug">
+                                  "{r.complaint_text}"
+                                </div>
+                                <div>
+                                  {r.complaint_status === 'WARNING_SENT' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300">
+                                      <CheckCircle2 className="w-3 h-3 text-amber-700" />
+                                      <span>Warning Sent ({r.warning_sent_at || 'Dispatched'})</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 bg-white px-2 py-0.5 rounded border border-rose-300">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
+                                      <span>Pending Warning Action</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-medium italic">
+                                Standard review (No complaint filed)
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Date */}
+                          <td className="py-4 px-5 align-top text-slate-400 whitespace-nowrap">
+                            {r.created_at}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-5 align-top text-right space-x-1.5 whitespace-nowrap">
+                            {r.has_complaint && (
+                              <button
+                                onClick={() => handleOpenWarnModal(r)}
+                                className={`px-3 py-1.5 rounded-full font-bold text-[11px] cursor-pointer transition-all inline-flex items-center gap-1 border shadow-xs ${
+                                  r.complaint_status === 'WARNING_SENT'
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                    : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-600/30'
+                                }`}
+                                title="Send official compliance warning message to ship owner"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>{r.complaint_status === 'WARNING_SENT' ? 'Re-warn Owner' : 'Warn Ship Owner'}</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleDeleteReview(r.id)}
+                              className="px-2.5 py-1.5 rounded-full text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 font-bold text-[11px] cursor-pointer transition-all"
+                              title="Delete Review Record"
+                            >
+                              <Trash2 className="w-3 h-3 inline mr-0.5" />
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ADD OFFER MODAL */}
       {showAddOfferModal && (
@@ -1144,6 +1378,99 @@ export const AdminDashboardPage: React.FC = () => {
                   className="px-5 py-2 bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs rounded-full shadow-md transition-all cursor-pointer"
                 >
                   Publish Promo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* WARNING TO SHIP OWNER MODAL */}
+      {warningModalReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061D36]/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#F8FCFF] rounded-3xl max-w-lg w-full shadow-2xl border border-[#082F5B]/20 overflow-hidden">
+            <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-[#082F5B] p-6 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-amber-300">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 block mb-0.5">
+                    Fleet Compliance & Safety Enforcement
+                  </span>
+                  <h3 className="font-heading font-black text-lg text-white">Issue Warning to Ship Owner</h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setWarningModalReview(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendWarning} className="p-6 space-y-4">
+              <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-600 uppercase text-[10px]">Target Vessel:</span>
+                  <span className="font-bold text-[#102B46] text-sm">{warningModalReview.ship_name}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-600 uppercase text-[10px]">Registered Owner:</span>
+                  <span className="font-bold text-[#102B46]">
+                    {warningModalReview.owner_name} {warningModalReview.owner_email ? `(${warningModalReview.owner_email})` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-600 uppercase text-[10px]">Grievance Category:</span>
+                  <span className="px-2 py-0.5 rounded font-black text-[10px] bg-rose-100 text-rose-800 border border-rose-300">
+                    {warningModalReview.complaint_category || 'Service / Safety Issue'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-600 uppercase text-[10px] block mb-0.5">Passenger Report:</span>
+                  <p className="text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 italic">
+                    "{warningModalReview.complaint_text || warningModalReview.comment}"
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-[#102B46] block mb-1">
+                  Official Warning Message (Dispatched to Ship Owner)
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={warningMessageInput}
+                  onChange={(e) => setWarningMessageInput(e.target.value)}
+                  placeholder="Enter the official warning instructions..."
+                  className="w-full p-3 rounded-2xl border border-rose-300 text-xs text-[#102B46] bg-white focus:outline-none focus:border-rose-600 font-medium"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  This formal warning will be logged to the platform safety ledger and dispatched directly to the ship owner's operator dashboard notification center and platform inbox.
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#082F5B]/10">
+                <button
+                  type="button"
+                  onClick={() => setWarningModalReview(null)}
+                  className="px-4 py-2 text-xs font-bold text-[#102B46]/70 hover:bg-[#EAF4FB] rounded-full transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={warningSending}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{warningSending ? 'Dispatching Warning...' : 'Dispatch Warning to Owner'}</span>
                 </button>
               </div>
             </form>

@@ -26,6 +26,7 @@ import {
   User as UserIcon,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Copy,
   Search,
   Waves,
@@ -99,6 +100,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
   const [ratingVal, setRatingVal] = useState<number>(5);
   const [commentVal, setCommentVal] = useState<string>('');
+  const [hasComplaint, setHasComplaint] = useState<boolean>(false);
+  const [complaintCategory, setComplaintCategory] = useState<string>('Cleanliness & Hygiene');
+  const [complaintText, setComplaintText] = useState<string>('');
   const [reviewSubmitting, setReviewSubmitting] = useState<boolean>(false);
 
   // Profile Form state
@@ -214,9 +218,17 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     if (!reviewBooking) return;
     setReviewSubmitting(true);
     try {
-      await submitReview(reviewBooking.booking_id, ratingVal, commentVal);
+      const res = await submitReview(reviewBooking.booking_id, ratingVal, commentVal, {
+        has_complaint: hasComplaint,
+        complaint_category: complaintCategory,
+        complaint_text: complaintText || commentVal,
+      });
+      alert(res.message || 'Review submitted successfully!');
       setReviewBooking(null);
       setCommentVal('');
+      setHasComplaint(false);
+      setComplaintCategory('Cleanliness & Hygiene');
+      setComplaintText('');
       fetchBookings();
     } catch (err: any) {
       alert(err.message || 'Failed to submit review.');
@@ -1058,19 +1070,44 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                           <span>Invoice</span>
                         </button>
 
-                        {b.can_review && (
+                        {(b.can_review || ((b.status === 'CONFIRMED' || b.status === 'COMPLETED') && !b.review)) && (
                           <button
                             type="button"
                             onClick={() => {
                               setReviewBooking(b);
                               setRatingVal(5);
                               setCommentVal('');
+                              setHasComplaint(false);
+                              setComplaintCategory('Cleanliness & Hygiene');
+                              setComplaintText('');
                             }}
-                            className="px-3.5 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                            className="px-3.5 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Rate voyage or report passenger grievance"
                           >
                             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                            <span>Review</span>
+                            <span>Review / Complaint</span>
                           </button>
+                        )}
+
+                        {b.review && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" />
+                              {b.review.rating}★ Reviewed
+                            </span>
+                            {b.review.has_complaint && (
+                              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1 ${
+                                b.review.complaint_status === 'WARNING_SENT'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200'
+                              }`}>
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                {b.review.complaint_status === 'WARNING_SENT'
+                                  ? 'Owner Warned by Admin'
+                                  : 'Complaint Under Review'}
+                              </span>
+                            )}
+                          </div>
                         )}
 
                         {b.is_cancellable && (
@@ -1392,7 +1429,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 </label>
                 <textarea
                   required
-                  rows={4}
+                  rows={3}
                   value={commentVal}
                   onChange={(e) => setCommentVal(e.target.value)}
                   placeholder="Share details about the ship amenities, crew service, dining, and scenic route..."
@@ -1400,10 +1437,72 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 />
               </div>
 
+              {/* Passenger Complaint & Grievance Option */}
+              <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasComplaint}
+                    onChange={(e) => setHasComplaint(e.target.checked)}
+                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-rose-300"
+                  />
+                  <span className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    File a Formal Complaint / Grievance against this Vessel
+                  </span>
+                </label>
+
+                {hasComplaint && (
+                  <div className="space-y-3 pt-2 border-t border-rose-200/60 animate-in fade-in duration-150">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-rose-950 block mb-1">
+                        Complaint Category
+                      </label>
+                      <select
+                        value={complaintCategory}
+                        onChange={(e) => setComplaintCategory(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-white border border-rose-300 text-xs text-[#102B46] focus:outline-none focus:border-rose-600 font-semibold"
+                      >
+                        <option value="Cleanliness & Hygiene">Cleanliness & Hygiene</option>
+                        <option value="Crew & Staff Behavior">Crew & Staff Behavior</option>
+                        <option value="Safety & Security Concerns">Safety & Security Concerns</option>
+                        <option value="Voyage Delay / Technical Issue">Voyage Delay / Technical Issue</option>
+                        <option value="Food & Dining Quality">Food & Dining Quality</option>
+                        <option value="Amenities Missing / Broken">Amenities Missing / Broken</option>
+                        <option value="Overcharging / Billing Grievance">Overcharging / Billing Grievance</option>
+                        <option value="Other Passenger Grievance">Other Passenger Grievance</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-rose-950 block mb-1">
+                        Complaint Details & Incident Description
+                      </label>
+                      <textarea
+                        rows={3}
+                        required={hasComplaint}
+                        value={complaintText}
+                        onChange={(e) => setComplaintText(e.target.value)}
+                        placeholder="Describe the issue or grievance faced during travel so safety moderation can inspect and issue a warning to the ship owner..."
+                        className="w-full p-3 rounded-xl bg-white border border-rose-300 text-xs text-[#102B46] focus:outline-none focus:border-rose-600"
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-rose-700 font-medium">
+                      ⚠️ Platform Administration reviews every complaint and dispatches official compliance warnings to ship operators.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setReviewBooking(null)}
+                  onClick={() => {
+                    setReviewBooking(null);
+                    setHasComplaint(false);
+                    setComplaintText('');
+                  }}
                   className="px-4 py-2 rounded-full text-xs font-bold text-[#102B46]/70 hover:bg-[#EAF4FB] cursor-pointer"
                 >
                   Cancel
@@ -1411,9 +1510,17 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 <button
                   type="submit"
                   disabled={reviewSubmitting}
-                  className="px-5 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-[#F8FCFF] text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                  className={`px-5 py-2.5 rounded-full font-bold text-xs text-white transition shadow-sm cursor-pointer disabled:opacity-50 ${
+                    hasComplaint
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : 'bg-[#1677C8] hover:bg-[#082F5B]'
+                  }`}
                 >
-                  {reviewSubmitting ? 'Submitting...' : 'Post Verified Review'}
+                  {reviewSubmitting
+                    ? 'Submitting...'
+                    : hasComplaint
+                    ? 'Submit Review & File Complaint'
+                    : 'Post Verified Review'}
                 </button>
               </div>
             </form>
