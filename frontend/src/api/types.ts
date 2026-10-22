@@ -372,7 +372,7 @@ export interface Booking {
   booking_id: string;
   invoice_number?: string;
   booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT';
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REJECTED';
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REJECTED' | 'EXPIRED';
   tracking_status?: string;
   cruise_id: number;
   cruise_name: string;

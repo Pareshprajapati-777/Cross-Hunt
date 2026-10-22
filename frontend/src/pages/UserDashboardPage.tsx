@@ -274,16 +274,42 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  // Booking Categorization
-  const upcomingBookings = bookings.filter(
-    (b) => b.booking_date >= todayStr && b.status !== 'CANCELLED' && b.status !== 'COMPLETED'
-  );
+  // Booking Categorization with strict separation (Upcoming never in Active)
+  const isCancelledBooking = (b: Booking) =>
+    b.status === 'CANCELLED' || b.tracking_status === 'CANCELLED';
+
+  const isCompletedBooking = (b: Booking) =>
+    b.status === 'COMPLETED' ||
+    b.status === 'EXPIRED' ||
+    b.tracking_status === 'COMPLETED' ||
+    (b.booking_date < todayStr && b.status !== 'PENDING' && !isCancelledBooking(b));
+
+  // Live in-progress tracking (boarding, departed, on cruise, arrived)
+  const isLiveVoyage = (b: Booking) =>
+    b.tracking_status === 'BOARDING' ||
+    b.tracking_status === 'DEPARTED' ||
+    b.tracking_status === 'ON_CRUISE' ||
+    b.tracking_status === 'ARRIVED';
+
+  // Active bookings: strictly live/ongoing trips (sailing/boarding right now), NEVER future upcoming trips
   const activeBookings = bookings.filter(
-    (b) => b.status === 'CONFIRMED' || b.tracking_status === 'BOARDING' || b.tracking_status === 'DEPARTED'
+    (b) => !isCancelledBooking(b) && !isCompletedBooking(b) && b.booking_date <= todayStr && isLiveVoyage(b)
   );
-  const pendingBookings = bookings.filter((b) => b.status === 'PENDING');
-  const completedBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.tracking_status === 'COMPLETED');
-  const cancelledBookings = bookings.filter((b) => b.status === 'CANCELLED');
+
+  // Upcoming bookings: scheduled future voyages (or today before boarding starts), never in active
+  const upcomingBookings = bookings.filter(
+    (b) => !isCancelledBooking(b) && !isCompletedBooking(b) && !isLiveVoyage(b) && b.booking_date >= todayStr
+  );
+
+  const pendingBookings = bookings.filter(
+    (b) => b.status === 'PENDING' && !isCancelledBooking(b) && !isCompletedBooking(b)
+  );
+
+  const completedBookings = bookings.filter(
+    (b) => isCompletedBooking(b) && !isCancelledBooking(b)
+  );
+
+  const cancelledBookings = bookings.filter((b) => isCancelledBooking(b));
   const publicTickets = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
   const charterBookings = bookings.filter((b) => b.booking_type === 'EVENT' || b.booking_type === 'PRIVATE_EVENT');
   const reviewedBookings = bookings.filter((b) => b.review);
@@ -335,10 +361,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
 
     // 3. Status breakdown
     const statusCounts = {
-      CONFIRMED: bookings.filter((b) => b.status === 'CONFIRMED').length,
-      COMPLETED: bookings.filter((b) => b.status === 'COMPLETED').length,
-      PENDING: bookings.filter((b) => b.status === 'PENDING').length,
-      CANCELLED: bookings.filter((b) => b.status === 'CANCELLED').length,
+      CONFIRMED: upcomingBookings.length,
+      COMPLETED: completedBookings.length,
+      PENDING: pendingBookings.length,
+      CANCELLED: cancelledBookings.length,
     };
 
     // 4. Destinations visited
