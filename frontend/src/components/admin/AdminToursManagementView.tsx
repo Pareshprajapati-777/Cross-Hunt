@@ -256,14 +256,14 @@ export const AdminToursManagementView: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-[#f8f9fa] border-b border-slate-200 text-[#051833] font-black uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="py-3.5 px-5">Public Tour Itinerary</th>
-                <th className="py-3.5 px-4">Route</th>
-                <th className="py-3.5 px-4">Departure Schedule</th>
-                <th className="py-3.5 px-4">Duration</th>
-                <th className="py-3.5 px-4">Ticket Fare (₹)</th>
-                <th className="py-3.5 px-4">Seat Inventory</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-5 text-right">Actions</th>
+                <th className="py-3.5 px-5 whitespace-nowrap">Public Tour Itinerary</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Route</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Departure Schedule</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Duration</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Ticket Fare (₹)</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Seat Inventory</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                <th className="py-3.5 px-5 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -326,8 +326,8 @@ export const AdminToursManagementView: React.FC = () => {
                       </td>
 
                       {/* Route */}
-                      <td className="py-4 px-4 font-semibold text-slate-700">
-                        <div className="flex items-center gap-1 text-xs">
+                      <td className="py-4 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <div className="flex items-center gap-1 text-xs whitespace-nowrap">
                           <MapPin className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
                           <span>{t.departure_port}</span>
                           <span className="text-slate-400">→</span>
@@ -336,13 +336,13 @@ export const AdminToursManagementView: React.FC = () => {
                       </td>
 
                       {/* Departure Date & Time */}
-                      <td className="py-4 px-4 text-xs font-medium text-slate-700">
-                        <div className="flex items-center gap-1 font-bold text-[#051833]">
+                      <td className="py-4 px-4 text-xs font-medium text-slate-700 whitespace-nowrap">
+                        <div className="flex items-center gap-1 font-bold text-[#051833] whitespace-nowrap">
                           <Calendar className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
                           <span>{t.departure_date}</span>
                         </div>
                         {t.departure_time && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">
                             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                             <span>{t.departure_time}</span>
                           </div>
@@ -350,25 +350,25 @@ export const AdminToursManagementView: React.FC = () => {
                       </td>
 
                       {/* Duration */}
-                      <td className="py-4 px-4 text-xs text-slate-700 font-semibold">
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-[11px] font-bold">
+                      <td className="py-4 px-4 text-xs text-slate-700 font-semibold whitespace-nowrap">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-[11px] font-bold whitespace-nowrap">
                           {t.duration_display || `${t.duration_days} Days`}
                         </span>
                       </td>
 
                       {/* Ticket Fare (₹ / person) */}
-                      <td className="py-4 px-4">
-                        <div className="text-sm font-black text-[#051833] font-mono-numbers">
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="text-sm font-black text-[#051833] font-mono-numbers whitespace-nowrap">
                           {formatINR(t.adult_price)}
                         </div>
-                        <span className="text-[10px] text-slate-500 font-medium block">
+                        <span className="text-[10px] text-slate-500 font-medium block whitespace-nowrap">
                           / person ticket
                         </span>
                       </td>
 
                       {/* Seat Inventory & Capacity */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-between text-[11px] font-bold mb-1">
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex items-center justify-between text-[11px] font-bold mb-1 gap-2 whitespace-nowrap">
                           <span className={`${t.remaining_capacity <= 10 ? 'text-rose-600' : 'text-emerald-700'}`}>
                             {t.remaining_capacity} left
                           </span>
@@ -385,9 +385,9 @@ export const AdminToursManagementView: React.FC = () => {
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 whitespace-nowrap">
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border whitespace-nowrap ${
                             t.is_published
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : 'bg-slate-100 text-slate-600 border-slate-200'
