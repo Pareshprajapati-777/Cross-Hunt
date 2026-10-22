@@ -67,6 +67,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
       propOnNavigate(tab, param);
       return;
     }
+    if (tab === 'login' || tab === 'register') {
+      navigate(`/${tab}${location.search}`, { state: location.state });
+      return;
+    }
     const routeMap: Record<string, string> = {
       home: '/',
       explore: param ? `/explore?query=${encodeURIComponent(param)}` : '/explore',
@@ -375,14 +379,24 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             ) : (
               <div className="flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={() => onNavigate('login')}
-                  className="px-4 py-1.5 rounded-full text-xs font-bold text-black border border-black bg-white hover:bg-black hover:text-white transition cursor-pointer"
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                    currentTab === 'login'
+                      ? 'bg-black text-white border border-black shadow-sm ring-2 ring-sky-400/40'
+                      : 'text-black border border-black bg-white hover:bg-black hover:text-white'
+                  }`}
                 >
                   Sign In
                 </button>
                 <button
+                  type="button"
                   onClick={() => onNavigate('register')}
-                  className="px-4 py-1.5 rounded-full text-xs font-bold bg-black hover:bg-slate-800 text-white border border-black shadow-sm transition cursor-pointer"
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                    currentTab === 'register'
+                      ? 'bg-sky-600 text-white border border-sky-600 shadow-sm ring-2 ring-sky-400/50'
+                      : 'bg-black hover:bg-slate-800 text-white border border-black shadow-sm'
+                  }`}
                 >
                   Sign Up
                 </button>

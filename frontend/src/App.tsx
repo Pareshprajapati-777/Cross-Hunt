@@ -167,6 +167,7 @@ function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <AuthPage
+      key={mode}
       initialMode={mode}
       onSuccess={handleAuthSuccess}
       onSwitchMode={(nextMode) => {
@@ -182,6 +183,7 @@ function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
  */
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleNavigate = (tab: string, param?: string) => {
     if (tab === 'home') navigate('/');
@@ -191,8 +193,9 @@ const AppContent: React.FC = () => {
     else if (tab === 'dashboard') navigate('/dashboard');
     else if (tab === 'owner') navigate('/owner');
     else if (tab === 'admin-panel') navigate('/admin-panel');
-    else if (tab === 'login') navigate('/login');
-    else if (tab === 'register') navigate('/register');
+    else if (tab === 'login' || tab === 'register') {
+      navigate(`/${tab}${location.search}`, { state: location.state });
+    }
     else navigate('/');
   };
 
@@ -200,7 +203,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-[#f8f9fa] text-[#051833] flex flex-col justify-between selection:bg-[#0284c7]/20 selection:text-[#051833]">
       <ScrollToTop />
       {/* Universal Responsive Navbar */}
-      <Navbar />
+      <Navbar onNavigate={handleNavigate} />
 
       {/* Primary Routes */}
       <main className="flex-1">
@@ -371,8 +374,8 @@ const AppContent: React.FC = () => {
           <Route path="/admin" element={<Navigate to="/admin-panel" replace />} />
 
           {/* Authentication Pages */}
-          <Route path="/login" element={<GuestRoute mode="login" />} />
-          <Route path="/register" element={<GuestRoute mode="register" />} />
+          <Route path="/login" element={<GuestRoute key="login" mode="login" />} />
+          <Route path="/register" element={<GuestRoute key="register" mode="register" />} />
 
           {/* Fallback to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />

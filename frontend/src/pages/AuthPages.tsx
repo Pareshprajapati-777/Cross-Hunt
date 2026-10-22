@@ -17,7 +17,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const { login, register } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+
+  // Derive initial mode directly from URL or initialMode prop
+  const currentPathMode = location.pathname.startsWith('/register')
+    ? 'register'
+    : location.pathname.startsWith('/login')
+    ? 'login'
+    : initialMode;
+  const [mode, setMode] = useState<'login' | 'register'>(currentPathMode);
+
+  // Sync mode whenever URL path or initialMode prop changes (e.g. clicking top Navbar Sign In / Sign Up)
+  React.useEffect(() => {
+    const nextMode = location.pathname.startsWith('/register')
+      ? 'register'
+      : location.pathname.startsWith('/login')
+      ? 'login'
+      : initialMode;
+    setMode(nextMode);
+    setError(null);
+  }, [location.pathname, initialMode]);
 
   const fromState = (location.state as any)?.from;
   const redirectParam = searchParams.get('redirect');
