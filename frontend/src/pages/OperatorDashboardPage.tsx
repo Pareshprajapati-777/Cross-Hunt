@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
+import { Link } from 'react-router-dom';
 
 type OperatorTab =
   | 'overview'
@@ -55,6 +56,7 @@ type OperatorTab =
 export const OperatorDashboardPage: React.FC = () => {
   const [data, setData] = useState<OperatorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OperatorTab>('overview');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -189,6 +191,7 @@ export const OperatorDashboardPage: React.FC = () => {
 
   const fetchDashboard = () => {
     setLoading(true);
+    setFetchError(null);
     getOperatorDashboard()
       .then((res) => {
         const sortedShips = [...(res.my_ships || [])].sort((a, b) => {
@@ -231,7 +234,10 @@ export const OperatorDashboardPage: React.FC = () => {
           setSelectedTourIdForManifest(sortedTours[0].id);
         }
       })
-      .catch((err) => console.error('Failed to load operator dashboard:', err))
+      .catch((err) => {
+        console.error('Failed to load operator dashboard:', err);
+        setFetchError(err?.message || 'Could not fetch operator details');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -514,15 +520,26 @@ export const OperatorDashboardPage: React.FC = () => {
         <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center max-w-md shadow-sm">
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-slate-800 mb-2">Unable to Load Owner Dashboard</h2>
-          <p className="text-slate-600 text-sm mb-6">
-            Could not fetch operator details. Please check your connection or try logging in again.
+          <p className="text-slate-600 text-sm mb-3">
+            {fetchError || 'Could not fetch operator details. Please check your connection or try logging in again.'}
           </p>
-          <button
-            onClick={fetchDashboard}
-            className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm shadow-amber-500/20"
-          >
-            Retry
-          </button>
+          <p className="text-xs text-slate-400 mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            Render backend free tier spins down on inactivity (~45s wake-up time). Ensure you are logged in with valid owner credentials.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={fetchDashboard}
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm shadow-amber-500/20"
+            >
+              Retry
+            </button>
+            <Link
+              to="/login"
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition-colors"
+            >
+              Log In
+            </Link>
+          </div>
         </div>
       </div>
     );

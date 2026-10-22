@@ -39,10 +39,64 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE_URL = (
-  (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
-  ''
-).trim().replace(/\/+$/, '');
+export const AUTH_TOKEN_KEY = 'crosshunt_auth_token';
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token && typeof token === 'string' && token.trim()) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token.trim());
+    } else {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted browser contexts
+  }
+}
+
+const DEFAULT_PROD_API_URL = 'https://cross-hunt.onrender.com';
+
+function resolveApiBaseUrl(): string {
+  const envUrl =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
+    '';
+
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+
+  // If running in browser and NOT on local machine (e.g. deployed on Vercel, Netlify, custom domain),
+  // automatically default to the live Render backend
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocal =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local');
+    if (!isLocal) {
+      return DEFAULT_PROD_API_URL;
+    }
+  }
+
+  // If in a production build, default to the live Render backend
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD) {
+    return DEFAULT_PROD_API_URL;
+  }
+
+  return '';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export function getFullApiUrl(endpoint: string): string {
   if (!endpoint) return '';
@@ -65,6 +119,12 @@ export async function apiRequest<T = any>(
   // Set default Content-Type for JSON if body is provided and not FormData
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  // Attach stored JWT Bearer token if available
+  const authToken = getAuthToken();
+  if (authToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${authToken}`);
   }
 
   // Include Django/FastAPI CSRF token for mutating requests

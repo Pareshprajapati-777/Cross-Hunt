@@ -9,26 +9,31 @@ from backend.app.models.user import User
 
 def get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     """
-    Retrieves the currently authenticated user from session cookie (sessionid)
-    or Authorization: Bearer token. Returns None if unauthenticated.
+    Retrieves the currently authenticated user from Authorization: Bearer token
+    or session cookie (sessionid). Returns None if unauthenticated.
     """
     token: Optional[str] = None
 
-    # 1. Check session cookie
-    token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    # 1. Prefer Authorization Bearer header (cross-domain robust)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
 
-    # 2. Check Authorization Bearer header
+    # 2. Fall back to session cookie
     if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ", 1)[1].strip()
+        token = request.cookies.get(settings.SESSION_COOKIE_NAME)
 
     if not token:
         return None
 
     user_id = decode_access_token(token)
     if not user_id:
-        return None
+        # If the header token wasn't valid, try cookie as fallback
+        cookie_token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+        if cookie_token and cookie_token != token:
+            user_id = decode_access_token(cookie_token)
+        if not user_id:
+            return None
 
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     return user

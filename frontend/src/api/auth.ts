@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest, setAuthToken } from './client';
 import { User } from './types';
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -7,6 +7,7 @@ export async function getCurrentUser(): Promise<User | null> {
     if (res.authenticated && res.user) {
       return res.user;
     }
+    setAuthToken(null);
     return null;
   } catch (err) {
     return null;
@@ -14,10 +15,13 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function loginUser(username: string, password: string): Promise<User> {
-  const res = await apiRequest<{ success: boolean; user: User }>('/api/auth/login/', {
+  const res = await apiRequest<{ success: boolean; user: User; token?: string }>('/api/auth/login/', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
+  if (res.token) {
+    setAuthToken(res.token);
+  }
   return res.user;
 }
 
@@ -30,17 +34,26 @@ export async function registerUser(payload: {
   phone_number?: string;
   role?: string;
 }): Promise<User> {
-  const res = await apiRequest<{ success: boolean; user: User }>('/api/auth/register/', {
+  const res = await apiRequest<{ success: boolean; user: User; token?: string }>('/api/auth/register/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  if (res.token) {
+    setAuthToken(res.token);
+  }
   return res.user;
 }
 
 export async function logoutUser(): Promise<void> {
-  await apiRequest('/api/auth/logout/', {
-    method: 'POST',
-  });
+  try {
+    await apiRequest('/api/auth/logout/', {
+      method: 'POST',
+    });
+  } catch {
+    // Continue even if logout endpoint fails so client side is cleared
+  } finally {
+    setAuthToken(null);
+  }
 }
 
 export async function updateUserProfile(payload: {

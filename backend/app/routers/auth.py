@@ -14,6 +14,11 @@ from backend.app.schemas.auth import LoginPayload, RegisterPayload, ProfileUpdat
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+def _is_secure_request(request: Request) -> bool:
+    proto = request.headers.get("x-forwarded-proto", "").lower()
+    return proto == "https" or request.url.scheme == "https"
+
+
 @router.get("/me/")
 async def api_me(user: Optional[User] = Depends(get_optional_user)):
     if user:
@@ -24,6 +29,7 @@ async def api_me(user: Optional[User] = Depends(get_optional_user)):
 @router.post("/login/")
 async def api_login(
     payload: LoginPayload,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db)
 ):
@@ -68,13 +74,18 @@ async def api_login(
 
     token = create_access_token(user.id)
 
-    # Set session cookies matching frontend expectations
+    # Set session cookies matching environment (samesite=none, secure=True for HTTPS Render/Vercel; lax for HTTP/localhost)
+    is_https = _is_secure_request(request)
+    cookie_samesite = "none" if is_https else "lax"
+    cookie_secure = is_https
+
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=token,
         max_age=settings.SESSION_MAX_AGE_DAYS * 86400,
         httponly=False,
-        samesite="lax",
+        samesite=cookie_samesite,
+        secure=cookie_secure,
         path="/"
     )
     response.set_cookie(
@@ -82,7 +93,8 @@ async def api_login(
         value=secrets.token_hex(16),
         max_age=settings.SESSION_MAX_AGE_DAYS * 86400,
         httponly=False,
-        samesite="lax",
+        samesite=cookie_samesite,
+        secure=cookie_secure,
         path="/"
     )
 
@@ -97,6 +109,7 @@ async def api_login(
 @router.post("/register/")
 async def api_register(
     payload: RegisterPayload,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db)
 ):
@@ -156,12 +169,17 @@ async def api_register(
     db.refresh(new_user)
 
     token = create_access_token(new_user.id)
+    is_https = _is_secure_request(request)
+    cookie_samesite = "none" if is_https else "lax"
+    cookie_secure = is_https
+
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=token,
         max_age=settings.SESSION_MAX_AGE_DAYS * 86400,
         httponly=False,
-        samesite="lax",
+        samesite=cookie_samesite,
+        secure=cookie_secure,
         path="/"
     )
     response.set_cookie(
@@ -169,7 +187,8 @@ async def api_register(
         value=secrets.token_hex(16),
         max_age=settings.SESSION_MAX_AGE_DAYS * 86400,
         httponly=False,
-        samesite="lax",
+        samesite=cookie_samesite,
+        secure=cookie_secure,
         path="/"
     )
 
@@ -182,8 +201,23 @@ async def api_register(
 
 
 @router.post("/logout/")
-async def api_logout(response: Response):
-    response.delete_cookie(key=settings.SESSION_COOKIE_NAME, path="/")
+async def api_logout(request: Request, response: Response):
+    is_https = _is_secure_request(request)
+    cookie_samesite = "none" if is_https else "lax"
+    cookie_secure = is_https
+
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        path="/",
+        samesite=cookie_samesite,
+        secure=cookie_secure
+    )
+    response.delete_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        path="/",
+        samesite=cookie_samesite,
+        secure=cookie_secure
+    )
     return {"success": True, "message": "Successfully logged out."}
 
 

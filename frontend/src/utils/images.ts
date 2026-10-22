@@ -1,7 +1,6 @@
-const BACKEND_URL = (
-  (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
-  ''
-).trim().replace(/\/+$/, '');
+import { API_BASE_URL } from '../api/client';
+
+const BACKEND_URL = API_BASE_URL;
 
 /**
  * Image URL helper with cache-busting for updated cruise assets and production CDN/backend support
