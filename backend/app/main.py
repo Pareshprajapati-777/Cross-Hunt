@@ -50,6 +50,8 @@ def ensure_db_migrations():
                 ("complaint_status", "VARCHAR(50) DEFAULT 'NONE' NOT NULL"),
                 ("warning_message", "TEXT DEFAULT '' NOT NULL"),
                 ("warning_sent_at", "DATETIME NULL"),
+                ("owner_response", "TEXT DEFAULT '' NOT NULL"),
+                ("owner_response_at", "DATETIME NULL"),
             ]
             with engine.connect() as conn:
                 for col_name, col_type in new_columns:

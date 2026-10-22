@@ -72,6 +72,8 @@ class CrossReview(Base):
     complaint_status: Mapped[str] = mapped_column(String(50), default="NONE", nullable=False)
     warning_message: Mapped[str] = mapped_column(Text, default="", nullable=False)
     warning_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    owner_response: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    owner_response_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     cross = relationship("Cross", back_populates="reviews")
@@ -93,6 +95,8 @@ class CrossReview(Base):
             "complaint_status": self.complaint_status or ("PENDING" if self.has_complaint else "NONE"),
             "warning_message": self.warning_message or "",
             "warning_sent_at": self.warning_sent_at.strftime("%Y-%m-%d %H:%M") if self.warning_sent_at else None,
+            "owner_response": self.owner_response or "",
+            "owner_response_at": self.owner_response_at.strftime("%Y-%m-%d %H:%M") if self.owner_response_at else None,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else "",
             "date": self.created_at.strftime("%Y-%m-%d") if self.created_at else "",
         }

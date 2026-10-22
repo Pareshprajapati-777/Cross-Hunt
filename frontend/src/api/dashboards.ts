@@ -195,6 +195,8 @@ export interface OperatorReview {
   complaint_status?: 'NONE' | 'PENDING' | 'WARNING_SENT' | 'RESOLVED';
   warning_message?: string;
   warning_sent_at?: string;
+  owner_response?: string;
+  owner_response_at?: string;
   booking_id?: string;
   booking_type?: string;
   travel_date?: string;
@@ -220,6 +222,16 @@ export async function getOperatorReviews(): Promise<OperatorReviewsResponse> {
 export async function resolveOperatorComplaint(reviewId: number): Promise<{ success: boolean; message: string }> {
   return apiRequest<{ success: boolean; message: string }>(`/api/operator/reviews/${reviewId}/resolve/`, {
     method: 'POST',
+  });
+}
+
+export async function operatorRespondToComplaint(
+  reviewId: number,
+  message: string
+): Promise<{ success: boolean; message: string; owner_response: string; owner_response_at: string }> {
+  return apiRequest(`/api/operator/reviews/${reviewId}/respond-customer/`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
   });
 }
 

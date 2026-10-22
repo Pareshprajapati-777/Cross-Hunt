@@ -13,6 +13,7 @@ import {
   uploadOperatorImage,
   getOperatorReviews,
   resolveOperatorComplaint,
+  operatorRespondToComplaint,
   OperatorDashboardData,
   OperatorReview
 } from '../api/dashboards';
@@ -258,6 +259,59 @@ export const OperatorDashboardPage: React.FC = () => {
       alert(err.message || 'Failed to resolve complaint.');
     } finally {
       setResolvingId(null);
+    }
+  };
+
+  // Respond to Customer Complaint State
+  const [respondingReview, setRespondingReview] = useState<OperatorReview | null>(null);
+  const [ownerReplyText, setOwnerReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
+
+  const replyTemplates = [
+    {
+      id: 'all_in_one',
+      label: '🌟 Complete Resolution (Apology + Improved Operations + Future Guarantee)',
+      text: 'Dear Guest, we sincerely apologize for the shortcomings during your voyage. We have implemented immediate operational improvements and staff retraining to resolve this issue, and assure you that this will never happen again in the future. We look forward to welcoming you aboard again for an exceptional luxury experience.',
+    },
+    {
+      id: 'apology',
+      label: '🙏 Sincere Apology & Regret',
+      text: 'Dear Guest, please accept our heartfelt apologies for the inconvenience you experienced. We take immense pride in delivering five-star luxury voyages and deeply regret falling short of your expectations during this trip.',
+    },
+    {
+      id: 'improve',
+      label: '🛠️ Corrective Actions & Upgrades',
+      text: 'Dear Guest, thank you for bringing this to our attention. We have immediately inspected the vessel with our marine engineers, retrained our onboard crew, and upgraded our operating protocols to ensure our facilities meet five-star luxury standards.',
+    },
+    {
+      id: 'future',
+      label: '⚓ Never Happen in Future Assurance',
+      text: 'Dear Guest, we have addressed the root cause of this incident and guarantee with absolute certainty that this will never occur again in any future voyages. We look forward to offering you a truly flawless experience next time.',
+    },
+  ];
+
+  const handleOpenRespondModal = (review: OperatorReview) => {
+    setRespondingReview(review);
+    setOwnerReplyText(
+      review.owner_response ||
+      `Dear ${review.author || review.user}, we sincerely apologize for the inconvenience regarding ${review.complaint_category || 'your trip'}. We have taken immediate corrective measures with our vessel team to resolve this issue and guarantee that this will never happen again in the future. We appreciate your valuable feedback.`
+    );
+  };
+
+  const handleSendResponseToCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!respondingReview || !ownerReplyText.trim()) return;
+    setReplySending(true);
+    try {
+      const res = await operatorRespondToComplaint(respondingReview.id, ownerReplyText.trim());
+      alert(res.message || 'Apology and resolution message sent to customer successfully!');
+      setRespondingReview(null);
+      await fetchReviews();
+      fetchDashboard();
+    } catch (err: any) {
+      alert(err.message || 'Failed to dispatch response to customer.');
+    } finally {
+      setReplySending(false);
     }
   };
 
@@ -2164,23 +2218,52 @@ export const OperatorDashboardPage: React.FC = () => {
                         </p>
                       </div>
 
-                      {/* Action Button */}
+                      {/* Owner's Dispatched Response / Apology if already sent */}
+                      {warn.owner_response && (
+                        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-emerald-900 font-bold">
+                            <span className="flex items-center gap-1.5 text-xs">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              Official Owner Apology & Resolution Dispatched:
+                            </span>
+                            <span className="text-[10px] text-emerald-700/80 font-mono">
+                              {warn.owner_response_at}
+                            </span>
+                          </div>
+                          <p className="text-emerald-950 font-medium italic mt-0.5">
+                            "{warn.owner_response}"
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Action Buttons Row */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                         <span className="text-[11px] text-slate-500 font-medium">
-                          Inspect this voyage with your crew and mark the issue as resolved once addressed.
+                          Send a formal apology & resolution message to reassure the passenger, or mark resolved.
                         </span>
-                        <button
-                          onClick={() => handleResolveComplaint(warn.id)}
-                          disabled={resolvingId === warn.id}
-                          className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm disabled:opacity-50"
-                        >
-                          {resolvingId === warn.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          )}
-                          <span>Mark Resolved & Acknowledge</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRespondModal(warn)}
+                            className="px-4 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>{warn.owner_response ? 'Edit Apology to Customer' : 'Send Apology to Customer'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleResolveComplaint(warn.id)}
+                            disabled={resolvingId === warn.id}
+                            className="px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
+                          >
+                            {resolvingId === warn.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            )}
+                            <span>Quick Resolve</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2346,6 +2429,33 @@ export const OperatorDashboardPage: React.FC = () => {
                               <p className="text-rose-900 text-[11px] italic">
                                 {r.complaint_text}
                               </p>
+                            </div>
+                          )}
+
+                          {/* If Owner sent an apology/response */}
+                          {r.owner_response && (
+                            <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-2xl text-xs space-y-1">
+                              <div className="flex items-center justify-between text-emerald-800 font-bold text-[10px]">
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Owner Apology & Resolution:
+                                </span>
+                                <span className="text-emerald-700/80 font-mono">{r.owner_response_at}</span>
+                              </div>
+                              <p className="text-emerald-950 text-[11px] italic">"{r.owner_response}"</p>
+                            </div>
+                          )}
+
+                          {r.has_complaint && (
+                            <div className="flex items-center justify-end pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenRespondModal(r)}
+                                className="text-[11px] font-bold text-[#1677C8] hover:text-[#082F5B] flex items-center gap-1 cursor-pointer"
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                                <span>{r.owner_response ? 'Edit Customer Apology' : 'Send Customer Apology'}</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2530,6 +2640,117 @@ export const OperatorDashboardPage: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* MODAL: RESPOND TO CUSTOMER COMPLAINT & SEND APOLOGY */}
+      {respondingReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061D36]/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#F8FCFF] rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#082F5B]/20 overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#061D36] to-[#082F5B] p-6 sm:p-7 flex items-center justify-between text-white">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#63B8F0] block mb-1 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#63B8F0]" />
+                  Customer Resolution & Apology Center
+                </span>
+                <h3 className="font-heading font-black text-xl text-white">
+                  Send Apology & Resolution to Customer
+                </h3>
+                <p className="text-xs text-white/70 mt-0.5">
+                  Reassure {respondingReview.author || respondingReview.user} with an apology, corrective improvements, and future assurance.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRespondingReview(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSendResponseToCustomer} className="p-6 sm:p-7 space-y-5">
+              {/* Complaint Summary Card */}
+              <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-rose-900 uppercase text-[10px] tracking-wider">
+                    Grievance: {respondingReview.complaint_category || 'Service Quality'}
+                  </span>
+                  <span className="text-[11px] font-semibold text-rose-800">
+                    Vessel: <strong>{respondingReview.ship_name}</strong>
+                  </span>
+                </div>
+                <p className="text-rose-950 italic">
+                  "{respondingReview.complaint_text || respondingReview.comment}"
+                </p>
+              </div>
+
+              {/* Quick Template Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-[#102B46] block">
+                  Quick Resolution Templates (Click to fill message)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {replyTemplates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => setOwnerReplyText(tpl.text)}
+                      className="p-3 text-left rounded-xl border border-[#082F5B]/15 hover:border-[#1677C8] hover:bg-sky-50/50 bg-white text-xs transition cursor-pointer group"
+                    >
+                      <div className="font-bold text-[#102B46] group-hover:text-[#1677C8] text-[11px] mb-1">
+                        {tpl.label}
+                      </div>
+                      <p className="text-[10px] text-slate-500 line-clamp-2">
+                        {tpl.text}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Editable Response Textarea */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase tracking-wider text-[#102B46] block flex items-center justify-between">
+                  <span>Custom Message to Passenger</span>
+                  <span className="text-[10px] font-normal text-slate-400">Delivered directly to customer's feedback view</span>
+                </label>
+                <textarea
+                  required
+                  rows={5}
+                  value={ownerReplyText}
+                  onChange={(e) => setOwnerReplyText(e.target.value)}
+                  placeholder="Write your apology, corrective actions taken, and future assurances..."
+                  className="w-full px-4 py-3 rounded-2xl border border-[#082F5B]/20 text-xs text-[#102B46] bg-white focus:outline-none focus:border-[#1677C8] focus:ring-2 focus:ring-[#1677C8]/15 leading-relaxed font-medium"
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRespondingReview(null)}
+                  className="px-5 py-2.5 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={replySending || !ownerReplyText.trim()}
+                  className="px-6 py-2.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white font-bold text-xs transition cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-2"
+                >
+                  {replySending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-4 h-4" />
+                  )}
+                  <span>Send Apology & Mark Resolved</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

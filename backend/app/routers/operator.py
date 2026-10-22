@@ -14,7 +14,7 @@ from backend.app.dependencies.auth import get_current_user, require_operator
 from backend.app.models.user import User
 from backend.app.models.cross import Cross, ShipExtra
 from backend.app.models.tour import PublicTour
-from backend.app.models.booking import Booking
+from backend.app.models.booking import Booking, PlatformNotification
 from backend.app.models.offer import CrossReview
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
 from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
@@ -995,4 +995,61 @@ def resolve_operator_complaint(
     r.complaint_status = "RESOLVED"
     db.commit()
     return {"success": True, "message": "Complaint marked as resolved & addressed."}
+
+
+@router.post("/reviews/{review_id}/respond-customer/")
+@router.post("/reviews/{review_id}/respond-customer")
+async def respond_to_passenger_complaint(
+    review_id: int,
+    request: Request,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    response_text = (data.get("message") or data.get("owner_response") or "").strip()
+    if not response_text:
+        raise HTTPException(status_code=400, detail="Response message to customer cannot be empty.")
+
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Review or complaint not found.")
+
+    if not (current_user.role in ['ADMIN'] or current_user.is_superuser):
+        if not r.cross or r.cross.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Unauthorized to respond to complaints for this vessel.")
+
+    r.owner_response = response_text
+    r.owner_response_at = datetime.utcnow()
+    r.complaint_status = "RESOLVED"
+
+    # Send Notification to Customer with link to feedback tab
+    ship_name = r.cross.name if r.cross else "Vessel"
+    if r.user_id:
+        notif = PlatformNotification(
+            title=f"Official Owner Response: {ship_name}",
+            message=f"The ship operator has sent an official response & resolution to your feedback: \"{response_text[:140]}\"",
+            notification_type="SYSTEM",
+            target_audience="CUSTOMER",
+            target_user_id=r.user_id,
+            action_link="/dashboard?tab=feedback",
+            sender_name=f"{ship_name} Management",
+            is_read=False,
+            recipients_count=1,
+            created_at=datetime.utcnow()
+        )
+        db.add(notif)
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Apology and resolution message sent to customer successfully.",
+        "owner_response": r.owner_response,
+        "owner_response_at": r.owner_response_at.strftime("%Y-%m-%d %H:%M")
+    }
+
 

@@ -442,6 +442,8 @@ export interface Booking {
     complaint_status?: string;
     warning_message?: string;
     warning_sent_at?: string | null;
+    owner_response?: string;
+    owner_response_at?: string | null;
   } | null;
 }
 

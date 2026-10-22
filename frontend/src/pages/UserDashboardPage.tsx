@@ -46,7 +46,8 @@ import {
   Heart,
   Eye,
   EyeOff,
-  XCircle
+  XCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 
@@ -61,6 +62,7 @@ interface UserDashboardPageProps {
 type UserSubTab =
   | 'home'
   | 'bookings'
+  | 'feedback'
   | 'favorites'
   | 'offers'
   | 'profile';
@@ -133,7 +135,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     if (tabParam) {
       if (['tickets', 'invoices'].includes(tabParam)) {
         setActiveSubTab('bookings');
-      } else if (['home', 'bookings', 'favorites', 'offers', 'profile'].includes(tabParam)) {
+      } else if (tabParam === 'reviews' || tabParam === 'complaints') {
+        setActiveSubTab('feedback');
+      } else if (['home', 'bookings', 'feedback', 'favorites', 'offers', 'profile'].includes(tabParam)) {
         setActiveSubTab(tabParam as UserSubTab);
       }
     }
@@ -282,7 +286,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const cancelledBookings = bookings.filter((b) => b.status === 'CANCELLED');
   const publicTickets = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
   const charterBookings = bookings.filter((b) => b.booking_type === 'EVENT' || b.booking_type === 'PRIVATE_EVENT');
-
+  const reviewedBookings = bookings.filter((b) => b.review);
+  const resolvedWithApology = reviewedBookings.filter((b) => b.review?.owner_response);
+  const complaintsSubmitted = reviewedBookings.filter((b) => b.review?.has_complaint);
+  const hasApologiesReceived = resolvedWithApology.length > 0;
 
   // User Travel Analytics & Charts Computation
   const analyticsData = React.useMemo(() => {
@@ -563,6 +570,12 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         {[
           { id: 'home', label: 'Dashboard Home', icon: BarChart3 },
           { id: 'bookings', label: `My Bookings (${bookings.length})`, icon: Calendar },
+          {
+            id: 'feedback',
+            label: `Feedback & Reviews (${reviewedBookings.length})`,
+            icon: Star,
+            hasBadge: hasApologiesReceived,
+          },
           { id: 'favorites', label: `Saved Ships (${favorites.length})`, icon: Heart },
           { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
           { id: 'profile', label: 'Passenger Profile', icon: UserIcon },
@@ -579,6 +592,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                   : 'text-slate-600 hover:text-[#051833] hover:bg-slate-100 font-bold'
               }`}
             >
+              {tab.hasBadge && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse -ml-0.5 inline-block" />
+              )}
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
             </button>
@@ -1168,6 +1184,12 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                                   : 'Under Review'}
                               </span>
                             )}
+                            {b.review.owner_response && (
+                              <span className="text-[10px] font-bold px-2.5 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-300 inline-flex items-center gap-1 whitespace-nowrap">
+                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                Owner Apology Received
+                              </span>
+                            )}
                           </div>
                         )}
 
@@ -1183,6 +1205,34 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                           </button>
                         )}
                       </div>
+
+                      {/* Official Vessel Owner Resolution & Apology */}
+                      {b.review?.owner_response && (
+                        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/40 to-white border-2 border-emerald-300 text-xs space-y-1.5 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-emerald-900 font-bold">
+                            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-800">
+                              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                              Official Response & Apology from Ship Owner
+                            </span>
+                            <span className="text-[10px] text-emerald-700/80 font-mono">
+                              {b.review.owner_response_at}
+                            </span>
+                          </div>
+                          <p className="text-emerald-950 font-medium italic bg-white/70 p-3 rounded-xl border border-emerald-100 leading-relaxed">
+                            "{b.review.owner_response}"
+                          </p>
+                          <div className="flex items-center justify-between pt-1 text-[11px] text-emerald-800 font-medium">
+                            <span>✓ Corrective actions implemented & issue addressed</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveSubTab('feedback')}
+                              className="font-bold underline hover:text-emerald-950 cursor-pointer"
+                            >
+                              View in Feedback Center →
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1192,7 +1242,195 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
       )}
 
-      {/* TAB 3: FAVORITE / SAVED SHIPS */}
+      {/* TAB: MY REVIEWS, GRIEVANCES & OPERATOR RESOLUTIONS */}
+      {activeSubTab === 'feedback' && (() => {
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#082F5B]/10">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-bold uppercase tracking-wider mb-1 border border-amber-200">
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                  Passenger Ratings & Grievance Feedback
+                </div>
+                <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">
+                  My Reviews & Operator Responses
+                </h2>
+                <p className="text-xs text-[#102B46]/65 mt-0.5 font-medium">
+                  Review your voyage feedback, track filed complaints, and view official apologies & resolution messages sent by ship owners.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{resolvedWithApology.length} Owner Apologies Received</span>
+                </span>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-5 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider mb-1">Reviews Submitted</span>
+                <div className="text-3xl font-black text-[#102B46] font-mono-numbers">{reviewedBookings.length}</div>
+                <p className="text-[11px] text-slate-400 mt-1">Verified passenger ratings</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-rose-50/70 border border-rose-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-rose-800 block tracking-wider mb-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Complaints Filed</span>
+                </span>
+                <div className="text-3xl font-black text-rose-900 font-mono-numbers">{complaintsSubmitted.length}</div>
+                <p className="text-[11px] text-rose-700 font-medium mt-1">Reported to platform safety</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-emerald-50/70 border border-emerald-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 block tracking-wider mb-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Owner Apologies</span>
+                </span>
+                <div className="text-3xl font-black text-emerald-900 font-mono-numbers">{resolvedWithApology.length}</div>
+                <p className="text-[11px] text-emerald-700 font-medium mt-1">Official responses & actions</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider mb-1">Total Bookings</span>
+                <div className="text-3xl font-black text-[#102B46] font-mono-numbers">{bookings.length}</div>
+                <p className="text-[11px] text-slate-400 mt-1">All ocean itineraries</p>
+              </div>
+            </div>
+
+            {/* List of Reviews & Owner Apologies */}
+            {reviewedBookings.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 border border-[#082F5B]/10 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 mx-auto flex items-center justify-center">
+                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                </div>
+                <h3 className="font-extrabold text-[#102B46] text-base">No Feedback Submitted Yet</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  When you complete a voyage, you can rate your experience or file a grievance. Any formal response or apology from the vessel owner will appear right here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('bookings')}
+                  className="px-5 py-2.5 rounded-full bg-[#1677C8] text-white text-xs font-bold hover:bg-[#082F5B] transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>View Completed Voyages to Review</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviewedBookings.map((b) => {
+                  const rev = b.review!;
+                  const stars = [1, 2, 3, 4, 5];
+                  const shipName = b.cruise_title || b.cruise_name || 'Charter Vessel';
+
+                  return (
+                    <div
+                      key={b.id}
+                      className="bg-white rounded-3xl border border-[#082F5B]/10 p-5 sm:p-6 shadow-sm space-y-4 hover:shadow-md transition"
+                    >
+                      {/* Top Row: Vessel & Star Rating */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#1677C8] flex items-center justify-center font-bold">
+                            <Ship className="w-5 h-5 text-[#1677C8]" />
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-base text-[#102B46]">{shipName}</h4>
+                            <p className="text-xs text-slate-400">
+                              Booking Ref: <strong className="font-mono text-[#102B46]">{b.booking_id}</strong>
+                              {b.booking_date && <> • Date: {b.booking_date}</>}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 self-start sm:self-auto">
+                          {stars.map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3.5 h-3.5 ${
+                                s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                              }`}
+                            />
+                          ))}
+                          <span className="text-xs font-black text-amber-900 ml-1">{rev.rating}.0</span>
+                        </div>
+                      </div>
+
+                      {/* Passenger's Review Comment */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Your Review</span>
+                        <p className="text-xs text-[#102B46] font-medium italic leading-relaxed">
+                          "{rev.comment || '5-star rating submitted.'}"
+                        </p>
+                      </div>
+
+                      {/* Passenger's Grievance (if filed) */}
+                      {rev.has_complaint && (
+                        <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Grievance Reported: {rev.complaint_category || 'Service Quality'}</span>
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                              rev.complaint_status === 'RESOLVED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : rev.complaint_status === 'WARNING_SENT'
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {rev.complaint_status === 'RESOLVED' ? 'Resolved by Owner' : rev.complaint_status === 'WARNING_SENT' ? 'Moderation Warning Issued' : 'Under Investigation'}
+                            </span>
+                          </div>
+                          <p className="text-rose-950 font-medium italic mt-1">
+                            "{rev.complaint_text}"
+                          </p>
+                        </div>
+                      )}
+
+                      {/* OFFICIAL OWNER RESPONSE & APOLOGY BOX */}
+                      {rev.owner_response ? (
+                        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/40 to-white border-2 border-emerald-300 rounded-2xl p-4 sm:p-5 text-xs space-y-2 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-emerald-900 font-bold">
+                            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-800">
+                              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                              Official Response & Apology from Ship Owner
+                            </span>
+                            {rev.owner_response_at && (
+                              <span className="text-[10px] text-emerald-700/80 font-mono">
+                                Responded: {rev.owner_response_at}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-emerald-950 font-medium leading-relaxed italic bg-white/70 p-3 rounded-xl border border-emerald-100">
+                            "{rev.owner_response}"
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Action Plan Implemented • Issue Resolved & Closed</span>
+                          </div>
+                        </div>
+                      ) : rev.has_complaint ? (
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>The vessel operator and platform moderation are reviewing your complaint. Any official apology or resolution will appear here.</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* TAB 4: FAVORITE / SAVED SHIPS */}
       {activeSubTab === 'favorites' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
