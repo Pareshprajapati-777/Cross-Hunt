@@ -17,6 +17,7 @@ import {
 import { formatINR } from '../utils/currency';
 import { getTourImageUrl } from '../utils/images';
 import { useAuth } from '../context/AuthContext';
+import { useAuthModal } from '../context/AuthModalContext';
 
 interface TourDetailPageProps {
   tour?: PublicTour | null;
@@ -30,6 +31,7 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
   onBookTourTicket,
 }) => {
   const { user } = useAuth();
+  const { openLoginModal } = useAuthModal();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tour, setTour] = useState<PublicTour | null>(initialTour || null);
@@ -64,7 +66,13 @@ export const TourDetailPage: React.FC<TourDetailPageProps> = ({
   const handleBookTicket = (selectedTour: PublicTour) => {
     const bookUrl = `/book-tour/${selectedTour.id}`;
     if (!user) {
-      navigate(`/login?redirect=${encodeURIComponent(bookUrl)}`, { state: { from: bookUrl, reason: 'booking' } });
+      openLoginModal({
+        title: 'Sign In to Book Tour Tickets',
+        featureName: `${selectedTour.title} Tour Reservation`,
+        description: 'Passenger login is required to reserve seats, issue QR boarding passes, and confirm public cruise tour tickets.',
+        iconType: 'ticket',
+        returnUrl: bookUrl,
+      });
       return;
     }
     if (onBookTourTicket) {

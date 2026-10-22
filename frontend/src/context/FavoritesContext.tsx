@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { useAuthModal } from './AuthModalContext';
 import { Cruise } from '../api/types';
 import { FavoriteItem, getMyFavorites, toggleFavoriteShip } from '../api/favorites';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -19,6 +20,7 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 
 export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { openLoginModal } = useAuthModal();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,10 +64,12 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     async (cruise: Cruise): Promise<boolean | null> => {
       if (!user) {
         const returnUrl = `${location.pathname}${location.search}`;
-        setNotice('Please sign in to your user account to save favorite ships.');
-        setTimeout(() => setNotice(null), 4000);
-        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`, {
-          state: { from: location, reason: 'booking' },
+        openLoginModal({
+          title: 'Sign In to Save Favorites',
+          featureName: 'Wishlist & Favorite Ships',
+          description: `Passenger login is required to save "${cruise.name}" and view your bookmarked vessels in your user dashboard panel.`,
+          iconType: 'heart',
+          returnUrl,
         });
         return null;
       }

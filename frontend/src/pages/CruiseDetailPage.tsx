@@ -26,6 +26,7 @@ import {
 import { formatINR } from '../utils/currency';
 import { ShipContactCard } from '../components/ship/ShipContactCard';
 import { useAuth } from '../context/AuthContext';
+import { useAuthModal } from '../context/AuthModalContext';
 import { useFavorites } from '../context/FavoritesContext';
 
 interface CruiseDetailPageProps {
@@ -42,6 +43,7 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
   onBookEvent,
 }) => {
   const { user } = useAuth();
+  const { openLoginModal } = useAuthModal();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -50,6 +52,8 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedRateId, setSelectedRateId] = useState<number | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+
+  const isFav = cruise ? isFavorite(cruise.id) : false;
 
   useEffect(() => {
     if (!cruise && id) {
@@ -80,12 +84,33 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
     }
   };
 
+  const handleFavoriteToggle = () => {
+    if (!cruise) return;
+    if (!user) {
+      openLoginModal({
+        title: 'Sign In to Save Favorites',
+        featureName: 'Wishlist & Favorite Ships',
+        description: `Passenger login is required to save "${cruise.name}" and view your bookmarked fleet in your user dashboard panel.`,
+        iconType: 'heart',
+        returnUrl: `/cruises/${cruise.slug || cruise.id}`,
+      });
+      return;
+    }
+    toggleFavorite(cruise);
+  };
+
   const handleBook = () => {
     const targetId = cruise?.slug || cruise?.id;
     const rateQuery = selectedRateId ? `?rate_id=${selectedRateId}` : '';
     const bookUrl = `/book-cruise/${targetId}${rateQuery}`;
     if (!user) {
-      navigate(`/login?redirect=${encodeURIComponent(bookUrl)}`, { state: { from: bookUrl, reason: 'booking' } });
+      openLoginModal({
+        title: 'Sign In to Reserve Vessel',
+        featureName: `${cruise?.name || 'Vessel'} Charter Reservation`,
+        description: 'Passenger account login is required to select packages, calculate charter rates, and reserve this vessel.',
+        iconType: 'ship',
+        returnUrl: bookUrl,
+      });
       return;
     }
     navigate(bookUrl);
@@ -154,9 +179,24 @@ export const CruiseDetailPage: React.FC<CruiseDetailPageProps> = ({
             <span>Back to Fleet</span>
           </button>
 
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span>Vessel Code:</span>
-            <span className="font-mono font-bold text-slate-900 uppercase">{cruise.slug}</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleFavoriteToggle}
+              className={`px-4 py-2 rounded-full border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                isFav
+                  ? 'bg-rose-50 border-rose-300 text-rose-700'
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-rose-300 hover:bg-rose-50/50'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+              <span>{isFav ? 'Saved in Favorites' : 'Save to Favorites'}</span>
+            </button>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <span>Vessel Code:</span>
+              <span className="font-mono font-bold text-slate-900 uppercase">{cruise.slug}</span>
+            </div>
           </div>
         </div>
 

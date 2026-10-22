@@ -7,9 +7,12 @@ import {
   useNavigate,
   useLocation,
   useSearchParams,
+  Link,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthModalProvider, useAuthModal } from './context/AuthModalContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import { LoginRequiredModal } from './components/auth/LoginRequiredModal';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HomePage } from './pages/HomePage';
@@ -26,7 +29,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { TicketVerifyPage } from './pages/TicketVerifyPage';
 import { AuthPage } from './pages/AuthPages';
 import { CrossHuntAiWidget } from './components/ai/CrossHuntAiWidget';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock, ArrowRight } from 'lucide-react';
 
 
 /**
@@ -56,10 +59,11 @@ function PageLoader() {
 
 /**
  * Route guard: requires user to be logged in.
- * Preserves the target booking URL so the customer returns right back after authentication.
+ * Renders a prominent Login Required window prompt if accessed without authentication.
  */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, featureName = 'Protected Passenger Feature' }: { children: React.ReactNode; featureName?: string }) {
   const { user, loading } = useAuth();
+  const { openLoginModal } = useAuthModal();
   const location = useLocation();
 
   if (loading) {
@@ -68,11 +72,41 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     const returnUrl = `${location.pathname}${location.search}`;
     return (
-      <Navigate
-        to={`/login?redirect=${encodeURIComponent(returnUrl)}`}
-        replace
-        state={{ from: location, reason: 'booking' }}
-      />
+      <div className="min-h-screen pt-32 pb-24 px-4 flex items-center justify-center bg-[#f8f9fa]">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border-2 border-sky-400 shadow-xl text-center space-y-4 shadow-[0_0_40px_rgba(14,165,233,0.25)]">
+          <div className="w-16 h-16 rounded-2xl bg-[#051833] text-sky-400 flex items-center justify-center mx-auto shadow-lg shadow-sky-600/30">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-800 text-[11px] font-extrabold uppercase tracking-wider border border-sky-200">
+            Authentication Required • लॉगिन आवश्यक है
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 font-serif">Login Required</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Is feature ka upyog karne ke liye passenger account login zaroori hai. Please sign in or register to access this service.
+          </p>
+          <div className="space-y-2.5 pt-2">
+            <button
+              onClick={() => {
+                openLoginModal({
+                  title: 'Account Login Required',
+                  featureName,
+                  returnUrl,
+                });
+              }}
+              className="w-full py-3.5 rounded-2xl bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Open Login Window / लॉगिन विंडो खोलें</span>
+              <ArrowRight className="w-4 h-4 text-[#fff8dc]" />
+            </button>
+            <Link
+              to={`/login?redirect=${encodeURIComponent(returnUrl)}`}
+              className="block w-full py-3 rounded-2xl bg-sky-50 hover:bg-sky-100 text-sky-900 font-bold text-xs border border-sky-200 transition text-center"
+            >
+              Go Directly to Sign In Page
+            </Link>
+          </div>
+        </div>
+      </div>
     );
   }
   return <>{children}</>;
@@ -185,6 +219,7 @@ function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { requireAuth } = useAuthModal();
 
   const handleNavigate = (tab: string, param?: string) => {
     if (tab === 'home') navigate('/');
@@ -216,9 +251,33 @@ const AppContent: React.FC = () => {
               <HomePage
                 onNavigate={handleNavigate}
                 onSelectCruise={(c) => { navigate(`/cruises/${c.slug || c.id}`); }}
-                onBookCruise={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onBookCruise={(c, cabin) => {
+                  const target = `/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Reserve Vessel',
+                      featureName: `${c.name} Charter Reservation`,
+                      description: 'Passenger account login is required to select cabin packages, view verified operator pricing, and reserve this vessel.',
+                      iconType: 'ship',
+                      returnUrl: target,
+                    }
+                  );
+                }}
                 onSelectTour={(t) => { navigate(`/tours/${t.slug || t.id}`); }}
-                onBookTour={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+                onBookTour={(t) => {
+                  const target = `/book-tour/${t.slug || t.id}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Book Tour Tickets',
+                      featureName: `${t.title} Cruise Tour`,
+                      description: 'Passenger login is required to book public tour tickets and receive verified digital QR boarding passes.',
+                      iconType: 'ticket',
+                      returnUrl: target,
+                    }
+                  );
+                }}
               />
             }
           />
@@ -229,7 +288,19 @@ const AppContent: React.FC = () => {
             element={
               <ExplorePage
                 onSelectCruise={(c) => { navigate(`/cruises/${c.slug || c.id}`); }}
-                onBookCruise={(c) => { navigate(`/book-cruise/${c.slug || c.id}`); }}
+                onBookCruise={(c) => {
+                  const target = `/book-cruise/${c.slug || c.id}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Reserve Vessel',
+                      featureName: `${c.name} Charter Reservation`,
+                      description: 'Passenger login is required to select packages, calculate charter rates, and reserve this vessel.',
+                      iconType: 'ship',
+                      returnUrl: target,
+                    }
+                  );
+                }}
               />
             }
           />
@@ -240,7 +311,19 @@ const AppContent: React.FC = () => {
             element={
               <CruiseDetailPage
                 onBack={() => { navigate('/explore'); }}
-                onBookTour={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onBookTour={(c, cabin) => {
+                  const target = `/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Reserve Vessel',
+                      featureName: `${c.name} Charter Reservation`,
+                      description: 'Passenger login is required to reserve this vessel and confirm booking.',
+                      iconType: 'ship',
+                      returnUrl: target,
+                    }
+                  );
+                }}
                 onBookEvent={() => { navigate('/events'); }}
               />
             }
@@ -250,7 +333,19 @@ const AppContent: React.FC = () => {
             element={
               <CruiseDetailPage
                 onBack={() => { navigate('/explore'); }}
-                onBookTour={(c, cabin) => { navigate(`/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`); }}
+                onBookTour={(c, cabin) => {
+                  const target = `/book-cruise/${c.slug || c.id}${cabin ? `?cabin=${cabin}` : ''}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Reserve Vessel',
+                      featureName: `${c.name} Charter Reservation`,
+                      description: 'Passenger login is required to reserve this vessel and confirm booking.',
+                      iconType: 'ship',
+                      returnUrl: target,
+                    }
+                  );
+                }}
                 onBookEvent={() => { navigate('/events'); }}
               />
             }
@@ -262,7 +357,19 @@ const AppContent: React.FC = () => {
             element={
               <ToursPage
                 onSelectTour={(t) => { navigate(`/tours/${t.slug || t.id}`); }}
-                onBookTour={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+                onBookTour={(t) => {
+                  const target = `/book-tour/${t.slug || t.id}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Book Tour Tickets',
+                      featureName: `${t.title} Cruise Tour`,
+                      description: 'Passenger login is required to book tour tickets and receive verified digital QR boarding passes.',
+                      iconType: 'ticket',
+                      returnUrl: target,
+                    }
+                  );
+                }}
               />
             }
           />
@@ -273,7 +380,19 @@ const AppContent: React.FC = () => {
             element={
               <TourDetailPage
                 onBack={() => { navigate('/tours'); }}
-                onBookTourTicket={(t) => { navigate(`/book-tour/${t.slug || t.id}`); }}
+                onBookTourTicket={(t) => {
+                  const target = `/book-tour/${t.slug || t.id}`;
+                  requireAuth(
+                    () => { navigate(target); },
+                    {
+                      title: 'Sign In to Book Tour Tickets',
+                      featureName: `${t.title} Cruise Tour`,
+                      description: 'Passenger login is required to book tour tickets and receive verified digital QR boarding passes.',
+                      iconType: 'ticket',
+                      returnUrl: target,
+                    }
+                  );
+                }}
               />
             }
           />
@@ -325,7 +444,15 @@ const AppContent: React.FC = () => {
             element={
               <PrivateEventsPage
                 onSuccess={(b) => navigate(`/dashboard?booking_id=${b?.booking_id || ''}&openPass=true`)}
-                onNeedLogin={() => navigate('/login?redirect=/events')}
+                onNeedLogin={() => {
+                  requireAuth(() => {}, {
+                    title: 'Sign In to Reserve Private Event',
+                    featureName: 'Private Yacht Event Booking',
+                    description: 'Passenger account login is required to customize packages and submit event charter reservations.',
+                    iconType: 'ship',
+                    returnUrl: '/events',
+                  });
+                }}
               />
             }
           />
@@ -383,6 +510,9 @@ const AppContent: React.FC = () => {
         </Routes>
       </main>
 
+      {/* Global Login Required Modal Window */}
+      <LoginRequiredModal />
+
       {/* Personal AI Cruise Assistant Widget (3D Dolphin 🐬 + Chat Modal) */}
       <CrossHuntAiWidget />
 
@@ -397,9 +527,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <FavoritesProvider>
-          <AppContent />
-        </FavoritesProvider>
+        <AuthModalProvider>
+          <FavoritesProvider>
+            <AppContent />
+          </FavoritesProvider>
+        </AuthModalProvider>
       </AuthProvider>
     </BrowserRouter>
   );
