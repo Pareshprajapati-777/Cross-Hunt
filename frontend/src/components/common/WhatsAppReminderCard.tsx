@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, ShieldCheck, CheckCircle2, AlertCircle, Sparkles, Phone, Lock } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertCircle, Sparkles, Phone, Lock } from 'lucide-react';
+import { WhatsAppIcon } from './WhatsAppIcon';
 import { isValidWhatsAppMobile, formatIndianPhoneNumber } from '../../utils/whatsapp';
 
 interface WhatsAppReminderCardProps {
@@ -101,8 +102,8 @@ export const WhatsAppReminderCard: React.FC<WhatsAppReminderCardProps> = ({
       {/* Header with WhatsApp branding & Flow tag */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
-            <MessageSquare className="w-6 h-6 fill-white text-emerald-500" />
+          <div className="w-11 h-11 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shadow-md shadow-[#25D366]/30 shrink-0">
+            <WhatsAppIcon className="w-7 h-7" variant="app" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -157,8 +158,8 @@ export const WhatsAppReminderCard: React.FC<WhatsAppReminderCardProps> = ({
 
           {/* Number Input */}
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Phone className="w-4 h-4 text-emerald-600" />
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <WhatsAppIcon className="w-4 h-4" variant="solid" />
             </div>
             <input
               type="tel"

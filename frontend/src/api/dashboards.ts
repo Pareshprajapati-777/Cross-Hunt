@@ -87,9 +87,12 @@ export interface AdminDashboardData {
     external_operators_count?: number;
     total_tours?: number;
     active_tours?: number;
+    total_activities?: number;
+    active_activities?: number;
     total_bookings: number;
     private_bookings?: number;
     tour_bookings?: number;
+    activity_bookings?: number;
     tickets_count?: number;
     total_tickets?: number;
     pending_bookings?: number;
@@ -653,6 +656,12 @@ export async function markNotificationRead(notificationId: number): Promise<{ su
   });
 }
 
+export async function markAllNotificationsRead(): Promise<{ success: boolean; count: number }> {
+  return apiRequest('/api/notifications/mark-all-read/', {
+    method: 'POST',
+  });
+}
+
 export interface GeneratedReportResult {
   report_type: string;
   title: string;
@@ -743,6 +752,18 @@ export async function adminWarnShipOwner(
   return apiRequest('/api/admin/reviews/warn-owner/', {
     method: 'POST',
     body: JSON.stringify({ review_id: reviewId, warning_message: warningMessage }),
+  });
+}
+
+export async function adminResolveReview(reviewId: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest(`/api/admin/reviews/${reviewId}/resolve/`, {
+    method: 'POST',
+  });
+}
+
+export async function adminReopenReview(reviewId: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest(`/api/admin/reviews/${reviewId}/reopen/`, {
+    method: 'POST',
   });
 }
 

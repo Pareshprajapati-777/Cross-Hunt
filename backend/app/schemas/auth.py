@@ -23,6 +23,8 @@ class ProfileUpdatePayload(BaseModel):
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    phone_number: Optional[str] = None
+    whatsapp_number: Optional[str] = None
     address: Optional[str] = None
     password: Optional[str] = None
 

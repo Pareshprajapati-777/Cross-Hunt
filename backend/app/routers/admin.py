@@ -13,6 +13,7 @@ from backend.app.models.user import User
 from backend.app.models.operator import Operator
 from backend.app.models.cross import Cross, Route, ShipExtra
 from backend.app.models.tour import PublicTour
+from backend.app.models.activity import Activity
 import os
 import urllib.parse
 from backend.app.models.booking import Booking, PlatformNotification, WhatsAppMessageLog, SystemSetting
@@ -473,9 +474,12 @@ def get_admin_dashboard(
         'external_operators_count': kpis['external_operators'],
         'total_tours': kpis['public_tours'],
         'active_tours': db.query(PublicTour).filter(PublicTour.is_published == True, PublicTour.departure_date >= date.today()).count(),
+        'total_activities': db.query(Activity).count(),
+        'active_activities': db.query(Activity).filter(Activity.is_active == True).count(),
         'total_bookings': len(all_bookings),
         'private_bookings': kpis['private_bookings'],
         'tour_bookings': sum(1 for b in all_bookings if b.booking_type == 'TOUR'),
+        'activity_bookings': sum(1 for b in all_bookings if b.booking_type == 'ACTIVITY'),
         'tickets_count': kpis['public_tickets'],
         'total_tickets': kpis['public_tickets'],
         'pending_requests': sum(1 for b in all_bookings if b.status == 'PENDING'),
@@ -1393,6 +1397,8 @@ def list_admin_reviews(
             'complaint_status': r.complaint_status or ('PENDING' if r.has_complaint else 'NONE'),
             'warning_message': r.warning_message or '',
             'warning_sent_at': r.warning_sent_at.strftime('%Y-%m-%d %H:%M') if r.warning_sent_at else None,
+            'owner_response': r.owner_response or '',
+            'owner_response_at': r.owner_response_at.strftime('%Y-%m-%d %H:%M') if r.owner_response_at else None,
             'created_at': r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else ''
         })
     return {'reviews': rev_list}
@@ -1438,7 +1444,19 @@ async def admin_warn_ship_owner(
     r.warning_message = warning_text
     r.warning_sent_at = datetime.utcnow()
 
-    # Dispatched directly to owner's Complaint Box in the Operator Operations Suite (bypasses notification bell)
+    if owner:
+        notif = PlatformNotification(
+            title=f"Platform Compliance Warning: {ship_name}",
+            message=warning_text,
+            notification_type="COMPLAINT_WARNING",
+            target_audience="OWNERS",
+            target_user_id=owner.id,
+            action_link="/operator-dashboard?tab=reviews",
+            sender_name="Platform Safety & Moderation",
+            is_read=False,
+        )
+        db.add(notif)
+
     db.commit()
 
     return {
@@ -1447,6 +1465,39 @@ async def admin_warn_ship_owner(
         "owner_name": (owner.full_name or owner.username) if owner else "Platform Admin",
         "warning_sent_at": r.warning_sent_at.strftime("%Y-%m-%d %H:%M")
     }
+
+
+@router.post("/reviews/{review_id}/resolve/")
+@router.post("/reviews/{review_id}/resolve")
+def admin_resolve_complaint(
+    review_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Review or complaint not found.")
+    r.complaint_status = "RESOLVED"
+    if not r.owner_response:
+        r.owner_response = "Resolved and acknowledged by Platform Administration."
+        r.owner_response_at = datetime.utcnow()
+    db.commit()
+    return {"success": True, "message": "Complaint marked as resolved successfully."}
+
+
+@router.post("/reviews/{review_id}/reopen/")
+@router.post("/reviews/{review_id}/reopen")
+def admin_reopen_complaint(
+    review_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    r = db.query(CrossReview).filter(CrossReview.id == review_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Review or complaint not found.")
+    r.complaint_status = "PENDING"
+    db.commit()
+    return {"success": True, "message": "Complaint reopened for moderation review."}
 
 
 @router.delete("/reviews/")

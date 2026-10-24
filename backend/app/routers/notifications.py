@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc
 from typing import Optional, List, Dict, Any
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
 from backend.app.dependencies.auth import get_optional_user, get_current_user
 from backend.app.models.user import User
 from backend.app.models.booking import PlatformNotification
@@ -60,6 +60,34 @@ def get_user_notifications(
     return {'notifications': data, 'unread_count': unread_count}
 
 
+@router.post("/mark-all-read/")
+@router.post("/mark-all-read")
+def mark_all_notifications_read(
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        return {'success': True, 'count': 0}
+
+    conds = [
+        PlatformNotification.target_audience == 'ALL_USERS',
+        PlatformNotification.target_user_id == current_user.id
+    ]
+    if current_user.role in ['OWNER', 'CROSS_OWNER']:
+        conds.append(PlatformNotification.target_audience == 'ALL_OWNERS')
+
+    notifs = db.query(PlatformNotification).filter(or_(*conds)).all()
+    count = 0
+    for n in notifs:
+        if not n.is_read:
+            n.is_read = True
+            count += 1
+    if count > 0:
+        db.commit()
+        checkpoint_db()
+    return {'success': True, 'count': count}
+
+
 @router.post("/{notification_id}/read/")
 @router.post("/{notification_id}/read")
 def mark_notification_read(
@@ -70,4 +98,6 @@ def mark_notification_read(
     if notif:
         notif.is_read = True
         db.commit()
+        checkpoint_db()
     return {'success': True}
+

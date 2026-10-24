@@ -55,6 +55,10 @@ async def api_event_packages(db: Session = Depends(get_db)):
             "price": float(s.price),
             "location": s.location,
             "image": s.image or "",
+            "departure_port": s.departure_port or s.location or "Harbor Terminal",
+            "whatsapp_number": s.whatsapp_number or (s.owner.phone if s.owner and s.owner.phone else (s.operator.phone if s.operator and s.operator.phone else s.contact_number or "+919820012345")),
+            "contact_number": s.contact_number or (s.owner.phone if s.owner and s.owner.phone else (s.operator.phone if s.operator and s.operator.phone else "+919820012345")),
+            "owner_name": f"{s.owner.first_name} {s.owner.last_name}".strip() if s.owner and (s.owner.first_name or s.owner.last_name) else (s.operator.name if s.operator else "Vessel Operator"),
         } for s in ships
     ]
 

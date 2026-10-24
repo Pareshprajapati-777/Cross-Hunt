@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 from backend.app.core.config import settings
 from backend.app.core.security import verify_password, get_password_hash, create_access_token
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
 from backend.app.models.user import User
 from backend.app.dependencies.auth import get_optional_user, get_current_user
 from backend.app.schemas.auth import (
@@ -26,6 +26,7 @@ def _is_secure_request(request: Request) -> bool:
 
 
 @router.get("/me/")
+@router.get("/me")
 async def api_me(user: Optional[User] = Depends(get_optional_user)):
     if user:
         return {"authenticated": True, "user": user.to_dict()}
@@ -242,14 +243,25 @@ async def update_profile(
         user.last_name = payload.last_name.strip()
     if payload.email is not None:
         user.email = payload.email.strip().lower()
-    if payload.phone is not None:
-        user.phone = payload.phone.strip()
+
+    phone_val = payload.phone if payload.phone is not None else payload.phone_number
+    if phone_val is not None:
+        cleaned_phone = phone_val.strip()
+        user.phone = cleaned_phone
+        user.whatsapp_number = cleaned_phone
+
+    if payload.whatsapp_number is not None:
+        user.whatsapp_number = payload.whatsapp_number.strip()
+
     if payload.address is not None:
         user.address = payload.address.strip()
+
     if payload.password and len(payload.password.strip()) >= 6:
         user.password = get_password_hash(payload.password.strip())
+
     db.commit()
     db.refresh(user)
+    checkpoint_db()
 
     return {
         "success": True,

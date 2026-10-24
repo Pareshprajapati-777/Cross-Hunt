@@ -24,6 +24,9 @@ export interface CreateBookingPayload {
   special_request?: string;
   customer_whatsapp?: string;
   whatsapp_reminder_opt_in?: boolean;
+  payment_method?: string;
+  payment_gateway_ref?: string;
+  payment_status?: string;
 }
 
 export async function createBooking(payload: CreateBookingPayload): Promise<{ success: boolean; message?: string; booking: Booking }> {

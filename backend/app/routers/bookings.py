@@ -319,14 +319,16 @@ async def api_create_booking(
         if booking_type in ("EVENT", "PRIVATE_EVENT"):
             tax_amount = Decimal(str(round(float(taxable_base) * 0.18 / 1.18, 2)))
             final_total = taxable_base
-            b_status = "PENDING"
-            t_status = "BOOKED"
+            is_paid = bool(payload.payment_gateway_ref or payload.payment_status == "PAID")
+            b_status = "CONFIRMED" if is_paid else "PENDING"
+            t_status = "CONFIRMED" if is_paid else "BOOKED"
         else:
             tax_amount = Decimal(str(round(float(taxable_base * Decimal("0.18")), 2)))
             final_total = taxable_base + tax_amount
             if not public_tour:
-                b_status = "PENDING"
-                t_status = "BOOKED"
+                is_paid = bool(payload.payment_gateway_ref or payload.payment_status == "PAID")
+                b_status = "CONFIRMED" if is_paid else "PENDING"
+                t_status = "CONFIRMED" if is_paid else "BOOKED"
             else:
                 b_status = "CONFIRMED"
                 t_status = "CONFIRMED"
@@ -350,6 +352,10 @@ async def api_create_booking(
     owner_payout = Decimal(str(round(float(subtotal or final_total) * 0.85, 2)))
     platform_comm = Decimal(str(round(float(subtotal or final_total) * 0.15, 2)))
     net_profit = max(Decimal("0.00"), final_total - owner_payout - discount_amount)
+
+    pay_method = payload.payment_method or "UPI / NetBanking"
+    pay_ref = payload.payment_gateway_ref or f"PAY-{booking_id}"
+    pay_status = payload.payment_status or ("PAID" if not is_quote else "PENDING")
 
     new_booking = Booking(
         booking_id=booking_id,
@@ -388,6 +394,9 @@ async def api_create_booking(
         customer_whatsapp=norm_whatsapp or "",
         whatsapp_reminder_opt_in=whatsapp_opt_in,
         whatsapp_reminder_status="SCHEDULED" if (norm_whatsapp and whatsapp_opt_in) else ("OPTED_OUT" if not whatsapp_opt_in else "SCHEDULED"),
+        payment_status=pay_status,
+        payment_method=pay_method,
+        payment_gateway_ref=pay_ref,
     )
 
     db.add(new_booking)

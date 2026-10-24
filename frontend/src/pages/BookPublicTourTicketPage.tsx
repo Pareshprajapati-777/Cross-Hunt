@@ -19,7 +19,8 @@ import {
 import { formatINR } from '../utils/currency';
 import { WhatsAppReminderCard } from '../components/common/WhatsAppReminderCard';
 import { TicketPass } from '../components/ticket/TicketPass';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { BookingPaymentModal } from '../components/payment/BookingPaymentModal';
+import { CheckCircle2, Printer, QrCode, Lock } from 'lucide-react';
 
 interface BookPublicTourTicketPageProps {
   tour?: PublicTour | null;
@@ -67,6 +68,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
   };
 
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   const handleSuccess = (b: Booking) => {
     if (onSuccess) {
@@ -179,7 +181,7 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       if (onNeedLogin) {
@@ -191,6 +193,8 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
       return;
     }
 
+    if (!tour) return;
+
     if (totalPassengers <= 0) {
       setErrorMessage('Please select at least 1 passenger.');
       return;
@@ -200,6 +204,25 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
       setErrorMessage(`Only ${tour.remaining_capacity} seats remain on this departure.`);
       return;
     }
+
+    if (totalAmount <= 0) {
+      handleExecuteBooking({
+        payment_method: 'Complimentary / Promo',
+        payment_gateway_ref: `COMP-${Date.now()}`,
+        payment_status: 'PAID',
+      });
+      return;
+    }
+
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleExecuteBooking = async (paymentDetails?: {
+    payment_method: string;
+    payment_gateway_ref: string;
+    payment_status: string;
+  }) => {
+    if (!tour) return;
 
     setSubmitting(true);
     setErrorMessage(null);
@@ -216,7 +239,12 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
         special_requests: specialRequests,
         customer_whatsapp: customerWhatsApp.trim() || undefined,
         whatsapp_reminder_opt_in: whatsappReminderOptIn,
+        payment_method: paymentDetails?.payment_method || 'UPI / QR Code',
+        payment_gateway_ref: paymentDetails?.payment_gateway_ref,
+        payment_status: paymentDetails?.payment_status || 'PAID',
       });
+
+      setIsPaymentModalOpen(false);
 
       confetti({
         particleCount: 120,
@@ -459,11 +487,26 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
               className={`w-full py-4 rounded-2xl text-white text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 ${
                 !user
                   ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
-                  : 'bg-sky-500 hover:bg-sky-600 shadow-sky-500/25'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
               }`}
             >
-              <span>{submitting ? 'Confirming Booking...' : !user ? 'SIGN IN TO CONFIRM & GET TICKET' : 'CONFIRM & GET DIGITAL TICKET'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Confirming Booking...</span>
+                </>
+              ) : !user ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>SIGN IN TO PAY & CONFIRM TICKET</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-4 h-4" />
+                  <span>PROCEED TO PAY & CONFIRM TICKET ({formatINR(totalAmount)})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -517,6 +560,29 @@ export const BookPublicTourTicketPage: React.FC<BookPublicTourTicketPageProps> =
           </div>
         </aside>
       </div>
+
+      {tour && (
+        <BookingPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          bookingSummary={{
+            title: tour.tour_title,
+            date: tour.departure_date,
+            time: tour.departure_time,
+            passengers: totalPassengers,
+            cabin: cabinTier,
+            amount: totalAmount,
+            bookingType: 'TOUR',
+            promoDiscount: discountAmount,
+          }}
+          customerInfo={{
+            name: user?.full_name,
+            email: user?.email,
+            phone: customerWhatsApp || user?.phone,
+          }}
+          onPaymentSuccess={handleExecuteBooking}
+        />
+      )}
     </div>
   );
 };

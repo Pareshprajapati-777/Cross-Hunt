@@ -1,12 +1,13 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from backend.app.core.config import settings
 
-is_sqlite = "sqlite" in settings.DATABASE_URL
+target_db_url = settings.normalized_database_url
+is_sqlite = "sqlite" in target_db_url
 connect_args = {"check_same_thread": False, "timeout": 30.0} if is_sqlite else {}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    target_db_url,
     connect_args=connect_args,
     echo=False,
     pool_pre_ping=True,
@@ -23,6 +24,16 @@ if is_sqlite:
         cursor.execute("PRAGMA temp_store=MEMORY")
         cursor.execute("PRAGMA mmap_size=268435456")
         cursor.close()
+
+def checkpoint_db():
+    """Flushes SQLite WAL to primary database file to guarantee persistence."""
+    if is_sqlite:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE);"))
+                conn.commit()
+        except Exception:
+            pass
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

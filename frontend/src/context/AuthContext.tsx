@@ -31,6 +31,7 @@ interface AuthContextType {
   register: (payload: any) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUser: (u: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +40,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initial] = useState(() => getInitialUserState());
   const [user, setUser] = useState<User | null>(initial.user);
   const [loading, setLoading] = useState<boolean>(initial.loading);
+
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    try {
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(updatedUser));
+    } catch {}
+    clearApiCache();
+  };
 
   const refreshUser = async (silent = false) => {
     if (!silent && !user) setLoading(true);
@@ -52,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         return;
       }
+      clearApiCache();
       const u = await getCurrentUser();
       setUser(u);
       if (u) {
@@ -115,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -23,6 +23,7 @@ import {
   Calendar,
   Clock,
   Plus,
+  Waves,
   X,
   Compass,
   Users,
@@ -55,10 +56,12 @@ import { getTourImageUrl } from '../utils/images';
 import { Link } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
+import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
 
 type OperatorTab =
   | 'overview'
   | 'ships'
+  | 'activities'
   | 'extras'
   | 'availability'
   | 'requests'
@@ -68,7 +71,7 @@ type OperatorTab =
   | 'profile';
 
 export const OperatorDashboardPage: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateUser } = useAuth();
   const [data, setData] = useState<OperatorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -109,9 +112,18 @@ export const OperatorDashboardPage: React.FC = () => {
         address: profileAddress,
         password: profilePassword || undefined,
       });
+      if (res.user) {
+        updateUser(res.user);
+        setProfileFirstName(res.user.first_name || '');
+        setProfileLastName(res.user.last_name || '');
+        setProfileEmail(res.user.email || '');
+        setProfilePhone(res.user.phone || '');
+        setProfileAddress(res.user.address || '');
+      } else {
+        await refreshUser();
+      }
       setProfileMsg({ text: res.message || 'Profile saved successfully!' });
       setProfilePassword('');
-      await refreshUser();
     } catch (err: any) {
       setProfileMsg({ text: err.message || 'Failed to update profile.', isError: true });
     } finally {
@@ -797,6 +809,7 @@ export const OperatorDashboardPage: React.FC = () => {
         {[
           { id: 'overview', label: 'Fleet Overview & Analytics', icon: BarChart3 },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },
+          { id: 'activities', label: 'Activities & Water Sports', icon: Waves },
           { id: 'extras', label: 'Ship Extras', icon: Tag },
           { id: 'availability', label: 'Availability Timeline', icon: Calendar },
           { id: 'requests', label: `Booking Requests (${data?.recent_bookings?.length || 0})`, icon: Clock },
@@ -1460,6 +1473,11 @@ export const OperatorDashboardPage: React.FC = () => {
           })}
           </div>
         </div>
+      )}
+
+      {/* TAB: WATER SPORTS & ACTIVITIES */}
+      {activeTab === 'activities' && (
+        <OperatorActivitiesView myShips={data?.my_ships || []} />
       )}
 
       {/* TAB 3: SHIP EXTRAS */}

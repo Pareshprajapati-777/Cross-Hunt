@@ -18,6 +18,8 @@ import {
   getAdminReviews,
   adminDeleteReview,
   adminWarnShipOwner,
+  adminResolveReview,
+  adminReopenReview,
   getAdminReports,
   getAdminOperators,
   updateAdminOperator,
@@ -71,7 +73,9 @@ import { AdminTransactionsView } from '../components/admin/AdminTransactionsView
 import { AdminNotificationsView } from '../components/admin/AdminNotificationsView';
 import { AdminReportsView } from '../components/admin/AdminReportsView';
 import { AdminToursManagementView } from '../components/admin/AdminToursManagementView';
-import { MessageSquare } from 'lucide-react';
+import { AdminActivitiesManagementView } from '../components/admin/AdminActivitiesManagementView';
+import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
+import { Compass } from 'lucide-react';
 
 type AdminTab =
   | 'overview'
@@ -82,6 +86,7 @@ type AdminTab =
   | 'reports'
   | 'bookings'
   | 'tours'
+  | 'activities'
   | 'offers'
   | 'whatsapp'
   | 'operators'
@@ -120,7 +125,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [offersList, setOffersList] = useState<Offer[]>([]);
   const [togglingOfferId, setTogglingOfferId] = useState<number | null>(null);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
-  const [reviewFilterTab, setReviewFilterTab] = useState<'all' | 'complaints' | 'reviews'>('all');
+  const [reviewFilterTab, setReviewFilterTab] = useState<'all' | 'complaints' | 'pending' | 'warned' | 'resolved' | 'reviews'>('all');
   const [warningModalReview, setWarningModalReview] = useState<any | null>(null);
   const [warningMessageInput, setWarningMessageInput] = useState<string>('');
   const [warningSending, setWarningSending] = useState<boolean>(false);
@@ -328,6 +333,28 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleAdminResolveReview = async (reviewId: number) => {
+    if (!window.confirm('Mark this passenger complaint as resolved?')) return;
+    try {
+      const res = await adminResolveReview(reviewId);
+      alert(res.message || 'Complaint marked as resolved.');
+      getAdminReviews().then((res) => setReviewsList(res.reviews || []));
+    } catch (err: any) {
+      alert(err.message || 'Failed to resolve complaint.');
+    }
+  };
+
+  const handleAdminReopenReview = async (reviewId: number) => {
+    if (!window.confirm('Re-open this complaint for moderation investigation?')) return;
+    try {
+      const res = await adminReopenReview(reviewId);
+      alert(res.message || 'Complaint reopened.');
+      getAdminReviews().then((res) => setReviewsList(res.reviews || []));
+    } catch (err: any) {
+      alert(err.message || 'Failed to reopen complaint.');
+    }
+  };
+
   const handleCreateOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -394,6 +421,8 @@ export const AdminDashboardPage: React.FC = () => {
     external_operators_count: 11,
     total_tours: 0,
     active_tours: 0,
+    total_activities: 12,
+    active_activities: 12,
     total_bookings: 0,
     private_bookings: 0,
     tour_bookings: 0,
@@ -457,8 +486,9 @@ export const AdminDashboardPage: React.FC = () => {
           { id: 'overview', label: 'Platform Overview', icon: BarChart3 },
           { id: 'bookings', label: `All Bookings (${stats.total_bookings})`, icon: Calendar },
           { id: 'tours', label: `Public Tours (${stats.total_tours || 0})`, icon: Waves },
+          { id: 'activities', label: `Water Sports (${stats.total_activities ?? 12})`, icon: Compass },
           { id: 'offers', label: `Coupons & Offers (${offersList.length})`, icon: Tag },
-          { id: 'whatsapp', label: 'WhatsApp Reminders', icon: MessageSquare },
+          { id: 'whatsapp', label: 'WhatsApp Reminders', icon: WhatsAppIcon },
           { id: 'operators', label: `Data Sources (${operatorsList.length || 11})`, icon: Database },
           { id: 'owners', label: `Owners (${stats.total_owners || stats.total_operators})`, icon: Anchor },
           { id: 'reviews', label: 'Reviews', icon: Star },
@@ -1117,14 +1147,18 @@ export const AdminDashboardPage: React.FC = () => {
       {/* TAB 9: REVIEWS & COMPLAINTS MODERATION */}
       {activeTab === 'reviews' && (() => {
         const complaintsCount = reviewsList.filter((r) => r.has_complaint).length;
-        const pendingComplaintsCount = reviewsList.filter((r) => r.has_complaint && r.complaint_status !== 'WARNING_SENT').length;
+        const pendingComplaintsCount = reviewsList.filter((r) => r.has_complaint && r.complaint_status !== 'WARNING_SENT' && r.complaint_status !== 'RESOLVED').length;
         const warnedCount = reviewsList.filter((r) => r.complaint_status === 'WARNING_SENT').length;
+        const resolvedCount = reviewsList.filter((r) => r.complaint_status === 'RESOLVED').length;
         const avgRating = reviewsList.length
           ? (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / reviewsList.length).toFixed(1)
           : '5.0';
 
         const displayedReviews = reviewsList.filter((r) => {
           if (reviewFilterTab === 'complaints') return r.has_complaint;
+          if (reviewFilterTab === 'pending') return r.has_complaint && r.complaint_status !== 'WARNING_SENT' && r.complaint_status !== 'RESOLVED';
+          if (reviewFilterTab === 'warned') return r.complaint_status === 'WARNING_SENT';
+          if (reviewFilterTab === 'resolved') return r.complaint_status === 'RESOLVED';
           if (reviewFilterTab === 'reviews') return !r.has_complaint;
           return true;
         });
@@ -1140,7 +1174,7 @@ export const AdminDashboardPage: React.FC = () => {
                   Passenger Reviews & Ship Complaints
                 </h2>
                 <p className="text-xs text-[#102B46]/65 mt-0.5 font-medium">
-                  Inspect passenger feedback, investigate vessel complaints, and issue official compliance warnings directly to ship owners.
+                  Inspect passenger feedback, investigate vessel complaints, issue official compliance warnings to ship owners, and track resolution outcomes.
                 </p>
               </div>
 
@@ -1155,7 +1189,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
 
             {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               <div className="p-4 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Total Submissions</div>
                 <div className="text-2xl font-black text-[#102B46] font-mono-numbers">{reviewsList.length}</div>
@@ -1165,19 +1199,28 @@ export const AdminDashboardPage: React.FC = () => {
               <div className="p-4 rounded-3xl bg-rose-50/70 border border-rose-200 shadow-xs">
                 <div className="text-[10px] font-black uppercase tracking-wider text-rose-700 mb-1 flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Passenger Complaints</span>
+                  <span>Pending Action</span>
                 </div>
-                <div className="text-2xl font-black text-rose-900 font-mono-numbers">{complaintsCount}</div>
-                <div className="text-[11px] text-rose-700 font-semibold mt-0.5">{pendingComplaintsCount} pending review</div>
+                <div className="text-2xl font-black text-rose-900 font-mono-numbers">{pendingComplaintsCount}</div>
+                <div className="text-[11px] text-rose-700 font-semibold mt-0.5">Awaiting moderation warn</div>
               </div>
 
               <div className="p-4 rounded-3xl bg-amber-50/70 border border-amber-200 shadow-xs">
                 <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 mb-1 flex items-center gap-1">
                   <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Warnings Sent to Owners</span>
+                  <span>Warnings Issued</span>
                 </div>
                 <div className="text-2xl font-black text-amber-950 font-mono-numbers">{warnedCount}</div>
-                <div className="text-[11px] text-amber-800 mt-0.5 font-medium">Compliance notices logged</div>
+                <div className="text-[11px] text-amber-800 mt-0.5 font-medium">Awaiting owner response</div>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-emerald-50/70 border border-emerald-200 shadow-xs">
+                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-800 mb-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Resolved & Closed</span>
+                </div>
+                <div className="text-2xl font-black text-emerald-950 font-mono-numbers">{resolvedCount}</div>
+                <div className="text-[11px] text-emerald-800 mt-0.5 font-medium">Owner addressed & fixed</div>
               </div>
 
               <div className="p-4 rounded-3xl bg-white border border-[#082F5B]/10 shadow-xs">
@@ -1207,15 +1250,41 @@ export const AdminDashboardPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setReviewFilterTab('complaints')}
+                onClick={() => setReviewFilterTab('pending')}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                  reviewFilterTab === 'complaints'
+                  reviewFilterTab === 'pending'
                     ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/30'
                     : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Complaints Only ({complaintsCount})</span>
+                <span>Pending Action ({pendingComplaintsCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReviewFilterTab('warned')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  reviewFilterTab === 'warned'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Warnings Dispatched ({warnedCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReviewFilterTab('resolved')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  reviewFilterTab === 'resolved'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Resolved & Closed ({resolvedCount})</span>
               </button>
 
               <button
@@ -1223,7 +1292,7 @@ export const AdminDashboardPage: React.FC = () => {
                 onClick={() => setReviewFilterTab('reviews')}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                   reviewFilterTab === 'reviews'
-                    ? 'bg-emerald-700 text-white shadow-sm'
+                    ? 'bg-[#082F5B] text-white shadow-sm'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
@@ -1259,7 +1328,13 @@ export const AdminDashboardPage: React.FC = () => {
                         <tr
                           key={r.id}
                           className={`transition-colors ${
-                            r.has_complaint ? 'bg-rose-50/20 hover:bg-rose-50/40' : 'hover:bg-[#EAF4FB]/50'
+                            r.complaint_status === 'RESOLVED'
+                              ? 'bg-emerald-50/15 hover:bg-emerald-50/30'
+                              : r.complaint_status === 'WARNING_SENT'
+                              ? 'bg-amber-50/20 hover:bg-amber-50/40'
+                              : r.has_complaint
+                              ? 'bg-rose-50/25 hover:bg-rose-50/45'
+                              : 'hover:bg-[#EAF4FB]/50'
                           }`}
                         >
                           {/* Ship & Owner */}
@@ -1297,21 +1372,63 @@ export const AdminDashboardPage: React.FC = () => {
                           {/* Complaint Details */}
                           <td className="py-4 px-5 align-top max-w-sm">
                             {r.has_complaint ? (
-                              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 space-y-1.5">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                              <div className={`p-3 rounded-2xl border space-y-2 ${
+                                r.complaint_status === 'RESOLVED'
+                                  ? 'bg-emerald-50/70 border-emerald-200'
+                                  : r.complaint_status === 'WARNING_SENT'
+                                  ? 'bg-amber-50/70 border-amber-200'
+                                  : 'bg-rose-50 border-rose-200'
+                              }`}>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                    r.complaint_status === 'RESOLVED'
+                                      ? 'bg-emerald-700 text-white'
+                                      : r.complaint_status === 'WARNING_SENT'
+                                      ? 'bg-amber-700 text-white'
+                                      : 'bg-rose-600 text-white'
+                                  }`}>
                                     {r.complaint_category || 'Grievance'}
                                   </span>
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    ID #{r.id}
+                                  </span>
                                 </div>
-                                <div className="text-xs text-rose-950 font-medium leading-snug">
-                                  "{r.complaint_text}"
+                                <div className={`text-xs font-medium leading-snug ${
+                                  r.complaint_status === 'RESOLVED' ? 'text-emerald-950' : r.complaint_status === 'WARNING_SENT' ? 'text-amber-950' : 'text-rose-950'
+                                }`}>
+                                  "{r.complaint_text || r.comment}"
                                 </div>
                                 <div>
-                                  {r.complaint_status === 'WARNING_SENT' ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300">
-                                      <CheckCircle2 className="w-3 h-3 text-amber-700" />
-                                      <span>Warning Sent ({r.warning_sent_at || 'Dispatched'})</span>
-                                    </span>
+                                  {r.complaint_status === 'RESOLVED' ? (
+                                    <div className="space-y-1.5 pt-0.5">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-900 bg-emerald-100/90 px-2 py-0.5 rounded border border-emerald-300">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                                        <span>Resolved by Ship Owner {r.owner_response_at ? `(${r.owner_response_at})` : ''}</span>
+                                      </span>
+                                      {r.warning_sent_at && (
+                                        <div className="text-[10px] text-amber-800 font-medium">
+                                          • Moderation warning dispatched on {r.warning_sent_at}
+                                        </div>
+                                      )}
+                                      {r.owner_response && (
+                                        <div className="text-[11px] text-emerald-950 bg-white p-2.5 rounded-xl border border-emerald-200 space-y-0.5">
+                                          <span className="font-bold text-[10px] text-emerald-800 uppercase block">
+                                            Owner Resolution & Apology:
+                                          </span>
+                                          <p className="italic font-normal">"{r.owner_response}"</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : r.complaint_status === 'WARNING_SENT' ? (
+                                    <div className="space-y-1 pt-0.5">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300">
+                                        <CheckCircle2 className="w-3 h-3 text-amber-700" />
+                                        <span>Warning Sent ({r.warning_sent_at || 'Dispatched'})</span>
+                                      </span>
+                                      <div className="text-[10px] text-amber-800 font-medium">
+                                        Awaiting ship owner's corrective action
+                                      </div>
+                                    </div>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 bg-white px-2 py-0.5 rounded border border-rose-300">
                                       <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
@@ -1335,18 +1452,48 @@ export const AdminDashboardPage: React.FC = () => {
                           {/* Actions */}
                           <td className="py-4 px-5 align-top text-right space-x-1.5 whitespace-nowrap">
                             {r.has_complaint && (
-                              <button
-                                onClick={() => handleOpenWarnModal(r)}
-                                className={`px-3 py-1.5 rounded-full font-bold text-[11px] cursor-pointer transition-all inline-flex items-center gap-1 border shadow-xs ${
-                                  r.complaint_status === 'WARNING_SENT'
-                                    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                                    : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-600/30'
-                                }`}
-                                title="Send official compliance warning message to ship owner"
-                              >
-                                <AlertTriangle className="w-3 h-3" />
-                                <span>{r.complaint_status === 'WARNING_SENT' ? 'Re-warn Owner' : 'Warn Ship Owner'}</span>
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleOpenWarnModal(r)}
+                                  className={`px-3 py-1.5 rounded-full font-bold text-[11px] cursor-pointer transition-all inline-flex items-center gap-1 border shadow-xs ${
+                                    r.complaint_status === 'RESOLVED'
+                                      ? 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                                      : r.complaint_status === 'WARNING_SENT'
+                                      ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                      : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-600/30'
+                                  }`}
+                                  title={
+                                    r.complaint_status === 'RESOLVED'
+                                      ? 'Re-issue or escalate compliance warning to ship owner'
+                                      : r.complaint_status === 'WARNING_SENT'
+                                      ? 'Re-warn ship owner'
+                                      : 'Send official compliance warning message to ship owner'
+                                  }
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span>{r.complaint_status === 'WARNING_SENT' || r.complaint_status === 'RESOLVED' ? 'Re-warn Owner' : 'Warn Ship Owner'}</span>
+                                </button>
+
+                                {r.complaint_status !== 'RESOLVED' ? (
+                                  <button
+                                    onClick={() => handleAdminResolveReview(r.id)}
+                                    className="px-2.5 py-1.5 rounded-full text-emerald-700 hover:bg-emerald-50 border border-emerald-300 hover:border-emerald-400 font-bold text-[11px] cursor-pointer transition-all inline-flex items-center gap-1"
+                                    title="Mark this complaint as resolved"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    Resolve
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleAdminReopenReview(r.id)}
+                                    className="px-2.5 py-1.5 rounded-full text-amber-700 hover:bg-amber-50 border border-amber-300 hover:border-amber-400 font-bold text-[11px] cursor-pointer transition-all inline-flex items-center gap-1"
+                                    title="Re-open this complaint for moderation review"
+                                  >
+                                    <RotateCcw className="w-3 h-3 text-amber-600" />
+                                    Reopen
+                                  </button>
+                                )}
+                              </>
                             )}
 
                             <button
@@ -1368,6 +1515,11 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* TAB: WATER SPORTS & ACTIVITIES */}
+      {activeTab === 'activities' && (
+        <AdminActivitiesManagementView />
+      )}
 
       {/* ADD OFFER MODAL */}
       {showAddOfferModal && (

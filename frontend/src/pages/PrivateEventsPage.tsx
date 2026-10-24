@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti';
 import { formatINR } from '../utils/currency';
 import { useNavigate } from 'react-router-dom';
 import { TicketPass } from '../components/ticket/TicketPass';
+import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
 import {
   Sparkles,
   Anchor,
@@ -181,6 +182,42 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
     const hours = Math.floor(totalMin / 60);
     const mins = totalMin % 60;
     return mins > 0 ? `${hours}h ${mins}m Charter Window` : `${hours} Hours Charter Window`;
+  };
+
+  const getOwnerWhatsAppLink = () => {
+    if (!selectedShip) return '#';
+    const rawOwnerPhone = selectedShip.whatsapp_number || selectedShip.contact_number || '+919820012345';
+    const cleanOwnerPhone = rawOwnerPhone.replace(/[^0-9]/g, '');
+    const normalizedPhone = cleanOwnerPhone.length === 10 ? `91${cleanOwnerPhone}` : cleanOwnerPhone;
+
+    const customerName = user?.first_name
+      ? `${user.first_name} ${user.last_name || ''}`.trim()
+      : (user?.username || 'Customer');
+    const vesselName = selectedShip.name || 'Private Vessel';
+    const ownerDisplayName = selectedShip.owner_name || 'Vessel Owner / Operator';
+    const departurePort = selectedShip.departure_port || selectedShip.location || 'Designated Harbor';
+    const customerPhone = user?.phone ? `• Customer Phone: ${user.phone}\n` : '';
+
+    const waIntroMessage = `Hello ${ownerDisplayName},
+My name is ${customerName}.
+I am interested in chartering your ship "${vesselName}" on Cross Hunt for a ${selectedEventType.toUpperCase()} event.
+
+📋 Inquired Voyage Details:
+• Vessel: ${vesselName} (${selectedShip.category || 'Luxury Charter'})
+• Port/Location: ${departurePort}
+• Event Type: ${selectedEventType.charAt(0).toUpperCase() + selectedEventType.slice(1)}
+• Date: ${eventDate}
+• Time: ${startTime} to ${endTime} (${calculateDuration(startTime, endTime)})
+• Guest Count: ${guestCount} Guests (Capacity: ${maxCapacity})
+• Selected Tier: ${selectedPackage?.tier || selectedPackageId}
+• Estimated Total: ${formatINR(finalTotal)}
+• Customer Name: ${customerName}
+${customerPhone}
+Could you please confirm slot availability and discuss custom arrangements?
+Thank you!
+- ${customerName}`;
+
+    return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(waIntroMessage)}`;
   };
 
   const toggleVipPreset = (preset: string) => {
@@ -549,6 +586,22 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
                           {formatINR(parseFloat(String(selectedShip.price)) || 65000)}
                         </span>
                       </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[10px] text-emerald-900 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                          <WhatsAppIcon className="w-3 h-3 text-emerald-600" variant="solid" />
+                          <span>Owner: {selectedShip.owner_name || 'Verified Owner'}</span>
+                        </span>
+                        <a
+                          href={getOwnerWhatsAppLink()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                          title={`Chat with ${selectedShip.owner_name || 'Owner'} on WhatsApp`}
+                        >
+                          <WhatsAppIcon className="w-3 h-3" variant="solid" />
+                          <span>Chat on WhatsApp</span>
+                        </a>
+                      </div>
                     </div>
 
                     {guestCount > selectedShip.capacity && (
@@ -1024,28 +1077,39 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
               </div>
             </div>
 
-            {/* Direct WhatsApp Concierge Card */}
-            <div className="rounded-3xl p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 flex items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
-                  <MessageCircle className="w-5 h-5" />
+            {/* Direct WhatsApp Vessel Owner Inquiry Card */}
+            {selectedShip && (
+              <div className="rounded-3xl p-4 bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-100/50 border border-emerald-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+                    <WhatsAppIcon className="w-5 h-5" variant="solid" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-black text-emerald-950 font-serif truncate">
+                        Chat Directly with Ship Owner
+                      </h4>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 border border-emerald-300">
+                        {selectedShip.owner_name || 'Vessel Owner'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 truncate mt-0.5">
+                      Inquire about <strong className="font-bold">{selectedShip.name}</strong> • {selectedShip.departure_port || selectedShip.location || 'Port'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-emerald-950 font-serif">Have Custom Requirements?</h4>
-                  <p className="text-[11px] text-emerald-700">Chat with our Private Charter Director</p>
-                </div>
+                <a
+                  href={getOwnerWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition cursor-pointer shrink-0 shadow-sm inline-flex items-center justify-center gap-1.5 self-start sm:self-auto"
+                  title={`Open WhatsApp chat with ${selectedShip.owner_name || 'Ship Owner'}`}
+                >
+                  <WhatsAppIcon className="w-3.5 h-3.5" variant="solid" />
+                  <span>Chat Now</span>
+                </a>
               </div>
-              <a
-                href={`https://wa.me/919999999999?text=${encodeURIComponent(
-                  `Hi OD Studio, I'm interested in chartering a private vessel for a ${selectedEventType} on ${eventDate} for ~${guestCount} guests.`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition cursor-pointer shrink-0 shadow-sm"
-              >
-                Chat Now
-              </a>
-            </div>
+            )}
           </div>
         </div>
       </div>

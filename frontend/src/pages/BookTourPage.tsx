@@ -22,7 +22,8 @@ import {
 import { formatINR } from '../utils/currency';
 import { WhatsAppReminderCard } from '../components/common/WhatsAppReminderCard';
 import { TicketPass } from '../components/ticket/TicketPass';
-import { CheckCircle2, Printer, Clock } from 'lucide-react';
+import { BookingPaymentModal } from '../components/payment/BookingPaymentModal';
+import { CheckCircle2, Printer, Clock, QrCode, Lock } from 'lucide-react';
 
 interface BookTourPageProps {
   cruise?: Cruise | null;
@@ -91,6 +92,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   };
 
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   const handleSuccess = (b: Booking) => {
     if (onSuccess) {
@@ -219,6 +221,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
   }
 
   // Subtotal & Estimated Final Price in INR (₹)
+  const isQuote = Boolean(cruise?.is_quote_based || cruise?.price_unit === 'QUOTE' || baseRate <= 0);
   const subtotal = Math.round(baseRate + extrasCost);
   const discountAmount = couponResult?.valid ? couponResult.discount_amount : 0;
   const taxableBase = Math.max(0, subtotal - discountAmount);
@@ -280,7 +283,7 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleConfirmBooking = async () => {
+  const handleProceedToPayment = () => {
     if (!user) {
       if (onNeedLogin) {
         onNeedLogin();
@@ -290,6 +293,25 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
       }
       return;
     }
+
+    if (isQuote || estimatedTotal <= 0) {
+      handleExecuteBooking({
+        payment_method: 'Inquiry / Quote',
+        payment_gateway_ref: `INQ-${Date.now()}`,
+        payment_status: 'PENDING',
+      });
+      return;
+    }
+
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleExecuteBooking = async (paymentDetails?: {
+    payment_method: string;
+    payment_gateway_ref: string;
+    payment_status: string;
+  }) => {
+    if (!cruise) return;
 
     setSubmitting(true);
     setErrorMessage(null);
@@ -310,7 +332,12 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
         special_requests: specialRequests,
         customer_whatsapp: customerWhatsApp.trim() || undefined,
         whatsapp_reminder_opt_in: whatsappReminderOptIn,
+        payment_method: paymentDetails?.payment_method || 'UPI / QR Code',
+        payment_gateway_ref: paymentDetails?.payment_gateway_ref,
+        payment_status: paymentDetails?.payment_status || 'PAID',
       });
+
+      setIsPaymentModalOpen(false);
 
       confetti({
         particleCount: 120,
@@ -774,18 +801,29 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleConfirmBooking}
+                onClick={handleProceedToPayment}
                 className={`px-8 py-3 rounded-2xl text-white text-xs font-bold flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-50 ${
                   !user
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
-                    : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
+                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
                 }`}
               >
-                {submitting
-                  ? 'Confirming with Fleet...'
-                  : !user
-                  ? 'SIGN IN TO CONFIRM & ISSUE TICKET'
-                  : 'CONFIRM & ISSUE TICKET'}
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Confirming with Fleet...</span>
+                  </>
+                ) : !user ? (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>SIGN IN TO PAY & CONFIRM</span>
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-4 h-4" />
+                    <span>PROCEED TO PAY & CONFIRM ({formatINR(estimatedTotal)})</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -832,6 +870,29 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
           </div>
         </aside>
       </div>
+
+      {cruise && (
+        <BookingPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          bookingSummary={{
+            title: cruise.name,
+            date: bookingDate,
+            time: `${startTime} – ${endTime}`,
+            passengers: totalPassengers,
+            cabin: selectedCabinObj.name,
+            amount: estimatedTotal,
+            bookingType: 'EVENT',
+            promoDiscount: couponResult?.discount_amount,
+          }}
+          customerInfo={{
+            name: user?.full_name,
+            email: user?.email,
+            phone: customerWhatsApp || user?.phone,
+          }}
+          onPaymentSuccess={handleExecuteBooking}
+        />
+      )}
     </div>
   );
 };

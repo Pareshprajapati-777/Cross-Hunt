@@ -9,7 +9,12 @@ def test_tour_booking_lifecycle(client):
     # Get upcoming tour
     tours_res = client.get("/api/tours/")
     tours = tours_res.json()["tours"]
-    future_tours = [t for t in tours if t.get("departure_date", "") >= date.today().strftime("%Y-%m-%d")]
+    future_tours = [
+        t for t in tours
+        if t.get("departure_date", "") >= date.today().strftime("%Y-%m-%d")
+        and t.get("status") in ("SCHEDULED", "OPEN")
+        and t.get("remaining_capacity", 0) > 2
+    ]
     tour = future_tours[0] if future_tours else tours[0]
 
     # Create tour booking

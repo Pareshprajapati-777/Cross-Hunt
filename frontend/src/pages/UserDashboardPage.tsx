@@ -12,11 +12,14 @@ import { useFavorites } from '../context/FavoritesContext';
 import { CruiseCard } from '../components/cruises/CruiseCard';
 import { TicketPass } from '../components/ticket/TicketPass';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
+import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
+import { PortRouteMapModal } from '../components/navigation/PortRouteMapModal';
 import {
   Ship,
   Calendar,
   Clock,
   MapPin,
+  Navigation,
   Ticket,
   FileText,
   X,
@@ -74,7 +77,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   onSelectTour,
   onBookTour,
 }) => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateUser } = useAuth();
   const { favorites, loading: favoritesLoading } = useFavorites();
   const [searchParams, setSearchParams] = useSearchParams();
   const targetBookingId = searchParams.get('booking_id');
@@ -88,6 +91,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [bookingFilter, setBookingFilter] = useState<'ALL' | 'UPCOMING' | 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'CANCELLED'>('ALL');
   const [bookingSearch, setBookingSearch] = useState<string>('');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'CRUISE' | 'ACTIVITY'>('ALL');
 
   // Recommendation & Discovery Data
   const [recommendedShips, setRecommendedShips] = useState<Cruise[]>([]);
@@ -97,6 +101,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   // Modals
   const [selectedTicketBooking, setSelectedTicketBooking] = useState<Booking | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedMapBooking, setSelectedMapBooking] = useState<Booking | null>(null);
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
 
   // Review modal
@@ -261,9 +266,18 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         address: profileAddress,
         password: profilePassword || undefined,
       });
+      if (res.user) {
+        updateUser(res.user);
+        setProfileFirstName(res.user.first_name || '');
+        setProfileLastName(res.user.last_name || '');
+        setProfileEmail(res.user.email || '');
+        setProfilePhone(res.user.phone || '');
+        setProfileAddress(res.user.address || '');
+      } else {
+        await refreshUser();
+      }
       setProfileMsg({ text: res.message || 'Profile saved successfully!' });
       setProfilePassword('');
-      await refreshUser();
     } catch (err: any) {
       setProfileMsg({ text: err.message || 'Failed to update profile.', isError: true });
     } finally {
@@ -313,6 +327,8 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const publicTickets = bookings.filter((b) => b.booking_type === 'TOUR' || b.booking_type === 'CRUISE_TOUR');
   const charterBookings = bookings.filter((b) => b.booking_type === 'EVENT' || b.booking_type === 'PRIVATE_EVENT');
   const reviewedBookings = bookings.filter((b) => b.review);
+  const cruiseReviews = reviewedBookings.filter((b) => b.booking_type !== 'ACTIVITY');
+  const activityReviews = reviewedBookings.filter((b) => b.booking_type === 'ACTIVITY');
   const resolvedWithApology = reviewedBookings.filter((b) => b.review?.owner_response);
   const complaintsSubmitted = reviewedBookings.filter((b) => b.review?.has_complaint);
   const hasApologiesReceived = resolvedWithApology.length > 0;
@@ -1018,6 +1034,13 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
             <div className="grid grid-cols-1 gap-6">
               {getFilteredBookings().map((b) => {
                 const isTarget = targetBookingId === b.booking_id;
+                const isUpcomingOrActive =
+                  !isCancelledBooking(b) &&
+                  !isCompletedBooking(b) &&
+                  (b.status === 'CONFIRMED' ||
+                   b.status === 'PENDING' ||
+                   b.booking_date >= todayStr ||
+                   isLiveVoyage(b));
                 return (
                   <div
                     key={b.id}
@@ -1061,8 +1084,16 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             >
                               {b.status}
                             </span>
-                            <span className="text-[10px] font-bold text-[#102B46]/70 bg-[#EAF4FB] px-2.5 py-0.5 rounded-full uppercase border border-[#082F5B]/10">
-                              {b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                b.booking_type === 'ACTIVITY'
+                                  ? 'bg-sky-50 text-[#0284c7] border-sky-200'
+                                  : b.booking_type === 'EVENT'
+                                  ? 'bg-[#EAF4FB] text-[#082F5B] border-[#082F5B]/15'
+                                  : 'bg-[#EAF4FB] text-[#102B46]/70 border-[#082F5B]/10'
+                              }`}
+                            >
+                              {b.booking_type === 'ACTIVITY' ? 'Water Sports Ride' : b.booking_type === 'EVENT' ? 'Private Charter' : 'Public Tour Ticket'}
                             </span>
                             {b.ticket_code && (
                               <span className="text-[10px] font-mono font-bold text-[#082F5B] bg-[#63B8F0]/20 px-2.5 py-0.5 rounded-full border border-[#63B8F0]/30">
@@ -1071,7 +1102,11 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             )}
                           </div>
 
-                          <h3 className="text-lg font-bold text-[#102B46] truncate">{b.cruise_title || b.cruise_name}</h3>
+                          <h3 className="text-lg font-bold text-[#102B46] truncate">
+                            {b.booking_type === 'ACTIVITY' && b.cabin_type?.startsWith('Slot:')
+                              ? `${b.cabin_type.replace('Slot: ', '')} (aboard ${b.cruise_title || b.cruise_name})`
+                              : (b.cruise_title || b.cruise_name)}
+                          </h3>
 
                           <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/60 pt-0.5">
                             <span className="flex items-center gap-1 whitespace-nowrap">
@@ -1101,6 +1136,39 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                               <span className="text-[#1677C8] font-bold uppercase tracking-wider">{b.tracking_status}</span>
                             </div>
                           )}
+
+                          {/* Dedicated Boarding Port & Live Route Banner */}
+                          {isUpcomingOrActive && (
+                            <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-sky-50 via-blue-50/50 to-white border border-sky-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-sky-600/10 border border-sky-500/20 text-sky-600 flex items-center justify-center shrink-0">
+                                  <MapPin className="w-4 h-4 text-sky-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-[#082F5B] text-xs uppercase tracking-wide">
+                                      Boarding Port / Jetty:
+                                    </span>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Live GPS Route Ready
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-800 font-bold truncate text-xs mt-0.5">
+                                    {b.departure_port || 'Departure Cruise Terminal'}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedMapBooking(b)}
+                                className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm transition inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer self-start sm:self-auto"
+                                title="Open live route from your location to the port"
+                              >
+                                <Navigation className="w-3.5 h-3.5 text-sky-200" />
+                                <span>Open Port Map</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1118,7 +1186,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                         {b.status !== 'CANCELLED' ? (
                           <>
                             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EAF4FB] border border-[#082F5B]/10 text-[#082F5B]">
-                              <MessageSquare className="w-3.5 h-3.5 text-[#1677C8] shrink-0" />
+                              <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" variant="solid" />
                               {b.whatsapp_reminder_sent ? (
                                 <span className="font-bold flex items-center gap-1 text-[11px]">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -1170,6 +1238,19 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                           <span>Boarding Pass (QR)</span>
                         </button>
 
+                        {/* 2. Open Port Map (Live Route) */}
+                        {isUpcomingOrActive && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedMapBooking(b)}
+                            className="h-9 px-4 rounded-full bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md active:translate-y-0.5 whitespace-nowrap"
+                            title="Open map & live GPS route from your current location to the port"
+                          >
+                            <Navigation className="w-3.5 h-3.5 text-sky-200" />
+                            <span>Open Map</span>
+                          </button>
+                        )}
+
                         {/* 2. Invoice */}
                         <button
                           type="button"
@@ -1208,12 +1289,16 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             </span>
                             {b.review.has_complaint && (
                               <span className={`text-[10px] font-bold px-2.5 py-1.5 rounded-full border inline-flex items-center gap-1 whitespace-nowrap ${
-                                b.review.complaint_status === 'WARNING_SENT'
+                                b.review.complaint_status === 'RESOLVED'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : b.review.complaint_status === 'WARNING_SENT'
                                   ? 'bg-amber-50 text-amber-900 border-amber-300'
                                   : 'bg-rose-50 text-rose-800 border-rose-200'
                               }`}>
-                                <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                {b.review.complaint_status === 'WARNING_SENT'
+                                <AlertTriangle className={`w-3 h-3 ${b.review.complaint_status === 'RESOLVED' ? 'text-emerald-600' : 'text-rose-600'}`} />
+                                {b.review.complaint_status === 'RESOLVED'
+                                  ? 'Resolved by Owner'
+                                  : b.review.complaint_status === 'WARNING_SENT'
                                   ? 'Owner Warned'
                                   : 'Under Review'}
                               </span>
@@ -1336,6 +1421,47 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
               </div>
             </div>
 
+            {/* Review Category Filter Buttons */}
+            {reviewedBookings.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('ALL')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    reviewFilter === 'ALL'
+                      ? 'bg-[#051833] text-white shadow-sm font-black'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  All Reviews & Feedback ({reviewedBookings.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('CRUISE')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    reviewFilter === 'CRUISE'
+                      ? 'bg-[#0284c7] text-white shadow-sm font-black'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Ship className="w-3.5 h-3.5" />
+                  <span>Cruises & Charters ({cruiseReviews.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('ACTIVITY')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    reviewFilter === 'ACTIVITY'
+                      ? 'bg-[#0284c7] text-white shadow-sm font-black'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Waves className="w-3.5 h-3.5" />
+                  <span>Water Sports & Activities ({activityReviews.length})</span>
+                </button>
+              </div>
+            )}
+
             {/* List of Reviews & Owner Apologies */}
             {reviewedBookings.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 border border-[#082F5B]/10 text-center space-y-3">
@@ -1344,7 +1470,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 </div>
                 <h3 className="font-extrabold text-[#102B46] text-base">No Feedback Submitted Yet</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  When you complete a voyage, you can rate your experience or file a grievance. Any formal response or apology from the vessel owner will appear right here.
+                  When you complete a voyage or water sports ride, you can rate your experience or file a grievance. Any formal response or apology from the vessel owner will appear right here.
                 </p>
                 <button
                   type="button"
@@ -1357,10 +1483,17 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {reviewedBookings.map((b) => {
+                {reviewedBookings
+                  .filter((b) => {
+                    if (reviewFilter === 'CRUISE') return b.booking_type !== 'ACTIVITY';
+                    if (reviewFilter === 'ACTIVITY') return b.booking_type === 'ACTIVITY';
+                    return true;
+                  })
+                  .map((b) => {
                   const rev = b.review!;
                   const stars = [1, 2, 3, 4, 5];
                   const shipName = b.cruise_title || b.cruise_name || 'Charter Vessel';
+                  const isActivityReview = b.booking_type === 'ACTIVITY';
 
                   return (
                     <div
@@ -1370,12 +1503,32 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                       {/* Top Row: Vessel & Star Rating */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#1677C8] flex items-center justify-center font-bold">
-                            <Ship className="w-5 h-5 text-[#1677C8]" />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                            isActivityReview ? 'bg-sky-50 text-[#0284c7]' : 'bg-sky-50 text-[#1677C8]'
+                          }`}>
+                            {isActivityReview ? (
+                              <Waves className="w-5 h-5 text-[#0284c7]" />
+                            ) : (
+                              <Ship className="w-5 h-5 text-[#1677C8]" />
+                            )}
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-base text-[#102B46]">{shipName}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-extrabold text-base text-[#102B46]">
+                                {isActivityReview && b.cabin_type?.startsWith('Slot:')
+                                  ? b.cabin_type.replace('Slot: ', '')
+                                  : shipName}
+                              </h4>
+                              {isActivityReview && (
+                                <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200 uppercase">
+                                  Water Sport Ride
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-slate-400">
+                              {isActivityReview && (
+                                <span>Conducted aboard <strong className="text-slate-700 font-semibold">{shipName}</strong> • </span>
+                              )}
                               Booking Ref: <strong className="font-mono text-[#102B46]">{b.booking_id}</strong>
                               {b.booking_date && <> • Date: {b.booking_date}</>}
                             </p>
@@ -1708,6 +1861,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                 setSelectedTicketBooking(null);
                 setSelectedInvoiceId(bId);
               }}
+              onOpenPortMap={(b) => {
+                setSelectedTicketBooking(null);
+                setSelectedMapBooking(b);
+              }}
             />
           </div>
         </div>
@@ -1717,6 +1874,14 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         <InvoiceModal
           bookingId={selectedInvoiceId}
           onClose={() => setSelectedInvoiceId(null)}
+        />
+      )}
+
+      {selectedMapBooking && (
+        <PortRouteMapModal
+          isOpen={!!selectedMapBooking}
+          onClose={() => setSelectedMapBooking(null)}
+          booking={selectedMapBooking}
         />
       )}
 

@@ -1,13 +1,21 @@
-import { apiRequest, setAuthToken } from './client';
+import { apiRequest, setAuthToken, clearApiCache } from './client';
 import { User } from './types';
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const res = await apiRequest<{ authenticated: boolean; user: User | null }>('/api/auth/me/');
+    const res = await apiRequest<{ authenticated: boolean; user: User | null }>('/api/auth/me/', {
+      bypassCache: true,
+    });
     if (res.authenticated && res.user) {
+      try {
+        localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+      } catch {}
       return res.user;
     }
     setAuthToken(null);
+    try {
+      localStorage.removeItem('crosshunt_cached_user');
+    } catch {}
     return null;
   } catch (err) {
     return null;
@@ -15,12 +23,19 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function loginUser(username: string, password: string): Promise<User> {
+  clearApiCache();
   const res = await apiRequest<{ success: boolean; user: User; token?: string }>('/api/auth/login/', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
+    bypassCache: true,
   });
   if (res.token) {
     setAuthToken(res.token);
+  }
+  if (res.user) {
+    try {
+      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+    } catch {}
   }
   return res.user;
 }
@@ -34,12 +49,19 @@ export async function registerUser(payload: {
   phone_number?: string;
   role?: string;
 }): Promise<User> {
+  clearApiCache();
   const res = await apiRequest<{ success: boolean; user: User; token?: string }>('/api/auth/register/', {
     method: 'POST',
     body: JSON.stringify(payload),
+    bypassCache: true,
   });
   if (res.token) {
     setAuthToken(res.token);
+  }
+  if (res.user) {
+    try {
+      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+    } catch {}
   }
   return res.user;
 }
@@ -48,11 +70,16 @@ export async function logoutUser(): Promise<void> {
   try {
     await apiRequest('/api/auth/logout/', {
       method: 'POST',
+      bypassCache: true,
     });
   } catch {
     // Continue even if logout endpoint fails so client side is cleared
   } finally {
     setAuthToken(null);
+    try {
+      localStorage.removeItem('crosshunt_cached_user');
+    } catch {}
+    clearApiCache();
   }
 }
 
@@ -61,13 +88,24 @@ export async function updateUserProfile(payload: {
   last_name?: string;
   email?: string;
   phone?: string;
+  phone_number?: string;
+  whatsapp_number?: string;
   address?: string;
   password?: string;
 }): Promise<{ success: boolean; user: User; message: string }> {
-  return apiRequest('/api/auth/profile/', {
+  clearApiCache();
+  const res = await apiRequest<{ success: boolean; user: User; message: string }>('/api/auth/profile/', {
     method: 'PUT',
     body: JSON.stringify(payload),
+    bypassCache: true,
   });
+  if (res.user) {
+    try {
+      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+    } catch {}
+  }
+  clearApiCache();
+  return res;
 }
 
 export async function forgotPassword(username_or_email: string): Promise<{

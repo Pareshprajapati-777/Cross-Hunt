@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   HelpCircle
 } from 'lucide-react';
+import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import {
   getAdminWhatsAppConfig,
   updateAdminWhatsAppConfig,
@@ -214,7 +215,7 @@ export const AdminWhatsAppView: React.FC = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider border border-emerald-500/30">
-              <MessageSquare className="w-3.5 h-3.5 fill-emerald-400 text-emerald-400" />
+              <WhatsAppIcon className="w-4 h-4" variant="solid" />
               WhatsApp Business Engine & Embarkation Automation
             </div>
             <h2 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">

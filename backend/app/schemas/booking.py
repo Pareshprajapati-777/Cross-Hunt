@@ -25,6 +25,9 @@ class CreateBookingPayload(BaseModel):
     special_request: Optional[str] = None
     customer_whatsapp: Optional[str] = None
     whatsapp_reminder_opt_in: Optional[bool] = True
+    payment_method: Optional[str] = "UPI"
+    payment_gateway_ref: Optional[str] = None
+    payment_status: Optional[str] = "PAID"
 
 
 class CancelBookingPayload(BaseModel):

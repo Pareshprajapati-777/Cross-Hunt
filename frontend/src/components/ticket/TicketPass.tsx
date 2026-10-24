@@ -6,6 +6,7 @@ import {
   Calendar,
   Clock,
   MapPin,
+  Navigation,
   Printer,
   ShieldCheck,
   UserCheck,
@@ -26,6 +27,7 @@ interface TicketPassProps {
   booking: Booking;
   onPrint?: () => void;
   onViewInvoice?: () => void;
+  onOpenPortMap?: (booking: Booking) => void;
   onClose?: () => void;
   isVerificationView?: boolean;
 }
@@ -34,6 +36,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
   booking,
   onPrint,
   onViewInvoice,
+  onOpenPortMap,
   onClose,
   isVerificationView = false,
 }) => {
@@ -191,10 +194,23 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               <h3 className="text-2xl font-display font-extrabold text-[#102B46] mt-0.5">
                 {booking.cruise_title || booking.cruise_name}
               </h3>
-              <p className="text-xs text-[#1677C8] font-bold flex items-center gap-1.5 mt-1">
-                <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
-                <span>{booking.departure_port || 'Departure Port'} → {booking.destination}</span>
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <p className="text-xs text-[#1677C8] font-bold flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
+                  <span>{booking.departure_port || 'Departure Port'} → {booking.destination}</span>
+                </p>
+                {onOpenPortMap && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPortMap(booking)}
+                    className="px-2.5 py-0.5 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-bold transition inline-flex items-center gap-1 cursor-pointer print:hidden shadow-xs"
+                    title="Open live route to boarding port"
+                  >
+                    <Navigation className="w-2.5 h-2.5 text-sky-600" />
+                    <span>Live Route Map</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="sm:text-right">
@@ -416,6 +432,16 @@ export const TicketPass: React.FC<TicketPassProps> = ({
             <span>Present this pass or QR at terminal gate for immediate boarding.</span>
           </span>
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            {onOpenPortMap && (
+              <button
+                type="button"
+                onClick={() => onOpenPortMap(booking)}
+                className="px-4 py-2 rounded-full bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+              >
+                <Navigation className="w-3.5 h-3.5 text-sky-200" />
+                <span>Port Route Map</span>
+              </button>
+            )}
             {onViewInvoice && (
               <button
                 type="button"

@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   phone?: string;
   phone_number?: string;
+  whatsapp_number?: string;
   address?: string;
   is_operator: boolean;
   is_owner?: boolean;
@@ -365,13 +366,17 @@ export interface CharterShip {
   price: string;
   location: string;
   image?: string;
+  departure_port?: string;
+  whatsapp_number?: string;
+  contact_number?: string;
+  owner_name?: string;
 }
 
 export interface Booking {
   id: number;
   booking_id: string;
   invoice_number?: string;
-  booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT';
+  booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT' | 'ACTIVITY';
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REJECTED' | 'EXPIRED';
   tracking_status?: string;
   cruise_id: number;
@@ -433,6 +438,9 @@ export interface Booking {
   owner_payout_amount?: number;
   platform_commission_amount?: number;
   net_platform_profit?: number;
+  payment_status?: string;
+  payment_method?: string;
+  payment_gateway_ref?: string;
   review?: {
     rating: number;
     comment: string;
@@ -505,4 +513,59 @@ export interface WhatsAppConnectionTestResult {
   message: string;
   details?: any;
 }
+
+export interface ActivityCategory {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+export interface ActivityItem {
+  id: number;
+  title: string;
+  slug: string;
+  activity_type: string;
+  category_label: string;
+  description: string;
+  highlights: string[];
+  included_gear: string[];
+  safety_guidelines: string;
+  requirements: string;
+  price: number;
+  duration_minutes: number;
+  duration_display: string;
+  difficulty_level: string;
+  capacity_per_slot: number;
+  location: string;
+  departure_port: string;
+  operating_hours: string;
+  time_slots: string[];
+  image: string;
+  gallery: string[];
+  host_ship_id: number;
+  host_ship_name: string;
+  host_ship_category: string;
+  host_ship_image: string;
+  owner_id?: number | null;
+  owner_name: string;
+  owner_phone: string;
+  is_active: boolean;
+  is_featured: boolean;
+  rating: number;
+  reviews_count: number;
+  created_at: string;
+  related_activities?: ActivityItem[];
+}
+
+export interface ActivityBookingPayload {
+  activity_id: number;
+  booking_date: string;
+  time_slot: string;
+  participants: number;
+  customer_whatsapp?: string;
+  promo_code?: string;
+  special_request?: string;
+  payment_method?: string;
+}
+
 

@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles } from 'lucide-react';
+import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles, Zap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getUserNotifications, markNotificationRead } from '../../api/dashboards';
+import { getUserNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/dashboards';
 
 interface NavbarProps {
   currentTab?: string;
   onNavigate?: (tab: string, param?: string) => void;
 }
+
+const getReadNotifIds = (userId?: number): Set<number> => {
+  if (!userId) return new Set();
+  try {
+    const raw = localStorage.getItem(`crosshunt_read_notifs_${userId}`);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveReadNotifIds = (userId: number, ids: number[]) => {
+  try {
+    const existing = getReadNotifIds(userId);
+    ids.forEach((id) => existing.add(id));
+    localStorage.setItem(`crosshunt_read_notifs_${userId}`, JSON.stringify(Array.from(existing)));
+  } catch {}
+};
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNavigate: propOnNavigate }) => {
   const { user, logout } = useAuth();
@@ -31,8 +49,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
     const refreshNotifs = () => {
       getUserNotifications()
         .then((res) => {
-          setNotifications(res.notifications || []);
-          setUnreadCount(res.unread_count || 0);
+          const readSet = getReadNotifIds(user.id);
+          const list = (res.notifications || []).map((n: any) => ({
+            ...n,
+            is_read: Boolean(n.is_read || readSet.has(n.id)),
+          }));
+          setNotifications(list);
+          const unread = list.filter((n: any) => !n.is_read).length;
+          setUnreadCount(unread);
         })
         .catch(() => {});
     };
@@ -46,6 +70,56 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
     };
   }, [user?.id]);
 
+  const handleOpenNotifications = () => {
+    const next = !notificationsOpen;
+    setNotificationsOpen(next);
+    setUserDropdownOpen(false);
+
+    if (next && user) {
+      // Instant dismissal of badge and ticks on viewing!
+      setUnreadCount(0);
+      setNotifications((prev) => {
+        const allIds = prev.map((n) => n.id);
+        if (allIds.length > 0) {
+          saveReadNotifIds(user.id, allIds);
+        }
+        return prev.map((n) => ({ ...n, is_read: true }));
+      });
+
+      // Synchronize with server in background
+      markAllNotificationsRead()
+        .then(() => {
+          getUserNotifications()
+            .then((res) => {
+              const allIds = (res.notifications || []).map((n: any) => n.id);
+              saveReadNotifIds(user.id, allIds);
+              const list = (res.notifications || []).map((n: any) => ({
+                ...n,
+                is_read: true,
+              }));
+              setNotifications(list);
+              setUnreadCount(0);
+            })
+            .catch(() => {});
+        })
+        .catch(() => {});
+    }
+  };
+
+  const handleMarkAllRead = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!user) return;
+    setUnreadCount(0);
+    setNotifications((prev) => {
+      const allIds = prev.map((n) => n.id);
+      saveReadNotifIds(user.id, allIds);
+      return prev.map((n) => ({ ...n, is_read: true }));
+    });
+    try {
+      await markAllNotificationsRead();
+    } catch {}
+  };
+
   const formatNotifDate = (dateVal: string) => {
     if (!dateVal) return '';
     const d = new Date(dateVal);
@@ -58,8 +132,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
   };
 
   const handleNotificationClick = async (notif: any) => {
+    if (user) {
+      saveReadNotifIds(user.id, [notif.id]);
+    }
     if (!notif.is_read) {
-      await markNotificationRead(notif.id).catch(() => {});
+      markNotificationRead(notif.id).catch(() => {});
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
       );
@@ -77,6 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
     if (p === '/' || p === '') return 'home';
     if (p.startsWith('/explore') || p.startsWith('/cruises') || p.startsWith('/ships')) return 'explore';
     if (p.startsWith('/tours') || p.startsWith('/book-tour')) return 'tours';
+    if (p.startsWith('/activities')) return 'activities';
     if (p.startsWith('/events')) return 'events';
     if (p.startsWith('/dashboard')) return 'dashboard';
     if (p.startsWith('/owner') || p.startsWith('/operator')) return 'owner';
@@ -104,6 +182,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
       about: '/about',
       contact: '/contact',
       tours: '/tours',
+      activities: '/activities',
       events: '/events',
       dashboard: '/dashboard',
       owner: '/owner',
@@ -158,6 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
               { id: 'home', label: 'Home' },
               { id: 'explore', label: 'Fleet & Ships' },
               { id: 'tours', label: 'Public Tours' },
+              { id: 'activities', label: 'Activities' },
               { id: 'events', label: 'Private Events' },
             ].map((tab) => {
               const isActive = currentTab === tab.id;
@@ -191,19 +271,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                 {/* Direct Notifications Bell */}
                 <div className="relative">
                   <button
-                    onClick={() => {
-                      const next = !notificationsOpen;
-                      setNotificationsOpen(next);
-                      setUserDropdownOpen(false);
-                      if (next && user) {
-                        getUserNotifications()
-                          .then((res) => {
-                            setNotifications(res.notifications || []);
-                            setUnreadCount(res.unread_count || 0);
-                          })
-                          .catch(() => {});
-                      }
-                    }}
+                    onClick={handleOpenNotifications}
                     className="relative p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                     title="Platform Notifications"
                     aria-label="Platform Notifications"
@@ -227,13 +295,26 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                           <Bell className="w-4 h-4 text-sky-600" />
                           <h4 className="text-sm font-bold text-slate-900">Notifications</h4>
                         </div>
-                        {unreadCount > 0 ? (
-                          <span className="text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full">
-                            {unreadCount} new
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400">All caught up</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {notifications.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllRead}
+                              className="text-[11px] font-semibold text-sky-600 hover:text-sky-800 transition flex items-center gap-1 cursor-pointer hover:underline"
+                              title="Mark all notifications as read"
+                            >
+                              <Check className="w-3 h-3 text-sky-600" />
+                              <span>Mark all read</span>
+                            </button>
+                          )}
+                          {unreadCount > 0 ? (
+                            <span className="text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full">
+                              {unreadCount} new
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">All caught up</span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
@@ -474,10 +555,149 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             )}
           </div>
 
-          {/* Mobile hamburger */}
+          {/* Mobile controls */}
           <div className="md:hidden flex items-center space-x-2">
+            {user && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={handleOpenNotifications}
+                  className="relative p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+                  title="Platform Notifications"
+                  aria-label="Platform Notifications"
+                >
+                  <Bell className="w-5 h-5 text-slate-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div
+                    className="fixed inset-x-4 top-20 max-w-sm mx-auto rounded-2xl bg-white p-3 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150 text-left"
+                  >
+                    <div className="flex items-center justify-between px-2 pb-2.5 mb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-sky-600" />
+                        <h4 className="text-sm font-bold text-slate-900">Notifications</h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {notifications.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleMarkAllRead}
+                            className="text-[11px] font-semibold text-sky-600 hover:text-sky-800 transition flex items-center gap-1 cursor-pointer hover:underline"
+                            title="Mark all notifications as read"
+                          >
+                            <Check className="w-3 h-3 text-sky-600" />
+                            <span>Mark read</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                          No notifications yet.
+                        </div>
+                      ) : (
+                        notifications.map((notif) => {
+                          const isOffer = notif.notification_type === 'OFFER';
+                          const isAlert = notif.notification_type === 'UPDATE';
+                          const promoCodeMatch = notif.promo_code || (() => {
+                            const m = `${notif.title} ${notif.message}`.match(/(?:coupon\s+code|promo\s+code|voucher|coupon|code)\s*[:\-]?\s*([A-Z0-9_-]{4,20})/i);
+                            return m ? m[1].toUpperCase() : null;
+                          })();
+
+                          return (
+                            <div
+                              key={notif.id}
+                              onClick={() => handleNotificationClick(notif)}
+                              className={`p-2.5 rounded-xl transition cursor-pointer border ${
+                                notif.is_read
+                                  ? 'bg-slate-50/50 border-slate-100 text-slate-600'
+                                  : isOffer
+                                  ? 'bg-amber-50/70 border-amber-200 text-slate-900 shadow-sm'
+                                  : isAlert
+                                  ? 'bg-rose-50/70 border-rose-200 text-slate-900 shadow-sm'
+                                  : 'bg-sky-50/70 border-sky-200 text-slate-900 shadow-sm'
+                              } hover:border-slate-300`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <div className="mt-0.5 flex-shrink-0">
+                                  {isOffer ? (
+                                    <Tag className="w-4 h-4 text-amber-600" />
+                                  ) : isAlert ? (
+                                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                                  ) : (
+                                    <Megaphone className="w-4 h-4 text-sky-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <p className="text-xs font-bold truncate">{notif.title}</p>
+                                    {!notif.is_read && (
+                                      <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5 leading-snug">
+                                    {notif.message}
+                                  </p>
+                                  {promoCodeMatch && (
+                                    <div className="mt-2 pt-1.5 border-t border-amber-200/80 flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-950 font-mono font-bold text-[10px] border border-amber-300">
+                                        <Tag className="w-2.5 h-2.5 text-amber-700" />
+                                        <span>{promoCodeMatch}</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(promoCodeMatch);
+                                          setCopiedPromo(promoCodeMatch);
+                                          setTimeout(() => setCopiedPromo(null), 2500);
+                                        }}
+                                        className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold transition shadow-xs cursor-pointer flex items-center gap-1"
+                                      >
+                                        {copiedPromo === promoCodeMatch ? (
+                                          <>
+                                            <Check className="w-2.5 h-2.5" />
+                                            <span>Copied!</span>
+                                          </>
+                                        ) : (
+                                          <span>Copy</span>
+                                        )}
+                                      </button>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                                    <span>{formatNotifDate(notif.created_at)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => {
+                setMobileMenuOpen(!mobileMenuOpen);
+                setNotificationsOpen(false);
+              }}
               className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-[#051833] hover:text-[#0284c7]"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -517,6 +737,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             >
               <Waves className="w-4 h-4 text-[#0284c7]" />
               Public Tours
+            </button>
+            <button
+              onClick={() => {
+                onNavigate('activities');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-lg text-[#334155] hover:bg-slate-50 flex items-center gap-2 font-medium"
+            >
+              <Zap className="w-4 h-4 text-[#0284c7]" />
+              Activities &amp; Water Sports
             </button>
             <button
               onClick={() => {
