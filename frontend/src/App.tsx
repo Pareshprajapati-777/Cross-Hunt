@@ -229,6 +229,7 @@ const AppContent: React.FC = () => {
     if (tab === 'home') navigate('/');
     else if (tab === 'explore') navigate(param ? `/explore?query=${encodeURIComponent(param)}` : '/explore');
     else if (tab === 'tours') navigate(param ? `/tours${param.startsWith('?') ? param : `?${param}`}` : '/tours');
+    else if (tab === 'activities') navigate('/activities');
     else if (tab === 'events') navigate('/events');
     else if (tab === 'dashboard') navigate('/dashboard');
     else if (tab === 'owner') navigate('/owner');
@@ -529,7 +530,7 @@ const AppContent: React.FC = () => {
       <CrossHuntAiWidget />
 
       {/* Global Nautical Footer */}
-      <Footer />
+      <Footer onNavigate={handleNavigate} />
     </div>
   );
 };

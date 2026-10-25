@@ -18,6 +18,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) =>
       home: '/',
       explore: param ? `/explore?query=${encodeURIComponent(param)}` : '/explore',
       tours: '/tours',
+      activities: '/activities',
       events: '/events',
       dashboard: '/dashboard',
       owner: '/owner',
@@ -154,6 +155,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) =>
                 >
                   <span className="text-orange-400 text-[10px]">›</span>
                   <span>Scheduled Public Tours</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavigate('activities')}
+                  className="hover:text-orange-600 hover:translate-x-0.5 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="text-orange-400 text-[10px]">›</span>
+                  <span>Water Sports &amp; Coastal Rides</span>
                 </button>
               </li>
             </ul>
