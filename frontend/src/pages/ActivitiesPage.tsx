@@ -368,7 +368,11 @@ export const ActivitiesPage: React.FC = () => {
                   className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-sky-300 transition-all duration-300 flex flex-col overflow-hidden group"
                 >
                   {/* 1. Activity Image Banner */}
-                  <div className="relative h-56 w-full overflow-hidden bg-slate-100">
+                  <div
+                    onClick={() => navigate(`/activities/${act.slug || act.id}`)}
+                    className="relative h-56 w-full overflow-hidden bg-slate-100 cursor-pointer"
+                    title={`View details for ${act.title}`}
+                  >
                     <img
                       src={act.image || '/static/images/placeholder.png'}
                       alt={act.title}
@@ -442,7 +446,11 @@ export const ActivitiesPage: React.FC = () => {
                       </div>
 
                       {/* Activity Name */}
-                      <h3 className="font-serif font-black text-lg text-slate-900 group-hover:text-sky-700 transition leading-snug line-clamp-1">
+                      <h3
+                        onClick={() => navigate(`/activities/${act.slug || act.id}`)}
+                        className="font-serif font-black text-lg text-slate-900 group-hover:text-sky-700 transition leading-snug line-clamp-1 cursor-pointer"
+                        title="Click to view full details"
+                      >
                         {act.title}
                       </h3>
 
@@ -501,16 +509,27 @@ export const ActivitiesPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Book Now Button */}
-                      <div className="grid grid-cols-1 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleStartBooking(act)}
-                          className="w-full py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-[#051833] hover:from-sky-700 hover:to-[#0a2548] text-white text-xs font-black shadow-md shadow-sky-600/25 transition flex items-center justify-center gap-2 cursor-pointer group-hover:scale-101"
-                        >
-                          <span>Book Now</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Action Buttons: View Details & Book Now */}
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/activities/${act.slug || act.id}`)}
+                            className="py-2.5 px-3 rounded-2xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-sky-600" />
+                            <span>View Details</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleStartBooking(act)}
+                            className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-600 to-[#051833] hover:from-sky-700 hover:to-[#0a2548] text-white text-xs font-black shadow-md shadow-sky-600/25 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <span>Book Now</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-2">
                           {/* Live Port GPS Route Map Button */}

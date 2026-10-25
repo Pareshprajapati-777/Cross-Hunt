@@ -268,6 +268,17 @@ def book_activity(
     base_unit_price = Decimal(str(act.price))
     subtotal = base_unit_price * Decimal(str(req.participants))
 
+    # Additional options / extras selected by user
+    extras_amount = Decimal("0.00")
+    extras_list = [{"name": f"Activity Pass ({act.title})", "price": float(base_unit_price), "quantity": req.participants}]
+    if req.selected_addons:
+        for addon in req.selected_addons:
+            addon_price = Decimal(str(addon.get("price", 0)))
+            extras_amount += addon_price
+            extras_list.append({"name": addon.get("name", "Extra Option"), "price": float(addon_price), "quantity": 1})
+
+    subtotal_with_extras = subtotal + extras_amount
+
     # Discount check
     discount_amount = Decimal("0.00")
     promo_applied = None
@@ -276,15 +287,15 @@ def book_activity(
         offer = db.query(Offer).filter(Offer.code == code_clean, Offer.is_active == True).first()
         if offer and (not offer.valid_to or offer.valid_to >= date.today()):
             if offer.discount_type == "PERCENT":
-                discount_amount = (subtotal * Decimal(str(offer.discount_value))) / Decimal("100.0")
+                discount_amount = (subtotal_with_extras * Decimal(str(offer.discount_value))) / Decimal("100.0")
             else:
                 discount_amount = Decimal(str(offer.discount_value))
             if offer.max_discount:
                 discount_amount = min(discount_amount, Decimal(str(offer.max_discount)))
-            discount_amount = min(discount_amount, subtotal)
+            discount_amount = min(discount_amount, subtotal_with_extras)
             promo_applied = code_clean
 
-    after_discount = max(Decimal("0.00"), subtotal - discount_amount)
+    after_discount = max(Decimal("0.00"), subtotal_with_extras - discount_amount)
     # GST: 5% marine recreation tax
     tax_amount = (after_discount * Decimal("0.05")).quantize(Decimal("0.01"))
     total_price = (after_discount + tax_amount).quantize(Decimal("0.01"))
@@ -333,11 +344,11 @@ def book_activity(
         number_of_people=req.participants,
         adults_count=req.participants,
         children_count=0,
-        selected_extras=json.dumps([{"name": f"Activity Pass ({act.title})", "price": float(base_unit_price), "quantity": req.participants}]),
+        selected_extras=json.dumps(extras_list),
         duration_hours=dur_hrs,
         base_price=base_unit_price,
-        subtotal=subtotal,
-        extras_amount=Decimal("0.00"),
+        subtotal=subtotal_with_extras,
+        extras_amount=extras_amount,
         discount_amount=discount_amount,
         tax_amount=tax_amount,
         total_price=total_price,

@@ -61,6 +61,20 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
   const [couponResult, setCouponResult] = useState<CouponValidationResult | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // Additional options / Addons
+  const defaultAddons = [
+    { id: 'gopro', name: '4K GoPro Action Video & Photo Package', price: 499 },
+    { id: 'vest', name: 'Pro Impact Neoprene Vest & Gloves', price: 199 },
+    { id: 'pickup', name: 'Hotel Pickup & Return Drop Transfer', price: 799 },
+    { id: 'refresh', name: 'Fresh Coconut & Post-Ride Energy Pack', price: 149 },
+  ];
+  const availableAddons =
+    activity.additional_options && activity.additional_options.length > 0
+      ? activity.additional_options
+      : defaultAddons;
+
+  const [selectedAddons, setSelectedAddons] = useState<Array<{ id: string; name: string; price: number }>>([]);
+
   // Submitting
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -77,13 +91,22 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Price calculations
+  // Price calculations with additional options
   const unitPrice = activity.price;
-  const subtotal = Math.round(unitPrice * participants);
+  const addonsTotal = selectedAddons.reduce((sum, item) => sum + item.price, 0);
+  const subtotal = Math.round(unitPrice * participants) + addonsTotal;
   const discountAmount = couponResult?.valid ? couponResult.discount_amount : 0;
   const taxableAmount = Math.max(0, subtotal - discountAmount);
   const taxAmount = Math.round(taxableAmount * 0.05); // 5% GST
   const finalTotal = taxableAmount + taxAmount;
+
+  const toggleAddon = (addon: { id: string; name: string; price: number }) => {
+    if (selectedAddons.some((a) => a.id === addon.id)) {
+      setSelectedAddons(selectedAddons.filter((a) => a.id !== addon.id));
+    } else {
+      setSelectedAddons([...selectedAddons, addon]);
+    }
+  };
 
   const handleApplyCoupon = async () => {
     if (!promoCode.trim()) return;
@@ -116,6 +139,7 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
         booking_date: bookingDate,
         time_slot: selectedSlot,
         participants,
+        selected_addons: selectedAddons.length > 0 ? selectedAddons : undefined,
         customer_whatsapp: whatsappMobile,
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_request: specialRequest.trim() || undefined,
@@ -392,6 +416,51 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
                   onChange={(e) => setWhatsappMobile(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition"
                 />
+              </div>
+
+              {/* Additional Options (Addons) */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Additional Options &amp; Add-ons (Optional)</span>
+                  </span>
+                  {selectedAddons.length > 0 && (
+                    <span className="text-[11px] font-bold text-sky-700">
+                      +{formatINR(addonsTotal)}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {availableAddons.map((addon) => {
+                    const isChecked = selectedAddons.some((a) => a.id === addon.id);
+                    return (
+                      <button
+                        type="button"
+                        key={addon.id}
+                        onClick={() => toggleAddon(addon)}
+                        className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                          isChecked
+                            ? 'bg-sky-50 border-sky-400 text-sky-950 shadow-xs'
+                            : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // handled by button click
+                            className="w-3.5 h-3.5 rounded text-sky-600 focus:ring-sky-500 cursor-pointer pointer-events-none"
+                          />
+                          <span className="text-xs font-semibold truncate">{addon.name}</span>
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-slate-900 shrink-0">
+                          +{formatINR(addon.price)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Promo Coupon Code */}

@@ -11,6 +11,12 @@ TEST_DB_PATH = BASE_DIR / "test_db.sqlite3"
 MAIN_DB_PATH = BASE_DIR / "db.sqlite3"
 
 if MAIN_DB_PATH.exists():
+    try:
+        import sqlite3
+        with sqlite3.connect(str(MAIN_DB_PATH)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+    except Exception:
+        pass
     shutil.copyfile(MAIN_DB_PATH, TEST_DB_PATH)
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"

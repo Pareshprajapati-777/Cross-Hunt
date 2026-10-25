@@ -45,6 +45,13 @@ class Activity(Base):
     vessel_requirement_note: Mapped[str] = mapped_column(String(150), default="Beach & Shore-Based (No Boat Needed)", nullable=False)
     available_dates_summary: Mapped[str] = mapped_column(String(150), default="Available Daily • Today onwards", nullable=False)
 
+    # Activity Details Specification Fields
+    instructor_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    instructor_details: Mapped[str] = mapped_column(String(150), default="Available • Certified Master Instructor", nullable=False)
+    age_restrictions: Mapped[str] = mapped_column(String(150), default="Operator-defined (Age 10+)", nullable=False)
+    cancellation_policy: Mapped[str] = mapped_column(String(250), default="Free cancellation up to 24 hours before start time (Operator Policy)", nullable=False)
+    additional_options_json: Mapped[str] = mapped_column(Text, default='[{"id":"gopro","name":"4K GoPro Video & Photo Package","price":499},{"id":"vest","name":"Pro Impact Neoprene Vest","price":199},{"id":"pickup","name":"Hotel Pickup & Drop Transfer","price":799}]', nullable=False)
+
     # Host Vessel Link - Optional (NULL for beach/shore-based activities)
     host_ship_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_cross.id"), nullable=True)
     operator_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_operator.id"), nullable=True)
@@ -95,6 +102,14 @@ class Activity(Base):
         except Exception:
             return []
 
+    @property
+    def additional_options(self) -> List[Dict[str, Any]]:
+        try:
+            val = json.loads(self.additional_options_json)
+            return val if isinstance(val, list) else []
+        except Exception:
+            return []
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -106,6 +121,11 @@ class Activity(Base):
             "requires_boat": self.requires_boat,
             "vessel_requirement_note": self.vessel_requirement_note,
             "available_dates_summary": self.available_dates_summary,
+            "instructor_available": self.instructor_available,
+            "instructor_details": self.instructor_details,
+            "age_restrictions": self.age_restrictions,
+            "cancellation_policy": self.cancellation_policy,
+            "additional_options": self.additional_options,
             "description": self.description,
             "highlights": self.highlights,
             "included_gear": self.included_gear,

@@ -25,6 +25,7 @@ const ToursPage = React.lazy(() => import('./pages/ToursPage').then((m) => ({ de
 const TourDetailPage = React.lazy(() => import('./pages/TourDetailPage').then((m) => ({ default: m.TourDetailPage })));
 const BookPublicTourTicketPage = React.lazy(() => import('./pages/BookPublicTourTicketPage').then((m) => ({ default: m.BookPublicTourTicketPage })));
 const ActivitiesPage = React.lazy(() => import('./pages/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })));
+const ActivityDetailPage = React.lazy(() => import('./pages/ActivityDetailPage').then((m) => ({ default: m.ActivityDetailPage })));
 const PrivateEventsPage = React.lazy(() => import('./pages/PrivateEventsPage').then((m) => ({ default: m.PrivateEventsPage })));
 const UserDashboardPage = React.lazy(() => import('./pages/UserDashboardPage').then((m) => ({ default: m.UserDashboardPage })));
 const OperatorDashboardPage = React.lazy(() => import('./pages/OperatorDashboardPage').then((m) => ({ default: m.OperatorDashboardPage })));
@@ -407,6 +408,10 @@ const AppContent: React.FC = () => {
           <Route
             path="/activities"
             element={<ActivitiesPage />}
+          />
+          <Route
+            path="/activities/:slug"
+            element={<ActivityDetailPage />}
           />
 
           {/* Booking: Private Ship Charter (Requires Authenticated User) */}

@@ -73,6 +73,11 @@ class ActivityResponse(BaseModel):
     requires_boat: bool = False
     vessel_requirement_note: str = ""
     available_dates_summary: str = "Available Daily • Today onwards"
+    instructor_available: bool = True
+    instructor_details: str = "Available • Certified Master Instructor"
+    age_restrictions: str = "Operator-defined (Age 10+)"
+    cancellation_policy: str = "Free cancellation up to 24 hours before start time (Operator Policy)"
+    additional_options: List[Dict[str, Any]] = []
     description: str
     highlights: List[str]
     included_gear: List[str]
@@ -115,6 +120,7 @@ class ActivityBookingRequest(BaseModel):
     booking_date: str
     time_slot: str
     participants: int = Field(1, ge=1)
+    selected_addons: Optional[List[Dict[str, Any]]] = None
     customer_whatsapp: Optional[str] = None
     promo_code: Optional[str] = None
     special_request: Optional[str] = None

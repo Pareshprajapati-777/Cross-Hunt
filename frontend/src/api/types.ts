@@ -531,6 +531,11 @@ export interface ActivityItem {
   requires_boat?: boolean;
   vessel_requirement_note?: string;
   available_dates_summary?: string;
+  instructor_available?: boolean;
+  instructor_details?: string;
+  age_restrictions?: string;
+  cancellation_policy?: string;
+  additional_options?: Array<{ id: string; name: string; price: number }>;
   description: string;
   highlights: string[];
   included_gear: string[];
@@ -568,6 +573,7 @@ export interface ActivityBookingPayload {
   booking_date: string;
   time_slot: string;
   participants: number;
+  selected_addons?: Array<{ id: string; name: string; price: number }>;
   customer_whatsapp?: string;
   promo_code?: string;
   special_request?: string;
