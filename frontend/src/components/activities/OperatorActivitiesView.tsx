@@ -34,18 +34,27 @@ interface OperatorActivitiesViewProps {
 }
 
 const PRESET_ACTIVITIES = [
-  { id: 'SCUBA', label: 'Scuba Diving', image: '/static/images/activities/scuba_diving.jpg', defaultPrice: 4500, duration: 90, capacity: 6 },
-  { id: 'JET_SKIING', label: 'Jet Skiing', image: '/static/images/activities/jet_skiing.jpg', defaultPrice: 2200, duration: 30, capacity: 2 },
-  { id: 'PARASAILING', label: 'Parasailing', image: '/static/images/activities/parasailing.jpg', defaultPrice: 2800, duration: 45, capacity: 4 },
-  { id: 'SURFING', label: 'Wave Surfing', image: '/static/images/activities/surfing.jpg', defaultPrice: 1800, duration: 120, capacity: 8 },
-  { id: 'FISHING', label: 'Deep Sea Fishing', image: '/static/images/activities/deep_sea_fishing.jpg', defaultPrice: 5500, duration: 180, capacity: 6 },
-  { id: 'RAFTING', label: 'River Rafting', image: '/static/images/activities/rafting.jpg', defaultPrice: 1950, duration: 120, capacity: 8 },
+  // 1. Water Sports
+  { id: 'SCUBA', label: 'Scuba Diving', image: '/static/images/activities/scuba_diving.jpg', defaultPrice: 3499, duration: 120, capacity: 6 },
+  { id: 'SURFING', label: 'Surfing', image: '/static/images/activities/surfing.jpg', defaultPrice: 1800, duration: 90, capacity: 8 },
   { id: 'KITE_SURFING', label: 'Kite Surfing', image: '/static/images/activities/kite_surfing.jpg', defaultPrice: 3500, duration: 90, capacity: 4 },
-  { id: 'SNORKELING', label: 'Snorkeling & Kayak', image: '/static/images/activities/snorkeling.jpg', defaultPrice: 1600, duration: 60, capacity: 10 },
+  { id: 'JET_SKIING', label: 'Jet Skiing', image: '/static/images/activities/jet_skiing.jpg', defaultPrice: 2200, duration: 30, capacity: 2 },
   { id: 'WATER_SKIING', label: 'Water Skiing', image: '/static/images/activities/water_skiing.jpg', defaultPrice: 2600, duration: 45, capacity: 4 },
-  { id: 'CLIFF_DIVING', label: 'Cliff Diving Safari', image: '/static/images/activities/cliff_diving.jpg', defaultPrice: 2400, duration: 90, capacity: 6 },
-  { id: 'ROWING', label: 'Rowing & Sculling', image: '/static/images/activities/rowing.jpg', defaultPrice: 1400, duration: 60, capacity: 6 },
-  { id: 'WATER_POLO', label: 'Water Polo Arena', image: '/static/images/activities/water_polo.jpg', defaultPrice: 1200, duration: 60, capacity: 14 },
+  { id: 'PARASAILING', label: 'Parasailing', image: '/static/images/activities/parasailing.jpg', defaultPrice: 2800, duration: 45, capacity: 4 },
+  { id: 'RAFTING', label: 'Rafting', image: '/static/images/activities/rafting.jpg', defaultPrice: 1950, duration: 120, capacity: 8 },
+  { id: 'ROWING', label: 'Rowing', image: '/static/images/activities/rowing.jpg', defaultPrice: 1400, duration: 60, capacity: 6 },
+  { id: 'CLIFF_DIVING', label: 'Cliff Diving', image: '/static/images/activities/cliff_diving.jpg', defaultPrice: 2400, duration: 90, capacity: 6 },
+  { id: 'WATER_POLO', label: 'Water Polo', image: '/static/images/activities/water_polo.jpg', defaultPrice: 1200, duration: 60, capacity: 14 },
+  // 2. Fishing Experiences
+  { id: 'DEEP_SEA_FISHING', label: 'Deep-Sea Fishing', image: '/static/images/activities/deep_sea_fishing.jpg', defaultPrice: 5500, duration: 180, capacity: 6 },
+  { id: 'BOAT_FISHING', label: 'Boat Fishing', image: '/static/images/activities/boat_fishing.jpg', defaultPrice: 3200, duration: 120, capacity: 6 },
+  { id: 'FISHING_CHARTER', label: 'Fishing Charter', image: '/static/images/activities/fishing_charter.jpg', defaultPrice: 12000, duration: 240, capacity: 8 },
+  // 3. Boat & Ship Experiences
+  { id: 'YACHT_RENTAL', label: 'Yacht Rental', image: '/static/images/activities/yacht_rental.jpg', defaultPrice: 14500, duration: 120, capacity: 12 },
+  { id: 'SPEEDBOAT_RIDE', label: 'Speedboat Ride', image: '/static/images/activities/speedboat_ride.jpg', defaultPrice: 2500, duration: 45, capacity: 6 },
+  { id: 'PRIVATE_BOAT_CHARTER', label: 'Private Boat Charter', image: '/static/images/activities/private_boat_charter.jpg', defaultPrice: 9500, duration: 180, capacity: 10 },
+  { id: 'SUNSET_CRUISE', label: 'Sunset Cruise', image: '/static/images/activities/sunset_cruise.jpg', defaultPrice: 1800, duration: 90, capacity: 25 },
+  { id: 'GROUP_BOAT_TRIPS', label: 'Group Boat Trips', image: '/static/images/activities/group_boat_trips.jpg', defaultPrice: 1100, duration: 120, capacity: 20 },
 ];
 
 export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ myShips }) => {
@@ -117,7 +126,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       title: act.title,
       activity_type: act.activity_type,
       category_label: act.category_label,
-      host_ship_id: act.host_ship_id,
+      host_ship_id: act.host_ship_id || 0,
       price: act.price,
       duration_minutes: act.duration_minutes,
       difficulty_level: act.difficulty_level || 'All Skill Levels',

@@ -3,6 +3,7 @@ import { ActivityItem, ActivityCategory, ActivityBookingPayload, Booking } from 
 
 export interface ActivityFilterParams {
   activity_type?: string;
+  category_group?: string;
   location?: string;
   search?: string;
   sort_by?: string;
@@ -29,6 +30,9 @@ export interface ActivityBookingResponse {
 
 export async function getActivities(params: ActivityFilterParams = {}): Promise<ActivityListResponse> {
   const query = new URLSearchParams();
+  if (params.category_group && params.category_group !== 'ALL') {
+    query.set('category_group', params.category_group);
+  }
   if (params.activity_type && params.activity_type !== 'ALL') {
     query.set('activity_type', params.activity_type);
   }

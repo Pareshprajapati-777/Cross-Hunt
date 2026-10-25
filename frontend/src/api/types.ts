@@ -517,6 +517,7 @@ export interface WhatsAppConnectionTestResult {
 export interface ActivityCategory {
   id: string;
   label: string;
+  group?: string;
   icon: string;
 }
 
@@ -526,12 +527,17 @@ export interface ActivityItem {
   slug: string;
   activity_type: string;
   category_label: string;
+  category_group?: string;
+  requires_boat?: boolean;
+  vessel_requirement_note?: string;
+  available_dates_summary?: string;
   description: string;
   highlights: string[];
   included_gear: string[];
   safety_guidelines: string;
   requirements: string;
   price: number;
+  starting_price?: number;
   duration_minutes: number;
   duration_display: string;
   difficulty_level: string;
@@ -542,10 +548,10 @@ export interface ActivityItem {
   time_slots: string[];
   image: string;
   gallery: string[];
-  host_ship_id: number;
-  host_ship_name: string;
-  host_ship_category: string;
-  host_ship_image: string;
+  host_ship_id?: number | null;
+  host_ship_name?: string;
+  host_ship_category?: string;
+  host_ship_image?: string;
   owner_id?: number | null;
   owner_name: string;
   owner_phone: string;

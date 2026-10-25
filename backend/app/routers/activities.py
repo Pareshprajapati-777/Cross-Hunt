@@ -27,20 +27,36 @@ from backend.app.schemas.activity import (
 
 router = APIRouter(prefix="/activities", tags=["Activities & Water Sports"])
 
+ACTIVITY_CATEGORY_GROUPS = [
+    {"id": "ALL", "label": "All Experiences", "description": "Explore all water sports, fishing & boat adventures"},
+    {"id": "WATER_SPORTS", "label": "Water Sports", "description": "Scuba diving, surfing, jet skiing, rafting & coastal adrenaline"},
+    {"id": "FISHING", "label": "Fishing Experiences", "description": "Deep-sea angling, coastal boat fishing & luxury charters"},
+    {"id": "BOAT_SHIP", "label": "Boat & Ship Experiences", "description": "Yacht rentals, speedboats, private charters & sunset cruises"},
+]
+
 ACTIVITY_CATEGORIES = [
-    {"id": "ALL", "label": "All Adventures & Rides", "icon": "Waves"},
-    {"id": "SCUBA", "label": "Scuba Diving", "icon": "Compass"},
-    {"id": "JET_SKIING", "label": "Jet Skiing", "icon": "Zap"},
-    {"id": "PARASAILING", "label": "Parasailing", "icon": "Wind"},
-    {"id": "SURFING", "label": "Wave Surfing", "icon": "Waves"},
-    {"id": "FISHING", "label": "Deep Sea Fishing", "icon": "Anchor"},
-    {"id": "RAFTING", "label": "River Rafting", "icon": "Navigation"},
-    {"id": "KITE_SURFING", "label": "Kite Surfing", "icon": "Sparkles"},
-    {"id": "SNORKELING", "label": "Snorkeling & Kayak", "icon": "Eye"},
-    {"id": "WATER_SKIING", "label": "Water Skiing", "icon": "Flame"},
-    {"id": "CLIFF_DIVING", "label": "Cliff Diving", "icon": "ArrowDown"},
-    {"id": "ROWING", "label": "Rowing & Sculling", "icon": "Ship"},
-    {"id": "WATER_POLO", "label": "Water Polo", "icon": "Activity"},
+    {"id": "ALL", "label": "All Experiences", "group": "ALL", "icon": "Waves"},
+    # 1. Water Sports
+    {"id": "SCUBA", "label": "Scuba Diving", "group": "WATER_SPORTS", "icon": "Compass"},
+    {"id": "SURFING", "label": "Surfing", "group": "WATER_SPORTS", "icon": "Waves"},
+    {"id": "KITE_SURFING", "label": "Kite Surfing", "group": "WATER_SPORTS", "icon": "Sparkles"},
+    {"id": "JET_SKIING", "label": "Jet Skiing", "group": "WATER_SPORTS", "icon": "Zap"},
+    {"id": "WATER_SKIING", "label": "Water Skiing", "group": "WATER_SPORTS", "icon": "Flame"},
+    {"id": "PARASAILING", "label": "Parasailing", "group": "WATER_SPORTS", "icon": "Wind"},
+    {"id": "RAFTING", "label": "Rafting", "group": "WATER_SPORTS", "icon": "Navigation"},
+    {"id": "ROWING", "label": "Rowing", "group": "WATER_SPORTS", "icon": "Ship"},
+    {"id": "CLIFF_DIVING", "label": "Cliff Diving", "group": "WATER_SPORTS", "icon": "ArrowDown"},
+    {"id": "WATER_POLO", "label": "Water Polo", "group": "WATER_SPORTS", "icon": "Activity"},
+    # 2. Fishing Experiences
+    {"id": "DEEP_SEA_FISHING", "label": "Deep-Sea Fishing", "group": "FISHING", "icon": "Anchor"},
+    {"id": "BOAT_FISHING", "label": "Boat Fishing", "group": "FISHING", "icon": "Fish"},
+    {"id": "FISHING_CHARTER", "label": "Fishing Charter", "group": "FISHING", "icon": "Ship"},
+    # 3. Boat & Ship Experiences
+    {"id": "YACHT_RENTAL", "label": "Yacht Rental", "group": "BOAT_SHIP", "icon": "Crown"},
+    {"id": "SPEEDBOAT_RIDE", "label": "Speedboat Ride", "group": "BOAT_SHIP", "icon": "Zap"},
+    {"id": "PRIVATE_BOAT_CHARTER", "label": "Private Boat Charter", "group": "BOAT_SHIP", "icon": "Navigation"},
+    {"id": "SUNSET_CRUISE", "label": "Sunset Cruise", "group": "BOAT_SHIP", "icon": "Sun"},
+    {"id": "GROUP_BOAT_TRIPS", "label": "Group Boat Trips", "group": "BOAT_SHIP", "icon": "Users"},
 ]
 
 
@@ -76,18 +92,34 @@ def parse_time_slot(slot_str: str) -> tuple[time, time, Decimal]:
 @router.get("/", response_model=ActivityListResponse)
 def list_activities(
     activity_type: Optional[str] = Query(None, description="Filter by activity category (SCUBA, JET_SKIING, etc.)"),
+    category_group: Optional[str] = Query(None, description="Filter by category group (WATER_SPORTS, FISHING, BOAT_SHIP)"),
     location: Optional[str] = Query(None, description="Filter by port or destination"),
     search: Optional[str] = Query(None, description="Keyword search in title, description, host ship"),
     sort_by: Optional[str] = Query("popular", description="popular, price_asc, price_desc, rating"),
     db: Session = Depends(get_db),
 ):
     """
-    List all public water sports rides and activities with host ship linking.
+    List all public water sports rides and activities with optional vessel linking.
     """
     query = db.query(Activity).filter(Activity.is_active == True)
 
+    if category_group and category_group.upper() != "ALL":
+        cg = category_group.upper()
+        if cg == "WATER_SPORTS":
+            query = query.filter(Activity.category_group == "Water Sports")
+        elif cg == "FISHING":
+            query = query.filter(Activity.category_group == "Fishing Experiences")
+        elif cg == "BOAT_SHIP":
+            query = query.filter(Activity.category_group == "Boat & Ship Experiences")
+        else:
+            query = query.filter(Activity.category_group.ilike(f"%{category_group}%"))
+
     if activity_type and activity_type.upper() != "ALL":
-        query = query.filter(Activity.activity_type == activity_type.upper())
+        # Support alias for FISHING -> DEEP_SEA_FISHING or FISHING
+        if activity_type.upper() == "FISHING":
+            query = query.filter(Activity.activity_type.in_(["FISHING", "DEEP_SEA_FISHING"]))
+        else:
+            query = query.filter(Activity.activity_type == activity_type.upper())
 
     if location and location.strip():
         loc_term = f"%{location.strip()}%"
@@ -100,11 +132,12 @@ def list_activities(
 
     if search and search.strip():
         term = f"%{search.strip()}%"
-        query = query.join(Activity.host_ship).filter(
+        query = query.outerjoin(Activity.host_ship).filter(
             or_(
                 Activity.title.ilike(term),
                 Activity.description.ilike(term),
                 Activity.category_label.ilike(term),
+                Activity.category_group.ilike(term),
                 Activity.activity_type.ilike(term),
                 Cross.name.ilike(term),
             )
@@ -278,12 +311,17 @@ def book_activity(
 
     cust_whatsapp = (req.customer_whatsapp or current_user.phone or "").strip()
 
+    target_cross_id = act.host_ship_id
+    if not target_cross_id:
+        fallback_ship = db.query(Cross).filter(Cross.is_active == True).first()
+        target_cross_id = fallback_ship.id if fallback_ship else 1
+
     # Create Booking
     booking = Booking(
         booking_id=booking_id,
         invoice_number=invoice_number,
         user_id=current_user.id,
-        cross_id=act.host_ship_id,
+        cross_id=target_cross_id,
         public_tour_id=None,
         booking_date=b_date,
         start_time=start_t,

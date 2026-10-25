@@ -7,6 +7,10 @@ class ActivityBase(BaseModel):
     title: str = Field(..., max_length=160)
     activity_type: str = Field(..., max_length=50)
     category_label: str = Field("Water Sports & Marine Adventures", max_length=80)
+    category_group: str = Field("Water Sports", max_length=50)
+    requires_boat: bool = False
+    vessel_requirement_note: str = "Beach & Shore-Based (No Boat Needed)"
+    available_dates_summary: str = "Available Daily • Today onwards"
     description: str = ""
     highlights: List[str] = []
     included_gear: List[str] = []
@@ -22,7 +26,7 @@ class ActivityBase(BaseModel):
     time_slots: List[str] = ["08:30 AM", "10:30 AM", "01:30 PM", "03:30 PM", "05:00 PM"]
     image: str = ""
     gallery: List[str] = []
-    host_ship_id: int
+    host_ship_id: Optional[int] = None
     is_active: bool = True
     is_featured: bool = False
 
@@ -35,6 +39,10 @@ class ActivityUpdate(BaseModel):
     title: Optional[str] = None
     activity_type: Optional[str] = None
     category_label: Optional[str] = None
+    category_group: Optional[str] = None
+    requires_boat: Optional[bool] = None
+    vessel_requirement_note: Optional[str] = None
+    available_dates_summary: Optional[str] = None
     description: Optional[str] = None
     highlights: Optional[List[str]] = None
     included_gear: Optional[List[str]] = None
@@ -61,12 +69,17 @@ class ActivityResponse(BaseModel):
     slug: str
     activity_type: str
     category_label: str
+    category_group: str = "Water Sports"
+    requires_boat: bool = False
+    vessel_requirement_note: str = ""
+    available_dates_summary: str = "Available Daily • Today onwards"
     description: str
     highlights: List[str]
     included_gear: List[str]
     safety_guidelines: str
     requirements: str
     price: float
+    starting_price: Optional[float] = None
     duration_minutes: int
     duration_display: str
     difficulty_level: str
@@ -77,10 +90,10 @@ class ActivityResponse(BaseModel):
     time_slots: List[str]
     image: str
     gallery: List[str]
-    host_ship_id: int
-    host_ship_name: str
-    host_ship_category: str
-    host_ship_image: str
+    host_ship_id: Optional[int] = None
+    host_ship_name: Optional[str] = None
+    host_ship_category: Optional[str] = None
+    host_ship_image: Optional[str] = None
     owner_id: Optional[int] = None
     owner_name: str
     owner_phone: str

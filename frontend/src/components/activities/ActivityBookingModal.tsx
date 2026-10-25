@@ -257,24 +257,49 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
           ) : (
             /* BOOKING FORM */
             <form onSubmit={handleBookingSubmit} className="space-y-5">
-              {/* Host Ship Badge Banner */}
-              <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200 text-xs flex items-center justify-between gap-3 shadow-xs">
+              {/* Experience Requirement Entity Banner (Vessel vs Beach) */}
+              <div
+                className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 shadow-xs ${
+                  activity.requires_boat
+                    ? 'bg-sky-50/80 border-sky-200 text-sky-900'
+                    : 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                }`}
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-sky-600/10 border border-sky-500/20 text-sky-600 flex items-center justify-center shrink-0">
-                    <Anchor className="w-4 h-4" />
+                  <div
+                    className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
+                      activity.requires_boat
+                        ? 'bg-sky-600/10 border-sky-500/20 text-sky-600'
+                        : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-600'
+                    }`}
+                  >
+                    {activity.requires_boat ? (
+                      <Anchor className="w-4 h-4" />
+                    ) : (
+                      <Compass className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 block">
-                      Conducted on Vessel
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider block ${
+                        activity.requires_boat ? 'text-sky-700' : 'text-emerald-700'
+                      }`}
+                    >
+                      {activity.requires_boat ? 'Vessel Transport Included' : 'Beach & Shore-Based Experience'}
                     </span>
                     <p className="font-bold text-slate-900 truncate">
-                      {activity.host_ship_name} ({activity.host_ship_category})
+                      {activity.vessel_requirement_note ||
+                        (activity.requires_boat
+                          ? `${activity.host_ship_name || 'Boat Transport'} (${activity.host_ship_category || 'Cruiser'})`
+                          : 'No ship required • Direct shore/beach access')}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Port</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                    {activity.requires_boat ? 'Boarding Jetty' : 'Location Point'}
+                  </span>
                   <span className="font-bold text-slate-800 text-xs truncate max-w-[150px] block">
                     {activity.departure_port}
                   </span>

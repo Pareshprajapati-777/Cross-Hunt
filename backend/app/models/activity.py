@@ -37,8 +37,16 @@ class Activity(Base):
     image: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     gallery_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
 
-    # Host Vessel Link - booking the ride books this ship slot
-    host_ship_id: Mapped[int] = mapped_column(Integer, ForeignKey("crosses_cross.id"), nullable=False)
+    # Activity & Vessel separation:
+    # An activity is an independent entity. Some activities require/include boat transport,
+    # while others are beach, shore, or river based.
+    category_group: Mapped[str] = mapped_column(String(50), default="Water Sports", nullable=False)
+    requires_boat: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    vessel_requirement_note: Mapped[str] = mapped_column(String(150), default="Beach & Shore-Based (No Boat Needed)", nullable=False)
+    available_dates_summary: Mapped[str] = mapped_column(String(150), default="Available Daily • Today onwards", nullable=False)
+
+    # Host Vessel Link - Optional (NULL for beach/shore-based activities)
+    host_ship_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_cross.id"), nullable=True)
     operator_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_operator.id"), nullable=True)
     owner_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("accounts_user.id"), nullable=True)
 
@@ -94,12 +102,17 @@ class Activity(Base):
             "slug": self.slug,
             "activity_type": self.activity_type,
             "category_label": self.category_label,
+            "category_group": self.category_group,
+            "requires_boat": self.requires_boat,
+            "vessel_requirement_note": self.vessel_requirement_note,
+            "available_dates_summary": self.available_dates_summary,
             "description": self.description,
             "highlights": self.highlights,
             "included_gear": self.included_gear,
             "safety_guidelines": self.safety_guidelines,
             "requirements": self.requirements,
             "price": float(self.price),
+            "starting_price": float(self.price),
             "duration_minutes": self.duration_minutes,
             "duration_display": f"{self.duration_minutes} Mins" if self.duration_minutes < 120 else f"{self.duration_minutes // 60} Hours",
             "difficulty_level": self.difficulty_level,
@@ -111,8 +124,8 @@ class Activity(Base):
             "image": self.image,
             "gallery": self.gallery,
             "host_ship_id": self.host_ship_id,
-            "host_ship_name": self.host_ship.name if self.host_ship else "Host Vessel",
-            "host_ship_category": self.host_ship.category if self.host_ship else "Speedboat",
+            "host_ship_name": self.host_ship.name if self.host_ship else ("Boat Transport Included" if self.requires_boat else "Beach & Shore Based"),
+            "host_ship_category": self.host_ship.category if self.host_ship else ("Speedboat / Charter" if self.requires_boat else "Shore / Beach"),
             "host_ship_image": self.host_ship.display_image_url if self.host_ship else "",
             "owner_id": self.owner_id,
             "owner_name": f"{self.owner.first_name} {self.owner.last_name}".strip() if self.owner and (self.owner.first_name or self.owner.last_name) else (self.operator.name if self.operator else "Fleet Owner"),
