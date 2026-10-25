@@ -1,12 +1,40 @@
+import os
+import shutil
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+# Use an isolated test database so pytest NEVER pollutes the main db.sqlite3!
+TEST_DB_PATH = BASE_DIR / "test_db.sqlite3"
+MAIN_DB_PATH = BASE_DIR / "db.sqlite3"
+
+if MAIN_DB_PATH.exists():
+    shutil.copyfile(MAIN_DB_PATH, TEST_DB_PATH)
+
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.database.session import SessionLocal, get_db
 from backend.app.models.user import User
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_database():
+    yield
+    # Remove test database when test session finishes
+    try:
+        if TEST_DB_PATH.exists():
+            os.remove(TEST_DB_PATH)
+        for ext in ["-wal", "-shm"]:
+            wal = Path(str(TEST_DB_PATH) + ext)
+            if wal.exists():
+                os.remove(wal)
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="session")

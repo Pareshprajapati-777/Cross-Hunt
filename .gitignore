@@ -18,6 +18,7 @@ db.sqlite3.backup
 cross_hunt.db
 *.db-shm
 *.db-wal
+test_db.sqlite3*
 
 
 # Virtual Environments
