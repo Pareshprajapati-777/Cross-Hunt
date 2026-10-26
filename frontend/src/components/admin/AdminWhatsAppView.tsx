@@ -681,7 +681,6 @@ export const AdminWhatsAppView: React.FC = () => {
                   <th className="py-3 px-3">Provider</th>
                   <th className="py-3 px-3">Provider Message ID</th>
                   <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -709,15 +708,14 @@ export const AdminWhatsAppView: React.FC = () => {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
+                        title={log.error_message || undefined}
                       >
                         {log.status}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-500 text-[11px]">
-                      {log.error_message ? (
-                        <span className="text-rose-600 font-mono">{log.error_message}</span>
-                      ) : (
-                        <span className="text-emerald-700 font-semibold">Delivered via API</span>
+                      {log.error_message && (
+                        <div className="text-[10px] text-rose-600 font-mono mt-0.5 max-w-[160px] truncate" title={log.error_message}>
+                          {log.error_message}
+                        </div>
                       )}
                     </td>
                   </tr>
