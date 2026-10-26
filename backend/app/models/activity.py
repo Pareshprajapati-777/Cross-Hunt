@@ -28,6 +28,9 @@ class Activity(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     difficulty_level: Mapped[str] = mapped_column(String(30), default="MODERATE", nullable=False)
     capacity_per_slot: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    min_participants: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    pricing_type: Mapped[str] = mapped_column(String(30), default="PER_PERSON", nullable=False)
+    weather_conditions: Mapped[str] = mapped_column(String(250), default="Operates in calm to moderate sea swell. Subject to wind/rain advisories.", nullable=False)
 
     location: Mapped[str] = mapped_column(String(120), default="Goa Watersports Marina", nullable=False)
     departure_port: Mapped[str] = mapped_column(String(150), default="Dona Paula Jetty", nullable=False)
@@ -137,6 +140,9 @@ class Activity(Base):
             "duration_display": f"{self.duration_minutes} Mins" if self.duration_minutes < 120 else f"{self.duration_minutes // 60} Hours",
             "difficulty_level": self.difficulty_level,
             "capacity_per_slot": self.capacity_per_slot,
+            "min_participants": self.min_participants,
+            "pricing_type": self.pricing_type,
+            "weather_conditions": self.weather_conditions,
             "location": self.location,
             "departure_port": self.departure_port,
             "operating_hours": self.operating_hours,

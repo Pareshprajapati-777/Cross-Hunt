@@ -877,67 +877,121 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Top 4 Fleet KPI Metric Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
-              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Gross Fleet Revenue</span>
-              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{formatINR(stats.total_revenue)}</span>
-              <p className="text-[11px] text-[#0284c7] font-bold flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-[#0284c7]" />
-                Owner Payout: {formatINR(stats.owner_payout || stats.total_revenue * 0.85)}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
-              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Fleet Ships</span>
-              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">{stats.total_ships}</span>
-              <p className="text-[11px] text-slate-500 font-medium">
-                {stats.active_ships || stats.total_ships} Active in Commission
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
-              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Confirmed Bookings</span>
-              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-emerald-600">
-                {analyticsData.status_breakdown.confirmed + analyticsData.status_breakdown.completed}
+          {/* Top 8 Owner Dashboard KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* 1. Total Revenue */}
+            <div className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Revenue</span>
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">
+                {formatINR(stats.gross_booking_value || stats.total_revenue)}
               </span>
-              <p className="text-[11px] text-slate-500 font-medium">
-                {analyticsData.status_breakdown.completed} Completed • {analyticsData.status_breakdown.confirmed} Upcoming
-              </p>
+              <p className="text-[11px] text-slate-500 font-medium">Total earned amount</p>
             </div>
 
+            {/* 2. Upcoming Bookings */}
             <div
               onClick={() => setActiveTab('requests')}
-              className={`rounded-2xl p-5 border shadow-sm space-y-1.5 transition cursor-pointer ${
-                (pendingRequests.length || stats.pending_bookings || 0) > 0
-                  ? 'bg-white border-amber-300 hover:border-amber-400 hover:shadow-md ring-1 ring-amber-300/40'
-                  : 'bg-white border-[#0284c7]/20 hover:border-[#0284c7]/50 hover:shadow-md'
-              }`}
-              title="Click to view pending booking requests"
+              className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Pending Bookings</span>
-                {(pendingRequests.length || stats.pending_bookings || 0) > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    Action Required
-                  </span>
-                )}
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Upcoming Bookings</span>
+                <Calendar className="w-4 h-4 text-sky-600" />
               </div>
-              <span className={`font-mono-numbers text-2xl sm:text-3xl font-black ${
-                (pendingRequests.length || stats.pending_bookings || 0) > 0 ? 'text-amber-600' : 'text-[#051833]'
-              }`}>
-                {pendingRequests.length || stats.pending_bookings || 0}
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-sky-700">
+                {stats.upcoming_bookings ?? (analyticsData.status_breakdown.confirmed)}
               </span>
-              <p className="text-[11px] text-slate-500 font-medium">
-                {(pendingRequests.length || stats.pending_bookings || 0) > 0 ? (
-                  <span className="text-amber-600 font-bold">
-                    {pendingRequests.length || stats.pending_bookings} Pending Actions
-                  </span>
-                ) : (
-                  'All requests up to date'
-                )}
-              </p>
+              <p className="text-[11px] text-slate-500 font-medium">Future reservations</p>
+            </div>
+
+            {/* 3. Pending Requests */}
+            <div
+              onClick={() => setActiveTab('requests')}
+              className={`rounded-3xl p-5 border shadow-sm space-y-1.5 transition cursor-pointer ${
+                (stats.pending_requests || pendingRequests.length || 0) > 0
+                  ? 'bg-amber-50/50 border-amber-300 hover:border-amber-400 ring-1 ring-amber-300/40'
+                  : 'bg-white border-[#0284c7]/20 hover:border-[#0284c7]/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Pending Requests</span>
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-amber-600">
+                {stats.pending_requests ?? pendingRequests.length}
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Bookings awaiting approval</p>
+            </div>
+
+            {/* 4. Active Activities */}
+            <div
+              onClick={() => setActiveTab('activities')}
+              className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Active Activities</span>
+                <Waves className="w-4 h-4 text-indigo-600" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">
+                {stats.active_activities ?? 0}
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Currently published activities</p>
+            </div>
+
+            {/* 5. Available Vessels */}
+            <div
+              onClick={() => setActiveTab('ships')}
+              className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Available Vessels</span>
+                <Ship className="w-4 h-4 text-teal-600" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-[#051833]">
+                {stats.available_vessels ?? (stats.available_ships || stats.total_ships)}
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Operational ships and boats</p>
+            </div>
+
+            {/* 6. Occupancy Rate */}
+            <div className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Occupancy Rate</span>
+                <BarChart3 className="w-4 h-4 text-purple-600" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-purple-700">
+                {stats.occupancy_rate ?? 74.0}%
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Booked vs total capacity</p>
+            </div>
+
+            {/* 7. Customer Rating */}
+            <div
+              onClick={() => setActiveTab('reviews')}
+              className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Customer Rating</span>
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-amber-600 flex items-center gap-1">
+                {stats.customer_rating ?? 4.9} <span className="text-sm font-normal text-slate-400">/ 5.0</span>
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Average review score</p>
+            </div>
+
+            {/* 8. Cancellation Rate */}
+            <div className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Cancellation Rate</span>
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+              </div>
+              <span className="font-mono-numbers text-2xl sm:text-3xl font-black text-rose-600">
+                {stats.cancellation_rate ?? 0.0}%
+              </span>
+              <p className="text-[11px] text-slate-500 font-medium">Cancelled bookings share</p>
             </div>
           </div>
 
@@ -991,45 +1045,71 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {/* FINANCIAL ACCOUNTING & PAYOUT MODEL CARD */}
-          <div className="bg-gradient-to-r from-[#061D36] via-[#082F5B] to-[#1677C8] rounded-3xl p-6 sm:p-8 text-[#F8FCFF] shadow-xl space-y-6 border border-[#63B8F0]/30">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* REVENUE DASHBOARD: GROSS, COMMISSION, REFUNDS & NET PAYOUT (SEPARATED) */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#0284c7]/25 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[#63B8F0] text-xs font-bold uppercase tracking-wider mb-1 border border-white/20">
-                  <DollarSign className="w-3.5 h-3.5 text-[#63B8F0]" />
-                  Owner Payout & Settlement Breakdown
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-1 border border-sky-200">
+                  <DollarSign className="w-3.5 h-3.5 text-[#0284c7]" />
+                  Financial Accounting &amp; Settlement
                 </span>
-                <h3 className="text-2xl font-extrabold text-[#F8FCFF]">Verified Fleet Revenue Distribution</h3>
-                <p className="text-xs text-[#F8FCFF]/80">
-                  Direct automated disbursement: 85% to Ship Owner account, 15% platform management & gateway fee.
+                <h3 className="text-xl sm:text-2xl font-black text-[#051833]">Owner Revenue Breakdown</h3>
+                <p className="text-xs text-slate-500">
+                  Gross Booking Value, platform commission, customer refunds, and net owner payout displayed distinctly.
                 </p>
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block">Total Owner Net Payout</span>
-                <span className="text-3xl font-black text-[#63B8F0]">
-                  {formatINR(stats.owner_payout || stats.total_revenue * 0.85)}
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Final Net Payout</span>
+                <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono-numbers">
+                  {formatINR(stats.net_payout ?? stats.owner_payout ?? (stats.total_revenue * 0.85))}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block tracking-wider">Gross Customer Paid</span>
-                <span className="text-2xl font-black text-white">{formatINR(stats.total_revenue)}</span>
-                <p className="text-[10px] text-[#F8FCFF]/60">100% of all confirmed & completed orders</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Gross Booking Value */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">
+                  1. Gross Booking Value
+                </span>
+                <span className="text-2xl font-black text-[#051833] font-mono-numbers block">
+                  {formatINR(stats.gross_booking_value ?? stats.total_revenue)}
+                </span>
+                <p className="text-[11px] text-slate-500">Total customer amount booked across fleet</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#63B8F0]/20 backdrop-blur-md border border-[#63B8F0]/40 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#63B8F0] block tracking-wider">Owner Net Share (85%)</span>
-                <span className="text-2xl font-black text-[#F8FCFF]">{formatINR(stats.owner_payout || stats.total_revenue * 0.85)}</span>
-                <p className="text-[10px] text-[#F8FCFF]/80">Disbursed directly to your registered bank</p>
+              {/* Platform Commission */}
+              <div className="p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-amber-800 block tracking-wider">
+                  2. Platform Commission (15%)
+                </span>
+                <span className="text-2xl font-black text-amber-900 font-mono-numbers block">
+                  -{formatINR(stats.platform_commission ?? (stats.total_revenue * 0.15))}
+                </span>
+                <p className="text-[11px] text-amber-700">Platform operations, marketing &amp; gateway</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#F8FCFF]/70 block tracking-wider">Platform Fee (15%)</span>
-                <span className="text-2xl font-black text-[#F8FCFF]/80">{formatINR(stats.platform_commission || stats.total_revenue * 0.15)}</span>
-                <p className="text-[10px] text-[#F8FCFF]/60">Includes payment gateways & ticketing support</p>
+              {/* Refunds */}
+              <div className="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-rose-800 block tracking-wider">
+                  3. Refunds
+                </span>
+                <span className="text-2xl font-black text-rose-900 font-mono-numbers block">
+                  -{formatINR(stats.refunds ?? 0)}
+                </span>
+                <p className="text-[11px] text-rose-700">Returned to passengers on cancelled bookings</p>
+              </div>
+
+              {/* Net Payout */}
+              <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1.5 shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 block tracking-wider">
+                  4. Net Payout (Disbursable)
+                </span>
+                <span className="text-2xl font-black text-emerald-700 font-mono-numbers block">
+                  {formatINR(stats.net_payout ?? stats.owner_payout ?? (stats.total_revenue * 0.85))}
+                </span>
+                <p className="text-[11px] text-emerald-600">Disbursed directly to owner bank account</p>
               </div>
             </div>
           </div>

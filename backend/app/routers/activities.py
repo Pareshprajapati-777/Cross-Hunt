@@ -8,7 +8,7 @@ from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc, asc
+from sqlalchemy import or_, and_, desc, asc
 
 from backend.app.database.session import get_db
 from backend.app.dependencies.auth import get_current_user, get_optional_user
@@ -258,15 +258,88 @@ def book_activity(
     if b_date < date.today():
         raise HTTPException(status_code=400, detail="Activity booking date cannot be in the past.")
 
+    # Parse start and end time
+    start_t, end_t, dur_hrs = parse_time_slot(req.time_slot)
+    dur_minutes = act.duration_minutes
+    try:
+        dt_start = datetime.combine(b_date, start_t)
+        dt_end = dt_start + timedelta(minutes=dur_minutes)
+        end_t = dt_end.time()
+        dur_hrs = Decimal(str(round(dur_minutes / 60, 2)))
+    except Exception:
+        pass
+
     if req.participants > act.capacity_per_slot:
         raise HTTPException(
             status_code=400,
             detail=f"Requested participants ({req.participants}) exceeds maximum slot capacity ({act.capacity_per_slot}).",
         )
 
-    # Calculate Pricing
+    # 1. Boat / Vessel Overlapping Double-Booking Prevention:
+    # If the activity requires a boat and has an assigned vessel, ensure vessel is not already engaged
+    if act.requires_boat and act.host_ship_id:
+        vessel_conflict = (
+            db.query(Booking)
+            .filter(
+                Booking.cross_id == act.host_ship_id,
+                Booking.booking_date == b_date,
+                Booking.status.in_(["CONFIRMED", "PENDING"]),
+                or_(
+                    and_(Booking.start_time <= start_t, Booking.end_time > start_t),
+                    and_(Booking.start_time < end_t, Booking.end_time >= end_t),
+                    and_(Booking.start_time >= start_t, Booking.end_time <= end_t),
+                ),
+            )
+            .first()
+        )
+        if vessel_conflict:
+            ship_name = act.host_ship.name if act.host_ship else "Assigned Vessel"
+            raise HTTPException(
+                status_code=409,
+                detail=f"Double-booking prevented: Vessel '{ship_name}' is already reserved for an overlapping session on {req.booking_date} ({vessel_conflict.start_time.strftime('%I:%M %p')} - {vessel_conflict.end_time.strftime('%I:%M %p')}). Please choose another time slot.",
+            )
+
+    # 2. Activity / Instructor / Equipment Slot Capacity & Double-Booking Prevention:
+    existing_slot_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.booking_type == "ACTIVITY",
+            Booking.booking_date == b_date,
+            or_(
+                Booking.event_type == f"ACT_{act.id}",
+                Booking.event_type == act.title,
+                Booking.cabin_type.like(f"ACT:{act.id}:%"),
+                Booking.cabin_type == f"Slot: {act.title}",
+            ),
+            Booking.status.in_(["CONFIRMED", "PENDING"]),
+            or_(
+                and_(Booking.start_time <= start_t, Booking.end_time > start_t),
+                and_(Booking.start_time < end_t, Booking.end_time >= end_t),
+                and_(Booking.start_time >= start_t, Booking.end_time <= end_t),
+            ),
+        )
+        .all()
+    )
+    already_booked = sum(b.number_of_people for b in existing_slot_bookings)
+    if already_booked + req.participants > act.capacity_per_slot:
+        remaining = max(0, act.capacity_per_slot - already_booked)
+        if remaining == 0:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Slot fully booked: The {req.time_slot} session on {req.booking_date} is at full capacity ({act.capacity_per_slot} participants). Assigned instructor and equipment are fully engaged. Please choose another time slot.",
+            )
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Capacity exceeded: Only {remaining} spot(s) remaining for {req.time_slot} on {req.booking_date} (requested {req.participants}). Please reduce participants or choose another time slot.",
+            )
+
+    # Calculate Pricing (Supports both PER_PERSON and PER_SESSION)
     base_unit_price = Decimal(str(act.price))
-    subtotal = base_unit_price * Decimal(str(req.participants))
+    if getattr(act, "pricing_type", "PER_PERSON") == "PER_SESSION":
+        subtotal = base_unit_price
+    else:
+        subtotal = base_unit_price * Decimal(str(req.participants))
 
     # Additional options / extras selected by user
     extras_amount = Decimal("0.00")
@@ -300,17 +373,6 @@ def book_activity(
     tax_amount = (after_discount * Decimal("0.05")).quantize(Decimal("0.01"))
     total_price = (after_discount + tax_amount).quantize(Decimal("0.01"))
 
-    # Parse start and end time
-    start_t, end_t, dur_hrs = parse_time_slot(req.time_slot)
-    dur_minutes = act.duration_minutes
-    try:
-        dt_start = datetime.combine(b_date, start_t)
-        dt_end = dt_start + timedelta(minutes=dur_minutes)
-        end_t = dt_end.time()
-        dur_hrs = Decimal(str(round(dur_minutes / 60, 2)))
-    except Exception:
-        pass
-
     # Unique codes
     booking_id = generate_unique_booking_id(db, prefix="ACT")
     ticket_code = generate_unique_ticket_code(db)
@@ -338,9 +400,9 @@ def book_activity(
         start_time=start_t,
         end_time=end_t,
         booking_type="ACTIVITY",
-        cabin_type=f"Slot: {act.title}",
-        event_type=act.title,
-        event_package=act.activity_type,
+        cabin_type=f"ACT:{act.id}:{req.time_slot}",
+        event_type=f"ACT_{act.id}",
+        event_package=f"{act.activity_type}:{req.time_slot}",
         number_of_people=req.participants,
         adults_count=req.participants,
         children_count=0,
@@ -409,14 +471,14 @@ def create_activity(
     if current_user.role not in ["OWNER", "OPERATOR", "ADMIN"]:
         raise HTTPException(status_code=403, detail="Only verified vessel owners or operators can list activities.")
 
-    # Validate host ship
-    host_ship = db.query(Cross).filter(Cross.id == data.host_ship_id).first()
-    if not host_ship:
-        raise HTTPException(status_code=404, detail="Selected host vessel does not exist.")
-
-    if not current_user.is_admin and host_ship.owner_id != current_user.id:
-        # Ensure owner owns the vessel or is approved
-        pass
+    # Validate host ship if provided
+    host_ship = None
+    if data.host_ship_id and data.host_ship_id > 0:
+        host_ship = db.query(Cross).filter(Cross.id == data.host_ship_id).first()
+        if not host_ship:
+            raise HTTPException(status_code=404, detail="Selected host vessel does not exist.")
+        if not current_user.is_admin and host_ship.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You can only associate activities with vessels you own.")
 
     # Generate slug
     base_slug = re.sub(r"[^a-zA-Z0-9]+", "-", data.title.lower()).strip("-")
@@ -431,24 +493,35 @@ def create_activity(
         slug=slug,
         activity_type=data.activity_type.upper(),
         category_label=data.category_label,
+        category_group=data.category_group or "Water Sports",
+        requires_boat=data.requires_boat or (host_ship is not None),
+        vessel_requirement_note=data.vessel_requirement_note or (f"Boat Included ({host_ship.name})" if host_ship else "Beach & Shore-Based (No Boat Needed)"),
+        available_dates_summary=data.available_dates_summary or "Available Daily • Today onwards",
+        instructor_available=data.instructor_available,
+        instructor_details=data.instructor_details or "Available • Certified Master Instructor",
+        age_restrictions=data.age_restrictions or "Operator-defined",
+        cancellation_policy=data.cancellation_policy or "Free cancellation up to 24 hours before start time (Operator Policy)",
         description=data.description,
         highlights_json=json.dumps(data.highlights),
         included_gear_json=json.dumps(data.included_gear),
         safety_guidelines=data.safety_guidelines,
         requirements=data.requirements,
         price=data.price,
+        pricing_type=data.pricing_type or "PER_PERSON",
         duration_minutes=data.duration_minutes,
         difficulty_level=data.difficulty_level,
         capacity_per_slot=data.capacity_per_slot,
-        location=data.location or host_ship.location,
-        departure_port=data.departure_port or host_ship.departure_port or "Harbor Jetty",
+        min_participants=data.min_participants,
+        weather_conditions=data.weather_conditions or "Operates in calm to moderate sea swell. Subject to wind/rain advisories.",
+        location=data.location or (host_ship.location if host_ship else "Goa"),
+        departure_port=data.departure_port or (host_ship.departure_port if host_ship else "Pier Jetty"),
         operating_hours=data.operating_hours,
         time_slots_json=json.dumps(data.time_slots),
         image=data.image or "/static/images/activities/jet_skiing.jpg",
         gallery_json=json.dumps(data.gallery or [data.image]),
-        host_ship_id=data.host_ship_id,
+        host_ship_id=host_ship.id if host_ship else None,
         owner_id=current_user.id,
-        operator_id=host_ship.operator_id,
+        operator_id=host_ship.operator_id if host_ship else None,
         is_active=data.is_active,
         is_featured=data.is_featured,
         rating=Decimal("5.0"),
@@ -485,8 +558,26 @@ def update_activity(
     if "gallery" in update_dict:
         act.gallery_json = json.dumps(update_dict.pop("gallery"))
 
+    # If host_ship_id is updated, verify authorization
+    if "host_ship_id" in update_dict:
+        new_ship_id = update_dict.get("host_ship_id")
+        if new_ship_id and new_ship_id > 0:
+            ship = db.query(Cross).filter(Cross.id == new_ship_id).first()
+            if not ship:
+                raise HTTPException(status_code=404, detail="Host ship not found.")
+            if not current_user.is_admin and ship.owner_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Cannot assign activity to another owner's ship.")
+            act.host_ship_id = ship.id
+            act.operator_id = ship.operator_id
+            act.requires_boat = True
+        else:
+            act.host_ship_id = None
+            act.operator_id = None
+            act.requires_boat = False
+
     for k, v in update_dict.items():
-        setattr(act, k, v)
+        if k != "host_ship_id" and hasattr(act, k):
+            setattr(act, k, v)
 
     db.commit()
     db.refresh(act)

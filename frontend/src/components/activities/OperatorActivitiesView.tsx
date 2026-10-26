@@ -18,7 +18,14 @@ import {
   Check,
   X,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Calendar,
+  CloudSun,
+  UserCheck,
+  LifeBuoy,
+  Tag,
+  Anchor,
+  FileText
 } from 'lucide-react';
 import { ActivityItem } from '../../api/types';
 import {
@@ -35,26 +42,26 @@ interface OperatorActivitiesViewProps {
 
 const PRESET_ACTIVITIES = [
   // 1. Water Sports
-  { id: 'SCUBA', label: 'Scuba Diving', image: '/static/images/activities/scuba_diving.jpg', defaultPrice: 3499, duration: 120, capacity: 6 },
-  { id: 'SURFING', label: 'Surfing', image: '/static/images/activities/surfing.jpg', defaultPrice: 1800, duration: 90, capacity: 8 },
-  { id: 'KITE_SURFING', label: 'Kite Surfing', image: '/static/images/activities/kite_surfing.jpg', defaultPrice: 3500, duration: 90, capacity: 4 },
-  { id: 'JET_SKIING', label: 'Jet Skiing', image: '/static/images/activities/jet_skiing.jpg', defaultPrice: 2200, duration: 30, capacity: 2 },
-  { id: 'WATER_SKIING', label: 'Water Skiing', image: '/static/images/activities/water_skiing.jpg', defaultPrice: 2600, duration: 45, capacity: 4 },
-  { id: 'PARASAILING', label: 'Parasailing', image: '/static/images/activities/parasailing.jpg', defaultPrice: 2800, duration: 45, capacity: 4 },
-  { id: 'RAFTING', label: 'Rafting', image: '/static/images/activities/rafting.jpg', defaultPrice: 1950, duration: 120, capacity: 8 },
-  { id: 'ROWING', label: 'Rowing', image: '/static/images/activities/rowing.jpg', defaultPrice: 1400, duration: 60, capacity: 6 },
-  { id: 'CLIFF_DIVING', label: 'Cliff Diving', image: '/static/images/activities/cliff_diving.jpg', defaultPrice: 2400, duration: 90, capacity: 6 },
-  { id: 'WATER_POLO', label: 'Water Polo', image: '/static/images/activities/water_polo.jpg', defaultPrice: 1200, duration: 60, capacity: 14 },
+  { id: 'SCUBA', label: 'Scuba Diving', group: 'Water Sports', image: '/static/images/activities/scuba_diving.jpg', defaultPrice: 3499, pricingType: 'PER_PERSON', duration: 60, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
+  { id: 'SURFING', label: 'Surfing', group: 'Water Sports', image: '/static/images/activities/surfing.jpg', defaultPrice: 1800, pricingType: 'PER_PERSON', duration: 90, minParticipants: 1, capacity: 8, instructor: true, equipment: true },
+  { id: 'KITE_SURFING', label: 'Kite Surfing', group: 'Water Sports', image: '/static/images/activities/kite_surfing.jpg', defaultPrice: 3500, pricingType: 'PER_PERSON', duration: 90, minParticipants: 1, capacity: 4, instructor: true, equipment: true },
+  { id: 'JET_SKIING', label: 'Jet Skiing', group: 'Water Sports', image: '/static/images/activities/jet_skiing.jpg', defaultPrice: 2200, pricingType: 'PER_PERSON', duration: 30, minParticipants: 1, capacity: 2, instructor: false, equipment: true },
+  { id: 'WATER_SKIING', label: 'Water Skiing', group: 'Water Sports', image: '/static/images/activities/water_skiing.jpg', defaultPrice: 2600, pricingType: 'PER_PERSON', duration: 45, minParticipants: 1, capacity: 4, instructor: true, equipment: true },
+  { id: 'PARASAILING', label: 'Parasailing', group: 'Water Sports', image: '/static/images/activities/parasailing.jpg', defaultPrice: 2800, pricingType: 'PER_PERSON', duration: 45, minParticipants: 1, capacity: 4, instructor: true, equipment: true },
+  { id: 'RAFTING', label: 'Rafting', group: 'Water Sports', image: '/static/images/activities/rafting.jpg', defaultPrice: 1950, pricingType: 'PER_PERSON', duration: 120, minParticipants: 2, capacity: 8, instructor: true, equipment: true },
+  { id: 'ROWING', label: 'Rowing', group: 'Water Sports', image: '/static/images/activities/rowing.jpg', defaultPrice: 1400, pricingType: 'PER_PERSON', duration: 60, minParticipants: 1, capacity: 6, instructor: false, equipment: true },
+  { id: 'CLIFF_DIVING', label: 'Cliff Diving', group: 'Water Sports', image: '/static/images/activities/cliff_diving.jpg', defaultPrice: 2400, pricingType: 'PER_PERSON', duration: 90, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
+  { id: 'WATER_POLO', label: 'Water Polo', group: 'Water Sports', image: '/static/images/activities/water_polo.jpg', defaultPrice: 1200, pricingType: 'PER_PERSON', duration: 60, minParticipants: 4, capacity: 14, instructor: true, equipment: true },
   // 2. Fishing Experiences
-  { id: 'DEEP_SEA_FISHING', label: 'Deep-Sea Fishing', image: '/static/images/activities/deep_sea_fishing.jpg', defaultPrice: 5500, duration: 180, capacity: 6 },
-  { id: 'BOAT_FISHING', label: 'Boat Fishing', image: '/static/images/activities/boat_fishing.jpg', defaultPrice: 3200, duration: 120, capacity: 6 },
-  { id: 'FISHING_CHARTER', label: 'Fishing Charter', image: '/static/images/activities/fishing_charter.jpg', defaultPrice: 12000, duration: 240, capacity: 8 },
+  { id: 'DEEP_SEA_FISHING', label: 'Deep-Sea Fishing', group: 'Fishing Experiences', image: '/static/images/activities/deep_sea_fishing.jpg', defaultPrice: 5500, pricingType: 'PER_PERSON', duration: 180, minParticipants: 2, capacity: 6, instructor: true, equipment: true },
+  { id: 'BOAT_FISHING', label: 'Boat Fishing', group: 'Fishing Experiences', image: '/static/images/activities/boat_fishing.jpg', defaultPrice: 3200, pricingType: 'PER_PERSON', duration: 120, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
+  { id: 'FISHING_CHARTER', label: 'Fishing Charter', group: 'Fishing Experiences', image: '/static/images/activities/fishing_charter.jpg', defaultPrice: 15000, pricingType: 'PER_SESSION', duration: 240, minParticipants: 1, capacity: 8, instructor: true, equipment: true },
   // 3. Boat & Ship Experiences
-  { id: 'YACHT_RENTAL', label: 'Yacht Rental', image: '/static/images/activities/yacht_rental.jpg', defaultPrice: 14500, duration: 120, capacity: 12 },
-  { id: 'SPEEDBOAT_RIDE', label: 'Speedboat Ride', image: '/static/images/activities/speedboat_ride.jpg', defaultPrice: 2500, duration: 45, capacity: 6 },
-  { id: 'PRIVATE_BOAT_CHARTER', label: 'Private Boat Charter', image: '/static/images/activities/private_boat_charter.jpg', defaultPrice: 9500, duration: 180, capacity: 10 },
-  { id: 'SUNSET_CRUISE', label: 'Sunset Cruise', image: '/static/images/activities/sunset_cruise.jpg', defaultPrice: 1800, duration: 90, capacity: 25 },
-  { id: 'GROUP_BOAT_TRIPS', label: 'Group Boat Trips', image: '/static/images/activities/group_boat_trips.jpg', defaultPrice: 1100, duration: 120, capacity: 20 },
+  { id: 'YACHT_RENTAL', label: 'Yacht Rental', group: 'Boat & Ship Experiences', image: '/static/images/activities/yacht_rental.jpg', defaultPrice: 16500, pricingType: 'PER_SESSION', duration: 120, minParticipants: 1, capacity: 12, instructor: false, equipment: true },
+  { id: 'SPEEDBOAT_RIDE', label: 'Speedboat Ride', group: 'Boat & Ship Experiences', image: '/static/images/activities/speedboat_ride.jpg', defaultPrice: 2500, pricingType: 'PER_PERSON', duration: 45, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
+  { id: 'PRIVATE_BOAT_CHARTER', label: 'Private Boat Charter', group: 'Boat & Ship Experiences', image: '/static/images/activities/private_boat_charter.jpg', defaultPrice: 12000, pricingType: 'PER_SESSION', duration: 180, minParticipants: 1, capacity: 10, instructor: true, equipment: true },
+  { id: 'SUNSET_CRUISE', label: 'Sunset Cruise', group: 'Boat & Ship Experiences', image: '/static/images/activities/sunset_cruise.jpg', defaultPrice: 1800, pricingType: 'PER_PERSON', duration: 90, minParticipants: 1, capacity: 25, instructor: false, equipment: true },
+  { id: 'GROUP_BOAT_TRIPS', label: 'Group Boat Trips', group: 'Boat & Ship Experiences', image: '/static/images/activities/group_boat_trips.jpg', defaultPrice: 1100, pricingType: 'PER_PERSON', duration: 120, minParticipants: 1, capacity: 20, instructor: false, equipment: true },
 ];
 
 export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ myShips }) => {
@@ -67,26 +74,34 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
   const [submitting, setSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  // Form State
+  // Form State (Complete 15 fields requested by Owner Specification)
   const initialForm = {
     title: '',
-    activity_type: 'JET_SKIING',
-    category_label: 'Jet Skiing',
-    host_ship_id: myShips[0]?.id || 0,
-    price: 2500,
-    duration_minutes: 45,
-    difficulty_level: 'All Skill Levels',
-    capacity_per_slot: 4,
+    activity_type: 'SCUBA',
+    category_label: 'Scuba Diving',
+    category_group: 'Water Sports',
+    description: 'Breathe underwater and explore pristine coral reefs, guided by certified marine masters.',
+    image: '/static/images/activities/scuba_diving.jpg',
     location: myShips[0]?.location || 'Goa Coastal Waters',
     departure_port: myShips[0]?.departure_port || 'Mandovi Jetty Pier',
-    operating_hours: '08:00 AM - 06:00 PM',
-    time_slots_str: '08:30 AM, 11:00 AM, 02:30 PM, 04:30 PM',
-    description: '',
-    highlights_str: 'Certified safety instructor, Premium marine gear, GoPro action photos',
-    included_gear_str: 'Life jacket, Safety harness, Helmet, First aid kit',
-    safety_guidelines: 'Basic swimming capability recommended. Life vests mandatory at all times.',
-    requirements: 'Minimum age 12 years. Must sign safety waiver before boarding.',
-    image: '/static/images/activities/jet_skiing.jpg',
+    operating_hours: '08:00 AM - 05:30 PM',
+    duration_minutes: 60,
+    pricing_type: 'PER_PERSON' as 'PER_PERSON' | 'PER_SESSION',
+    price: 3499,
+    min_participants: 1,
+    capacity_per_slot: 6,
+    available_dates_summary: 'Available Daily • All Year Round',
+    time_slots_str: '09:00 AM, 11:00 AM, 02:00 PM',
+    equipment_required: true,
+    included_gear_str: 'Life jacket, Oxygen tank, Scuba regulator, Diving mask, Fins, Wetsuit',
+    instructor_available: true,
+    instructor_details: 'Certified Master PADI Instructor included for all sessions',
+    age_restrictions: 'Minimum age 10 years. Basic swimming capability recommended.',
+    requirements: 'Must sign medical clearance disclaimer and safety liability waiver before departure.',
+    weather_conditions: 'Operates in calm to moderate sea swell. Activity rescheduled if heavy rain/cyclone warning.',
+    cancellation_policy: 'Free cancellation up to 24 hours before start time. 100% refund if cancelled due to weather.',
+    safety_guidelines: 'Life vests mandatory during transit. Listen to certified instructor safety briefing before immersion.',
+    host_ship_id: myShips[0]?.id || 0, // 0 = Shore-based (no boat needed)
     is_active: true,
   };
 
@@ -126,21 +141,29 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       title: act.title,
       activity_type: act.activity_type,
       category_label: act.category_label,
-      host_ship_id: act.host_ship_id || 0,
-      price: act.price,
-      duration_minutes: act.duration_minutes,
-      difficulty_level: act.difficulty_level || 'All Skill Levels',
-      capacity_per_slot: act.capacity_per_slot,
+      category_group: act.category_group || 'Water Sports',
+      description: act.description || '',
+      image: act.image || '/static/images/activities/jet_skiing.jpg',
       location: act.location,
       departure_port: act.departure_port,
-      operating_hours: act.operating_hours,
+      operating_hours: act.operating_hours || '08:00 AM - 06:00 PM',
+      duration_minutes: act.duration_minutes,
+      pricing_type: (act.pricing_type as any) === 'PER_SESSION' ? 'PER_SESSION' : 'PER_PERSON',
+      price: Number(act.price),
+      min_participants: act.min_participants || 1,
+      capacity_per_slot: act.capacity_per_slot,
+      available_dates_summary: act.available_dates_summary || 'Available Daily • All Year Round',
       time_slots_str: (act.time_slots || []).join(', '),
-      description: act.description,
-      highlights_str: (act.highlights || []).join(', '),
+      equipment_required: Boolean(act.included_gear && act.included_gear.length > 0),
       included_gear_str: (act.included_gear || []).join(', '),
-      safety_guidelines: act.safety_guidelines || '',
+      instructor_available: act.instructor_available ?? true,
+      instructor_details: act.instructor_details || 'Certified Master Instructor included',
+      age_restrictions: act.age_restrictions || 'Age 10+ years. Basic swimming capability recommended.',
       requirements: act.requirements || '',
-      image: act.image || '/static/images/activities/jet_skiing.jpg',
+      weather_conditions: act.weather_conditions || 'Operates in calm to moderate sea swell. Subject to wind/rain advisories.',
+      cancellation_policy: act.cancellation_policy || 'Free cancellation up to 24 hours before start time.',
+      safety_guidelines: act.safety_guidelines || '',
+      host_ship_id: act.host_ship_id || 0,
       is_active: act.is_active,
     });
     setShowModal(true);
@@ -151,9 +174,14 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       ...prev,
       activity_type: preset.id,
       category_label: preset.label,
+      category_group: preset.group,
       price: preset.defaultPrice,
+      pricing_type: preset.pricingType as any,
       duration_minutes: preset.duration,
+      min_participants: preset.minParticipants,
       capacity_per_slot: preset.capacity,
+      instructor_available: preset.instructor,
+      equipment_required: preset.equipment,
       image: preset.image,
       title: prev.title || `${preset.label} Expedition`,
     }));
@@ -161,43 +189,70 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.host_ship_id) {
-      alert('Please select a host ship from your registered fleet.');
+
+    if (!form.title.trim()) {
+      alert('Please enter an activity name.');
+      return;
+    }
+    if (form.min_participants > form.capacity_per_slot) {
+      alert('Minimum participants cannot exceed maximum slot capacity.');
       return;
     }
 
     setSubmitting(true);
     setActionMessage(null);
 
+    const hasShip = Number(form.host_ship_id) > 0;
+    const chosenShip = hasShip ? myShips.find((s) => s.id === Number(form.host_ship_id)) : null;
+
     const payload = {
       title: form.title.trim(),
       activity_type: form.activity_type,
       category_label: form.category_label,
-      host_ship_id: Number(form.host_ship_id),
+      category_group: form.category_group,
+      host_ship_id: hasShip ? Number(form.host_ship_id) : null,
+      requires_boat: hasShip,
+      vessel_requirement_note: hasShip
+        ? `Boat Included (${chosenShip?.name || 'Vessel'})`
+        : 'Beach & Shore-Based (No Boat Needed)',
       price: Number(form.price),
+      pricing_type: form.pricing_type,
       duration_minutes: Number(form.duration_minutes),
-      difficulty_level: form.difficulty_level,
+      difficulty_level: 'All Skill Levels',
+      min_participants: Number(form.min_participants),
       capacity_per_slot: Number(form.capacity_per_slot),
       location: form.location.trim(),
       departure_port: form.departure_port.trim(),
       operating_hours: form.operating_hours.trim(),
+      available_dates_summary: form.available_dates_summary.trim(),
       time_slots: form.time_slots_str.split(',').map((s) => s.trim()).filter(Boolean),
       description: form.description.trim(),
-      highlights: form.highlights_str.split(',').map((s) => s.trim()).filter(Boolean),
-      included_gear: form.included_gear_str.split(',').map((s) => s.trim()).filter(Boolean),
-      safety_guidelines: form.safety_guidelines.trim(),
+      highlights: [
+        form.instructor_available ? 'Certified Marine Instructor' : 'Self-guided',
+        form.equipment_required ? 'Full Gear & Equipment Included' : 'Standard Gear',
+        form.pricing_type === 'PER_SESSION' ? 'Private Session Rate' : 'Per Person Rate',
+      ],
+      included_gear: form.equipment_required
+        ? form.included_gear_str.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
+      instructor_available: form.instructor_available,
+      instructor_details: form.instructor_available ? form.instructor_details.trim() : 'Self-guided / No instructor required',
+      age_restrictions: form.age_restrictions.trim(),
       requirements: form.requirements.trim(),
-      image: form.image,
+      weather_conditions: form.weather_conditions.trim(),
+      cancellation_policy: form.cancellation_policy.trim(),
+      safety_guidelines: form.safety_guidelines.trim(),
+      image: form.image.trim(),
       is_active: form.is_active,
     };
 
     try {
       if (editingActivity) {
         await updateActivity(editingActivity.id, payload as any);
-        setActionMessage({ text: `Ride "${payload.title}" updated successfully!` });
+        setActionMessage({ text: `Activity "${payload.title}" updated successfully!` });
       } else {
         await createActivity(payload as any);
-        setActionMessage({ text: `Water sports ride "${payload.title}" listed successfully!` });
+        setActionMessage({ text: `Activity "${payload.title}" published successfully!` });
       }
       setShowModal(false);
       await fetchActivities();
@@ -220,7 +275,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
   };
 
   const handleDelete = async (act: ActivityItem) => {
-    if (!window.confirm(`Are you sure you wish to deactivate "${act.title}"?`)) return;
+    if (!window.confirm(`Are you sure you wish to delete activity "${act.title}"?`)) return;
     try {
       await deleteActivity(act.id);
       setActivities((prev) => prev.filter((a) => a.id !== act.id));
@@ -252,13 +307,13 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-[#38bdf8] text-xs font-black uppercase tracking-wider mb-2 border border-white/15 backdrop-blur-md">
             <Waves className="w-3.5 h-3.5 text-[#38bdf8]" />
-            Owner Water Sports Fleet Operations
+            Owner Activity Command & Management
           </div>
           <h2 className="text-2xl sm:text-3xl font-black font-serif tracking-tight text-white">
-            Water Sports & Adventure Rides
+            Manage Marine Activities & Adventures
           </h2>
           <p className="text-xs text-white/80 mt-1 max-w-2xl font-medium">
-            List, price, and schedule thrilling ocean rides (Scuba Diving, Jet Skiing, Surfing, Parasailing, Fishing, Rafting) tied directly to your registered host vessels.
+            Configure Scuba Diving, Jet Skiing, Surfing, Fishing Charters, and Boat Excursions. System enforces double-booking prevention across instructors, equipment, and host vessels.
           </p>
         </div>
 
@@ -267,7 +322,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
           className="relative z-10 px-6 py-3 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white font-black text-xs flex items-center gap-2 self-start cursor-pointer shadow-lg shadow-[#0284c7]/40 transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
           <Plus className="w-4 h-4 text-white" />
-          <span>List New Ride</span>
+          <span>Add New Activity</span>
         </button>
       </div>
 
@@ -293,72 +348,71 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
         </div>
       )}
 
-      {/* 2. KPI Summary Cards */}
+      {/* 2. KPI Summary Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-3xl bg-white border border-[#0284c7]/15 shadow-sm">
           <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider mb-1">
-            Total Listed Rides
+            Total Activities
           </span>
           <div className="text-3xl font-black text-[#051833] font-mono-numbers">
             {activities.length}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Across all categories</p>
+          <p className="text-[11px] text-slate-400 mt-1">Water sports & boat experiences</p>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-[#0284c7]/15 shadow-sm">
           <span className="text-[10px] uppercase font-bold text-emerald-700 block tracking-wider mb-1 flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Active for Booking
+            Currently Active
           </span>
           <div className="text-3xl font-black text-emerald-900 font-mono-numbers">
             {activeCount}
           </div>
-          <p className="text-[11px] text-emerald-600 font-medium mt-1">Accepting passenger slots</p>
+          <p className="text-[11px] text-emerald-600 font-medium mt-1">Accepting customer reservations</p>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-[#0284c7]/15 shadow-sm">
           <span className="text-[10px] uppercase font-bold text-sky-700 block tracking-wider mb-1">
-            Average Slot Price
+            Average Base Rate
           </span>
           <div className="text-3xl font-black text-sky-900 font-mono-numbers">
             {formatINR(avgPrice)}
           </div>
-          <p className="text-[11px] text-sky-600 font-medium mt-1">Per participant rate</p>
+          <p className="text-[11px] text-sky-600 font-medium mt-1">Per person / per session</p>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-[#0284c7]/15 shadow-sm">
           <span className="text-[10px] uppercase font-bold text-amber-700 block tracking-wider mb-1 flex items-center gap-1">
             <Ship className="w-3.5 h-3.5 text-amber-600" />
-            Host Vessels
+            Authorized Vessels
           </span>
           <div className="text-3xl font-black text-amber-900 font-mono-numbers">
             {myShips.length}
           </div>
-          <p className="text-[11px] text-amber-600 font-medium mt-1">Registered support boats</p>
+          <p className="text-[11px] text-amber-600 font-medium mt-1">Available for marine activities</p>
         </div>
       </div>
 
-      {/* 3. Search and Category Filter Dock */}
+      {/* 3. Filter Dock */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#0284c7]/15 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by ride title, host ship, or location..."
+              placeholder="Search by activity name, vessel, or port..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-full border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
+              className="w-full pl-10 pr-4 py-2 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-[#0284c7] bg-slate-50 font-medium"
             />
           </div>
-
-          <div className="text-xs text-slate-500 font-bold">
-            Showing <span className="text-[#0284c7] font-black">{filtered.length}</span> of {activities.length} rides
-          </div>
+          <span className="text-xs text-slate-400 font-semibold">
+            Showing {filtered.length} of {activities.length} activities
+          </span>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Categories Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedCategory('ALL')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
@@ -367,7 +421,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            All Rides
+            All Categories
           </button>
           {PRESET_ACTIVITIES.map((p) => {
             const isSel = selectedCategory === p.id;
@@ -392,16 +446,16 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       {loading ? (
         <div className="p-16 flex flex-col items-center justify-center">
           <div className="w-10 h-10 border-4 border-[#0284c7] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-slate-500 mt-3 font-semibold">Loading water sports inventory...</p>
+          <p className="text-xs text-slate-500 mt-3 font-semibold">Loading activities inventory...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center space-y-3">
           <Waves className="w-12 h-12 text-[#0284c7]/40 mx-auto" />
-          <h3 className="font-extrabold text-[#051833] text-base">No Water Sports Rides Found</h3>
+          <h3 className="font-extrabold text-[#051833] text-base">No Activities Found</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             {activities.length === 0
-              ? 'You have not listed any water sports yet. Click "List New Ride" above to add scuba diving, jet skiing, parasailing, and more tied to your vessels.'
-              : 'No rides match your current search and category filters.'}
+              ? 'You have not listed any activities yet. Click "Add New Activity" above to configure your water sports, fishing adventures, and boat charters.'
+              : 'No activities match your current search and category filters.'}
           </p>
           {activities.length === 0 && (
             <button
@@ -409,7 +463,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
               className="px-5 py-2.5 rounded-full bg-[#0284c7] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#0284c7]/25"
             >
               <Plus className="w-4 h-4" />
-              <span>List First Ride</span>
+              <span>Add First Activity</span>
             </button>
           )}
         </div>
@@ -427,7 +481,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                   alt={act.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
                 {/* Badges on top */}
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
@@ -445,14 +499,26 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                   </span>
                 </div>
 
-                {/* Host Ship Badge */}
+                {/* Associated Vessel or Shore badge */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-                  <div className="flex items-center gap-1.5 font-bold truncate">
-                    <Ship className="w-3.5 h-3.5 text-[#38bdf8]" />
-                    <span className="truncate">Host: {act.host_ship_name || 'Assigned Vessel'}</span>
+                  <div className="flex items-center gap-1.5 font-bold truncate max-w-[65%]">
+                    {act.host_ship_name ? (
+                      <>
+                        <Ship className="w-3.5 h-3.5 text-[#38bdf8] shrink-0" />
+                        <span className="truncate">Vessel: {act.host_ship_name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Waves className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                        <span className="truncate">Beach / Shore-Based</span>
+                      </>
+                    )}
                   </div>
-                  <span className="font-mono text-xs font-black text-[#fff8dc]">
-                    {formatINR(act.price)}/slot
+                  <span className="font-mono text-xs font-black text-[#fff8dc] shrink-0">
+                    {formatINR(act.price)}
+                    <span className="text-[10px] font-normal text-white/80 block text-right">
+                      {act.pricing_type === 'PER_SESSION' ? 'per session' : 'per person'}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -467,20 +533,45 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                     {act.description || 'Premium water sports experience conducted with certified instructors.'}
                   </p>
 
-                  {/* Specs Pill Grid */}
+                  {/* Specs Grid */}
                   <div className="grid grid-cols-3 gap-2 text-center text-xs bg-slate-50 p-2.5 rounded-2xl border border-slate-100 mt-2">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Duration</span>
                       <span className="font-bold text-[#051833]">{act.duration_minutes}m</span>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Slot Cap</span>
-                      <span className="font-bold text-[#051833]">{act.capacity_per_slot} Max</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Capacity</span>
+                      <span className="font-bold text-[#051833]">
+                        {act.min_participants || 1}–{act.capacity_per_slot} Max
+                      </span>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Level</span>
-                      <span className="font-bold text-[#051833] truncate block text-[11px]">{act.difficulty_level || 'All'}</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Pricing</span>
+                      <span className="font-bold text-[#0284c7] truncate block text-[11px]">
+                        {act.pricing_type === 'PER_SESSION' ? 'Per Session' : 'Per Person'}
+                      </span>
                     </div>
+                  </div>
+
+                  {/* Badges for Instructor & Equipment */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 ${
+                      act.instructor_available !== false
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      <UserCheck className="w-3 h-3" />
+                      {act.instructor_available !== false ? 'Instructor Required' : 'Self-Guided'}
+                    </span>
+
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 ${
+                      act.included_gear && act.included_gear.length > 0
+                        ? 'bg-sky-50 text-[#0284c7] border-sky-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      <LifeBuoy className="w-3 h-3" />
+                      {act.included_gear && act.included_gear.length > 0 ? 'Gear Included' : 'Standard'}
+                    </span>
                   </div>
 
                   {/* Port Info */}
@@ -495,7 +586,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                       {act.time_slots.slice(0, 3).map((slot, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded-md bg-sky-50 text-[#0284c7] text-[10px] font-bold border border-sky-200"
+                          className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200"
                         >
                           {slot}
                         </span>
@@ -526,14 +617,14 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                     <button
                       onClick={() => handleOpenEditModal(act)}
                       className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition cursor-pointer"
-                      title="Edit ride details"
+                      title="Edit activity details"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(act)}
                       className="p-2 rounded-full hover:bg-rose-50 text-rose-600 transition cursor-pointer"
-                      title="Deactivate ride"
+                      title="Delete activity"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -545,10 +636,11 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
         </div>
       )}
 
-      {/* 5. ADD / EDIT ACTIVITY MODAL */}
+      {/* 5. ADD / EDIT ACTIVITY MODAL - COMPLETE 15 SPECIFICATION FIELDS */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-[#0284c7]/20 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 my-8 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-[#0284c7]/20 shadow-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 my-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-sky-50 text-[#0284c7] flex items-center justify-center">
@@ -556,36 +648,45 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                 </div>
                 <div>
                   <h3 className="font-extrabold text-lg text-[#051833]">
-                    {editingActivity ? 'Edit Water Sports Ride' : 'List New Water Sport Experience'}
+                    {editingActivity ? 'Edit Activity Configuration' : 'Add New Activity'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Tie this adventure to your vessel for passenger booking.
+                    Owner operations panel • Full control over vessel, equipment, instructor & schedule
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Quick Preset Selector */}
+            {/* Anti Double-Booking Guard Banner */}
+            <div className="p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200 text-xs text-[#0369a1] flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-[#0284c7] shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">Smart Double-Booking Prevention:</span>
+                <span>The booking engine automatically ensures the assigned instructor, equipment, and host vessel cannot be double-booked across overlapping time slots.</span>
+              </div>
+            </div>
+
+            {/* Quick Presets (Only when adding) */}
             {!editingActivity && (
               <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-600 block">
-                  Quick Template / Category Presets:
+                <span className="text-xs font-bold text-slate-700 block">
+                  Quick Category Presets (1-Click Fill):
                 </span>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {PRESET_ACTIVITIES.map((p) => {
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PRESET_ACTIVITIES.slice(0, 8).map((p) => {
                     const isSel = form.activity_type === p.id;
                     return (
                       <button
                         type="button"
                         key={p.id}
                         onClick={() => handleSelectPreset(p)}
-                        className={`p-2 rounded-xl text-left text-xs transition border cursor-pointer ${
+                        className={`p-2.5 rounded-xl text-left text-xs transition border cursor-pointer ${
                           isSel
                             ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-sm font-bold'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50'
@@ -593,7 +694,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                       >
                         <span className="block truncate font-bold">{p.label}</span>
                         <span className={`text-[10px] block ${isSel ? 'text-sky-100' : 'text-slate-400'}`}>
-                          ~{formatINR(p.defaultPrice)}
+                          {formatINR(p.defaultPrice)} ({p.pricingType === 'PER_SESSION' ? 'session' : 'person'})
                         </span>
                       </button>
                     );
@@ -602,191 +703,378 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
               </div>
             )}
 
-            <form onSubmit={handleSubmitForm} className="space-y-4">
-              {/* Host Ship Picker */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <Ship className="w-3.5 h-3.5 text-[#0284c7]" />
-                  <span>Host Vessel Conducting the Ride *</span>
-                </label>
-                <select
-                  value={form.host_ship_id}
-                  onChange={(e) => {
-                    const sId = Number(e.target.value);
-                    const chosen = myShips.find((s) => s.id === sId);
-                    setForm((prev) => ({
-                      ...prev,
-                      host_ship_id: sId,
-                      location: chosen?.location || prev.location,
-                      departure_port: chosen?.departure_port || prev.departure_port,
-                    }));
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  required
-                >
-                  <option value={0} disabled>Select host ship from your fleet...</option>
-                  {myShips.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.location || 'Coastal Pier'} • Capacity {s.capacity || 'Vessel'})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-400">
-                  When a customer books this ride, this vessel and its departure port are reserved.
-                </p>
+            <form onSubmit={handleSubmitForm} className="space-y-6">
+              {/* SECTION A: Associated Ship or Vessel */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Anchor className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    1. Associated Ship or Vessel (If Required)
+                  </h4>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Select Operating Host Vessel:</label>
+                  <select
+                    value={form.host_ship_id}
+                    onChange={(e) => {
+                      const sId = Number(e.target.value);
+                      const chosen = myShips.find((s) => s.id === sId);
+                      setForm((prev) => ({
+                        ...prev,
+                        host_ship_id: sId,
+                        location: chosen?.location || prev.location,
+                        departure_port: chosen?.departure_port || prev.departure_port,
+                      }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                  >
+                    <option value={0}>🏖️ Beach & Shore-Based (No boat or vessel required)</option>
+                    {myShips.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        🚢 {s.name} ({s.location || 'Coastal Pier'} • Capacity: {s.capacity || 'Vessel'})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500">
+                    Important: Har activity ko ship ki zaroorat nahi hoti. Scuba diving ya deep-sea fishing ke liye boat select karein; surfing ya beach sports ke liye shore-based option select karein.
+                  </p>
+                </div>
               </div>
 
-              {/* Title & Category Label */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* SECTION B: Identity & Category */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    2. Activity Name & Category
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Activity Name *</label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      placeholder="e.g. Scuba Diving Expedition"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Category / Type *</label>
+                    <input
+                      type="text"
+                      value={form.category_label}
+                      onChange={(e) => setForm({ ...form, category_label: e.target.value })}
+                      placeholder="e.g. Scuba Diving / Water Sports"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Ride Title *</label>
+                  <label className="text-xs font-bold text-slate-700">Description *</label>
+                  <textarea
+                    rows={2}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Describe the adventure, corals, wildlife, and experience details..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Activity Images / Video URL *</label>
                   <input
                     type="text"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="e.g. Speed Jet Ski Wave Blast"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Category Label *</label>
-                  <input
-                    type="text"
-                    value={form.category_label}
-                    onChange={(e) => setForm({ ...form, category_label: e.target.value })}
-                    placeholder="e.g. Jet Skiing"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
+                    value={form.image}
+                    onChange={(e) => setForm({ ...form, image: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
                     required
                   />
                 </div>
               </div>
 
-              {/* Price, Duration, Capacity */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Price (₹ INR/person) *</label>
-                  <input
-                    type="number"
-                    min={100}
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
+              {/* SECTION C: Pricing, Duration & Participants */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    3. Pricing, Duration & Participant Capacity
+                  </h4>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Duration (Minutes) *</label>
-                  <input
-                    type="number"
-                    min={15}
-                    value={form.duration_minutes}
-                    onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Pricing Model *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, pricing_type: 'PER_PERSON' })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                          form.pricing_type === 'PER_PERSON'
+                            ? 'bg-[#0284c7] text-white border-[#0284c7]'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Per Person (₹/person)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, pricing_type: 'PER_SESSION' })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                          form.pricing_type === 'PER_SESSION'
+                            ? 'bg-[#0284c7] text-white border-[#0284c7]'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Per Session (₹/slot)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Rate Amount (₹ INR {form.pricing_type === 'PER_SESSION' ? 'Per Session' : 'Per Person'}) *
+                    </label>
+                    <input
+                      type="number"
+                      min={100}
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white font-mono"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Slot Capacity *</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.capacity_per_slot}
-                    onChange={(e) => setForm({ ...form, capacity_per_slot: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Duration (Minutes) *</label>
+                    <input
+                      type="number"
+                      min={15}
+                      value={form.duration_minutes}
+                      onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white font-mono"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Min Participants *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.min_participants}
+                      onChange={(e) => setForm({ ...form, min_participants: Number(e.target.value) })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white font-mono"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Max Participants (Slot Cap) *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.capacity_per_slot}
+                      onChange={(e) => setForm({ ...form, capacity_per_slot: Number(e.target.value) })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white font-mono"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Location & Departure Port */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Location / Coastal Area *</label>
-                  <input
-                    type="text"
-                    value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
+              {/* SECTION D: Operating Location, Dates & Time Slots */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    4. Operating Location, Dates & Booking Slots
+                  </h4>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Departure Port / Jetty Pier *</label>
-                  <input
-                    type="text"
-                    value={form.departure_port}
-                    onChange={(e) => setForm({ ...form, departure_port: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                    required
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Operating Location *</label>
+                    <input
+                      type="text"
+                      value={form.location}
+                      onChange={(e) => setForm({ ...form, location: e.target.value })}
+                      placeholder="e.g. Grand Island, Goa"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Departure Port / Jetty Pier *</label>
+                    <input
+                      type="text"
+                      value={form.departure_port}
+                      onChange={(e) => setForm({ ...form, departure_port: e.target.value })}
+                      placeholder="e.g. Mandovi Jetty Pier"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Time Slots */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Daily Time Slots (Comma-separated) *</label>
-                <input
-                  type="text"
-                  value={form.time_slots_str}
-                  onChange={(e) => setForm({ ...form, time_slots_str: e.target.value })}
-                  placeholder="08:30 AM, 11:00 AM, 02:30 PM, 04:30 PM"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  required
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Description *</label>
-                <textarea
-                  rows={2}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Describe the adventure, certified trainers, and onboard amenities..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  required
-                />
-              </div>
-
-              {/* Included Gear & Highlights */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Included Gear (Comma-separated)</label>
-                  <input
-                    type="text"
-                    value={form.included_gear_str}
-                    onChange={(e) => setForm({ ...form, included_gear_str: e.target.value })}
-                    placeholder="Life jacket, Oxygen tank, Helmet"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Highlights (Comma-separated)</label>
-                  <input
-                    type="text"
-                    value={form.highlights_str}
-                    onChange={(e) => setForm({ ...form, highlights_str: e.target.value })}
-                    placeholder="Certified instructor, GoPro photos"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Available Dates Summary *</label>
+                    <input
+                      type="text"
+                      value={form.available_dates_summary}
+                      onChange={(e) => setForm({ ...form, available_dates_summary: e.target.value })}
+                      placeholder="e.g. Available Daily • Today onwards"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Booking Time Slots (Comma-separated) *</label>
+                    <input
+                      type="text"
+                      value={form.time_slots_str}
+                      onChange={(e) => setForm({ ...form, time_slots_str: e.target.value })}
+                      placeholder="e.g. 09:00 AM, 11:00 AM, 02:00 PM"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Image URL Picker */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">High-Resolution Image URL *</label>
-                <input
-                  type="text"
-                  value={form.image}
-                  onChange={(e) => setForm({ ...form, image: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-slate-50"
-                  required
-                />
+              {/* SECTION E: Equipment & Instructor Requirements */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    5. Equipment & Instructor Requirements
+                  </h4>
+                </div>
+
+                {/* Instructor */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <span>Instructor Requirement:</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-xs font-bold text-[#0284c7] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.instructor_available}
+                        onChange={(e) => setForm({ ...form, instructor_available: e.target.checked })}
+                        className="rounded text-[#0284c7] focus:ring-[#0284c7]"
+                      />
+                      <span>Instructor Required / Provided</span>
+                    </label>
+                  </div>
+                  {form.instructor_available && (
+                    <input
+                      type="text"
+                      value={form.instructor_details}
+                      onChange={(e) => setForm({ ...form, instructor_details: e.target.value })}
+                      placeholder="e.g. Certified Master PADI Instructor included for all sessions"
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                    />
+                  )}
+                </div>
+
+                {/* Equipment */}
+                <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <span>Equipment Requirement:</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-xs font-bold text-[#0284c7] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.equipment_required}
+                        onChange={(e) => setForm({ ...form, equipment_required: e.target.checked })}
+                        className="rounded text-[#0284c7] focus:ring-[#0284c7]"
+                      />
+                      <span>Equipment Required / Provided</span>
+                    </label>
+                  </div>
+                  {form.equipment_required && (
+                    <input
+                      type="text"
+                      value={form.included_gear_str}
+                      onChange={(e) => setForm({ ...form, included_gear_str: e.target.value })}
+                      placeholder="e.g. Life jacket, Oxygen tank, Scuba regulator, Diving mask, Fins"
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* Submit Buttons */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              {/* SECTION F: Restrictions, Weather & Safety */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    6. Restrictions, Weather, Cancellation & Safety Rules
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Age & Eligibility Restrictions *</label>
+                    <input
+                      type="text"
+                      value={form.age_restrictions}
+                      onChange={(e) => setForm({ ...form, age_restrictions: e.target.value })}
+                      placeholder="e.g. Minimum age 10 years. Good physical health."
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Weather Conditions Rules *</label>
+                    <input
+                      type="text"
+                      value={form.weather_conditions}
+                      onChange={(e) => setForm({ ...form, weather_conditions: e.target.value })}
+                      placeholder="e.g. Operates in calm to moderate swell. Rescheduled if rain/cyclone alert."
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Cancellation & Refund Policy *</label>
+                    <input
+                      type="text"
+                      value={form.cancellation_policy}
+                      onChange={(e) => setForm({ ...form, cancellation_policy: e.target.value })}
+                      placeholder="e.g. Free cancellation up to 24 hours before start time."
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Safety Instructions *</label>
+                    <input
+                      type="text"
+                      value={form.safety_guidelines}
+                      onChange={(e) => setForm({ ...form, safety_guidelines: e.target.value })}
+                      placeholder="e.g. Life vests mandatory at all times. Follow master guide instructions."
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit / Cancel Buttons */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white py-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -804,7 +1092,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>{editingActivity ? 'Save Changes' : 'Publish Ride'}</span>
+                  <span>{editingActivity ? 'Save Changes' : 'Publish Activity'}</span>
                 </button>
               </div>
             </form>

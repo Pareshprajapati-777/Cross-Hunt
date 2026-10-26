@@ -543,10 +543,13 @@ export interface ActivityItem {
   requirements: string;
   price: number;
   starting_price?: number;
+  pricing_type?: 'PER_PERSON' | 'PER_SESSION' | string;
   duration_minutes: number;
   duration_display: string;
   difficulty_level: string;
   capacity_per_slot: number;
+  min_participants?: number;
+  weather_conditions?: string;
   location: string;
   departure_port: string;
   operating_hours: string;

@@ -20,6 +20,13 @@ class ActivityBase(BaseModel):
     duration_minutes: int = Field(60, ge=15)
     difficulty_level: str = "MODERATE"
     capacity_per_slot: int = Field(8, ge=1)
+    min_participants: int = Field(1, ge=1)
+    pricing_type: str = "PER_PERSON"
+    weather_conditions: str = "Operates in calm to moderate sea swell. Subject to wind/rain advisories."
+    instructor_available: bool = True
+    instructor_details: str = "Available • Certified Master Instructor"
+    age_restrictions: str = "Operator-defined (Age 10+)"
+    cancellation_policy: str = "Free cancellation up to 24 hours before start time (Operator Policy)"
     location: str = "Goa"
     departure_port: str = "Dona Paula Jetty"
     operating_hours: str = "08:00 AM - 05:30 PM"
@@ -43,15 +50,22 @@ class ActivityUpdate(BaseModel):
     requires_boat: Optional[bool] = None
     vessel_requirement_note: Optional[str] = None
     available_dates_summary: Optional[str] = None
+    instructor_available: Optional[bool] = None
+    instructor_details: Optional[str] = None
+    age_restrictions: Optional[str] = None
+    cancellation_policy: Optional[str] = None
     description: Optional[str] = None
     highlights: Optional[List[str]] = None
     included_gear: Optional[List[str]] = None
     safety_guidelines: Optional[str] = None
     requirements: Optional[str] = None
     price: Optional[Decimal] = None
+    pricing_type: Optional[str] = None
     duration_minutes: Optional[int] = None
     difficulty_level: Optional[str] = None
     capacity_per_slot: Optional[int] = None
+    min_participants: Optional[int] = None
+    weather_conditions: Optional[str] = None
     location: Optional[str] = None
     departure_port: Optional[str] = None
     operating_hours: Optional[str] = None
@@ -85,10 +99,13 @@ class ActivityResponse(BaseModel):
     requirements: str
     price: float
     starting_price: Optional[float] = None
+    pricing_type: str = "PER_PERSON"
     duration_minutes: int
     duration_display: str
     difficulty_level: str
     capacity_per_slot: int
+    min_participants: int = 1
+    weather_conditions: str = "Operates in calm to moderate sea swell. Subject to wind/rain advisories."
     location: str
     departure_port: str
     operating_hours: str
