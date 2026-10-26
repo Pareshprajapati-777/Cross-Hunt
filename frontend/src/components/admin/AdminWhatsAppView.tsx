@@ -234,10 +234,6 @@ export const AdminWhatsAppView: React.FC = () => {
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Refresh Status</span>
             </button>
-            <div className="px-4 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-mono font-bold flex items-center gap-2">
-              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-              <span>Provider: {config?.provider || 'META_CLOUD_SIMULATOR'}</span>
-            </div>
           </div>
         </div>
 
