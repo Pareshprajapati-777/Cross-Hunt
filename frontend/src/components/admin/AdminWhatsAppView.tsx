@@ -241,21 +241,6 @@ export const AdminWhatsAppView: React.FC = () => {
           </div>
         </div>
 
-        {/* Workflow Strip */}
-        <div className="mt-6 pt-5 border-t border-emerald-800/80 flex flex-wrap items-center gap-2 text-xs text-emerald-200 font-mono">
-          <span className="font-bold text-white">Flow:</span>
-          <span className="bg-white/10 px-2.5 py-1 rounded-lg">1. Customer Books</span>
-          <span>→</span>
-          <span className="bg-white/10 px-2.5 py-1 rounded-lg">2. Validates WhatsApp (+91)</span>
-          <span>→</span>
-          <span className="bg-white/10 px-2.5 py-1 rounded-lg">3. User Consent Saved</span>
-          <span>→</span>
-          <span className="bg-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg font-bold border border-emerald-400/40">
-            4. {hoursInput}h Before Departure
-          </span>
-          <span>→</span>
-          <span className="bg-white/10 px-2.5 py-1 rounded-lg">5. Backend Dispatches Reminder</span>
-        </div>
       </div>
 
       {/* 2. Top Metric Cards */}
