@@ -678,7 +678,6 @@ export const AdminWhatsAppView: React.FC = () => {
                   <th className="py-3 px-3">Date & Time</th>
                   <th className="py-3 px-3">Recipient</th>
                   <th className="py-3 px-3">Booking</th>
-                  <th className="py-3 px-3">Provider</th>
                   <th className="py-3 px-3">Provider Message ID</th>
                   <th className="py-3 px-3">Status</th>
                 </tr>
@@ -694,9 +693,6 @@ export const AdminWhatsAppView: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 font-mono text-sky-700">
                       {log.booking_id ? `#${log.booking_id}` : 'General'}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px]">
-                      {log.provider}
                     </td>
                     <td className="py-3.5 px-3 font-mono text-slate-500 text-[11px] max-w-xs truncate">
                       {log.provider_message_id}
