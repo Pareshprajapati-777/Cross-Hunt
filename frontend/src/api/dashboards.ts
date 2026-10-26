@@ -1,7 +1,8 @@
 import { apiRequest } from './client';
 import {
   Booking, Cruise, PublicTour, Offer, OperatorSummary, WhatsAppLog, WhatsAppConfig, WhatsAppQueueItem,
-  WhatsAppCredentialsPayload, WhatsAppConnectionTestResult
+  WhatsAppCredentialsPayload, WhatsAppConnectionTestResult,
+  StaffMemberItem, EquipmentItemModel, AvailabilitySimulationResult
 } from './types';
 
 export interface OperatorDashboardData {
@@ -261,6 +262,103 @@ export async function updateOperatorShip(shipId: number, payload: Partial<Cruise
 export async function deleteOperatorShip(shipId: number): Promise<{ success: boolean; message?: string }> {
   return apiRequest(`/api/operator/ships/${shipId}/`, {
     method: 'DELETE',
+  });
+}
+
+// Staff & Crew Management
+export async function getOperatorStaff(): Promise<{
+  staff: StaffMemberItem[];
+  stats: {
+    total: number;
+    active: number;
+    on_duty: number;
+    on_leave: number;
+    instructors_count: number;
+    captains_count: number;
+    guides_count: number;
+    safety_crew_count: number;
+  };
+}> {
+  return apiRequest('/api/operator/staff');
+}
+
+export async function createOperatorStaff(payload: Partial<StaffMemberItem>): Promise<{ success: boolean; staff: StaffMemberItem; message: string }> {
+  return apiRequest('/api/operator/staff', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateOperatorStaff(staffId: number, payload: Partial<StaffMemberItem>): Promise<{ success: boolean; staff: StaffMemberItem; message: string }> {
+  return apiRequest(`/api/operator/staff/${staffId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteOperatorStaff(staffId: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest(`/api/operator/staff/${staffId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function toggleOperatorStaffStatus(staffId: number, status: string): Promise<{ success: boolean; status: string; message: string }> {
+  return apiRequest(`/api/operator/staff/${staffId}/status?status=${encodeURIComponent(status)}`, {
+    method: 'PATCH',
+  });
+}
+
+// Equipment & Gear Inventory Management
+export async function getOperatorEquipment(): Promise<{
+  equipment: EquipmentItemModel[];
+  stats: {
+    total_items: number;
+    total_units: number;
+    operational_units: number;
+    maintenance_units: number;
+    compliance_rate: number;
+    by_category: Record<string, number>;
+  };
+}> {
+  return apiRequest('/api/operator/equipment');
+}
+
+export async function createOperatorEquipment(payload: Partial<EquipmentItemModel>): Promise<{ success: boolean; equipment: EquipmentItemModel; message: string }> {
+  return apiRequest('/api/operator/equipment', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateOperatorEquipment(equipmentId: number, payload: Partial<EquipmentItemModel>): Promise<{ success: boolean; equipment: EquipmentItemModel; message: string }> {
+  return apiRequest(`/api/operator/equipment/${equipmentId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteOperatorEquipment(equipmentId: number): Promise<{ success: boolean; message: string }> {
+  return apiRequest(`/api/operator/equipment/${equipmentId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function toggleOperatorEquipmentCondition(equipmentId: number, condition: string): Promise<{ success: boolean; condition_status: string; message: string }> {
+  return apiRequest(`/api/operator/equipment/${equipmentId}/condition?condition=${encodeURIComponent(condition)}`, {
+    method: 'PATCH',
+  });
+}
+
+// Multi-Dimensional Availability Engine Simulator
+export async function simulateAvailabilityEngine(payload: {
+  activity_id: number;
+  booking_date: string;
+  time_slot: string;
+  participants: number;
+}): Promise<AvailabilitySimulationResult> {
+  return apiRequest('/api/operator/availability-simulator', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

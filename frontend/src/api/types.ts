@@ -575,6 +575,11 @@ export interface ActivityItem {
   owner_name: string;
   owner_phone: string;
   auto_confirm?: boolean;
+  required_equipment_category?: string | null;
+  equipment_units_per_participant?: number;
+  default_staff_id?: number | null;
+  default_staff_name?: string | null;
+  default_staff_supervision_limit?: number | null;
   is_active: boolean;
   is_featured: boolean;
   rating: number;
@@ -594,5 +599,118 @@ export interface ActivityBookingPayload {
   special_request?: string;
   payment_method?: string;
 }
+
+export type StaffRole = 'INSTRUCTOR' | 'CAPTAIN' | 'GUIDE' | 'SAFETY_CREW';
+export type StaffStatus = 'ACTIVE' | 'ON_DUTY' | 'ON_LEAVE' | 'INACTIVE';
+
+export interface StaffMemberItem {
+  id: number;
+  owner_id: number;
+  operator_id?: number | null;
+  name: string;
+  role: StaffRole;
+  license_number: string;
+  certifications: string;
+  phone: string;
+  email: string;
+  max_supervision_limit: number;
+  experience_years: number;
+  status: StaffStatus;
+  assigned_activity_types: string[];
+  assigned_ship_id?: number | null;
+  assigned_ship_name?: string | null;
+  notes: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type EquipmentCategory =
+  | 'LIFE_JACKET'
+  | 'DIVING_EQUIPMENT'
+  | 'JET_SKI'
+  | 'SURFBOARD'
+  | 'RAFT'
+  | 'SNORKEL_GEAR'
+  | 'KAYAK'
+  | 'SAFETY_KIT'
+  | 'OTHER';
+
+export type EquipmentCondition = 'OPERATIONAL' | 'IN_USE' | 'MAINTENANCE' | 'RETIRED';
+
+export interface EquipmentItemModel {
+  id: number;
+  owner_id: number;
+  operator_id?: number | null;
+  name: string;
+  category: EquipmentCategory;
+  serial_number: string;
+  total_quantity: number;
+  condition_status: EquipmentCondition;
+  last_inspected_at?: string | null;
+  next_inspection_due?: string | null;
+  safety_certification: string;
+  assigned_activity_id?: number | null;
+  assigned_activity_title?: string | null;
+  assigned_ship_id?: number | null;
+  assigned_ship_name?: string | null;
+  notes: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AvailabilityAuditBreakdown {
+  activity_slot?: {
+    capacity_per_slot: number;
+    already_booked: number;
+    remaining_spots: number;
+    groups_count: number;
+  } | null;
+  vessel?: {
+    vessel_id: number;
+    name: string;
+    vessel_capacity: number;
+    booked_passengers: number;
+    remaining_seats: number;
+    status: string;
+  } | null;
+  instructor?: {
+    staff_id: number;
+    name: string;
+    role: string;
+    certifications: string;
+    max_supervision_limit: number;
+    currently_supervising: number;
+    overlapping_groups: number;
+    headroom_spots: number;
+  } | null;
+  equipment?: {
+    category: string;
+    operational_units: number;
+    in_maintenance: number;
+    currently_in_use: number;
+    available_units: number;
+    units_required_per_participant: number;
+  } | null;
+  life_jackets?: {
+    operational: number;
+    in_maintenance: number;
+    needed: number;
+    compliant: boolean;
+  } | null;
+}
+
+export interface AvailabilitySimulationResult {
+  success: boolean;
+  is_available: boolean;
+  max_available_spots: number;
+  requested_participants: number;
+  limiting_factor: string | null;
+  limiting_message: string;
+  breakdown: AvailabilityAuditBreakdown;
+  activity_title?: string;
+  booking_date?: string;
+  time_slot?: string;
+}
+
 
 

@@ -63,6 +63,11 @@ class Activity(Base):
     # Booking confirmation policy: True = Instant Auto-Confirm, False = Manual Owner Approval Required
     auto_confirm: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Water sports staff and equipment requirements
+    required_equipment_category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # LIFE_JACKET, DIVING_EQUIPMENT, JET_SKI, SURFBOARD, RAFT, SNORKEL_GEAR
+    equipment_units_per_participant: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    default_staff_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_staff.id"), nullable=True)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rating: Mapped[Decimal] = mapped_column(Numeric(3, 1), default=4.9, nullable=False)
@@ -75,6 +80,7 @@ class Activity(Base):
     host_ship = relationship("Cross", foreign_keys=[host_ship_id])
     operator = relationship("Operator", foreign_keys=[operator_id])
     owner = relationship("User", foreign_keys=[owner_id])
+    default_staff = relationship("StaffMember", foreign_keys=[default_staff_id])
 
     @property
     def highlights(self) -> List[str]:
@@ -160,6 +166,11 @@ class Activity(Base):
             "owner_name": f"{self.owner.first_name} {self.owner.last_name}".strip() if self.owner and (self.owner.first_name or self.owner.last_name) else (self.operator.name if self.operator else "Fleet Owner"),
             "owner_phone": self.host_ship.whatsapp_number if self.host_ship and self.host_ship.whatsapp_number else (self.owner.phone if self.owner and self.owner.phone else "+919820012345"),
             "auto_confirm": bool(getattr(self, "auto_confirm", True)),
+            "required_equipment_category": getattr(self, "required_equipment_category", None),
+            "equipment_units_per_participant": getattr(self, "equipment_units_per_participant", 1),
+            "default_staff_id": getattr(self, "default_staff_id", None),
+            "default_staff_name": self.default_staff.name if getattr(self, "default_staff", None) else None,
+            "default_staff_supervision_limit": self.default_staff.max_supervision_limit if getattr(self, "default_staff", None) else None,
             "is_active": self.is_active,
             "is_featured": self.is_featured,
             "rating": float(self.rating),

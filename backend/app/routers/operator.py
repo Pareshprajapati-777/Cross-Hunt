@@ -20,6 +20,8 @@ from backend.app.models.tour import PublicTour
 from backend.app.models.booking import Booking, PlatformNotification, WhatsAppMessageLog
 from backend.app.models.offer import CrossReview
 from backend.app.models.activity import Activity
+from backend.app.models.staff_equipment import StaffMember, EquipmentItem
+from backend.app.services.availability_engine import check_comprehensive_availability
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
 from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
 
@@ -1560,5 +1562,686 @@ async def respond_to_passenger_complaint(
         "owner_response": r.owner_response,
         "owner_response_at": r.owner_response_at.strftime("%Y-%m-%d %H:%M")
     }
+
+
+# ==============================================================================
+# STAFF & EQUIPMENT MANAGEMENT (WATER SPORTS & MARITIME OPERATIONS)
+# ==============================================================================
+
+class StaffCreateRequest(BaseModel):
+    name: str = Field(..., max_length=120)
+    role: str = Field("INSTRUCTOR", max_length=50)  # INSTRUCTOR, CAPTAIN, GUIDE, SAFETY_CREW
+    license_number: Optional[str] = ""
+    certifications: Optional[str] = ""
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    max_supervision_limit: int = Field(6, ge=1, le=50)
+    experience_years: int = Field(3, ge=0)
+    status: str = Field("ACTIVE", max_length=30)  # ACTIVE, ON_DUTY, ON_LEAVE, INACTIVE
+    assigned_activity_types: Optional[List[str]] = []
+    assigned_ship_id: Optional[int] = None
+    notes: Optional[str] = ""
+
+
+class StaffUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    license_number: Optional[str] = None
+    certifications: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    max_supervision_limit: Optional[int] = None
+    experience_years: Optional[int] = None
+    status: Optional[str] = None
+    assigned_activity_types: Optional[List[str]] = None
+    assigned_ship_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class EquipmentCreateRequest(BaseModel):
+    name: str = Field(..., max_length=150)
+    category: str = Field(..., max_length=50)  # LIFE_JACKET, DIVING_EQUIPMENT, JET_SKI, SURFBOARD, RAFT, SNORKEL_GEAR, KAYAK, SAFETY_KIT, OTHER
+    serial_number: Optional[str] = ""
+    total_quantity: int = Field(1, ge=1)
+    condition_status: str = Field("OPERATIONAL", max_length=30)  # OPERATIONAL, IN_USE, MAINTENANCE, RETIRED
+    last_inspected_at: Optional[str] = None
+    next_inspection_due: Optional[str] = None
+    safety_certification: Optional[str] = "Certified for Marine Use"
+    assigned_activity_id: Optional[int] = None
+    assigned_ship_id: Optional[int] = None
+    notes: Optional[str] = ""
+
+
+class EquipmentUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    serial_number: Optional[str] = None
+    total_quantity: Optional[int] = None
+    condition_status: Optional[str] = None
+    last_inspected_at: Optional[str] = None
+    next_inspection_due: Optional[str] = None
+    safety_certification: Optional[str] = None
+    assigned_activity_id: Optional[int] = None
+    assigned_ship_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class AvailabilitySimulationRequest(BaseModel):
+    activity_id: int
+    booking_date: str
+    time_slot: str
+    participants: int = 1
+
+
+def seed_default_staff_and_equipment_if_empty(user: User, db: Session):
+    existing_staff = db.query(StaffMember).filter(StaffMember.owner_id == user.id).first()
+    if not existing_staff:
+        staff_samples = [
+            StaffMember(
+                owner_id=user.id,
+                name="Vikram Deshmukh",
+                role="INSTRUCTOR",
+                license_number="PADI-OWSI-418293",
+                certifications="PADI Master Scuba Diver Trainer, EFR Emergency First Response Instructor",
+                phone="+91 98201 44556",
+                email="vikram.scuba@crosshunt.com",
+                max_supervision_limit=4,
+                experience_years=8,
+                status="ON_DUTY",
+                assigned_activity_types_json=json.dumps(["scuba_diving", "snorkeling", "scuba"]),
+                notes="Specializes in deep water reef diving and beginner PADI discover dives. Strict 4-diver ratio limit.",
+            ),
+            StaffMember(
+                owner_id=user.id,
+                name="Capt. Rajesh Nayak",
+                role="CAPTAIN",
+                license_number="MMD-MUM-M1-2019-881",
+                certifications="Master Mariner Class 1 (Near Coastal & High Seas), STCW-95 Marine Safety",
+                phone="+91 98202 88771",
+                email="capt.rajesh@crosshunt.com",
+                max_supervision_limit=25,
+                experience_years=14,
+                status="ACTIVE",
+                assigned_activity_types_json=json.dumps(["all", "boat_tours", "private_charter"]),
+                notes="Certified Master for passenger catamarans, motor yachts, and dive tender speedboats.",
+            ),
+            StaffMember(
+                owner_id=user.id,
+                name="Ananya Rao",
+                role="INSTRUCTOR",
+                license_number="ISA-SURF-L2-9902",
+                certifications="ISA Level 2 Certified Surf Instructor, SLS Coastal Water Lifeguard",
+                phone="+91 98203 11223",
+                email="ananya.surf@crosshunt.com",
+                max_supervision_limit=6,
+                experience_years=6,
+                status="ON_DUTY",
+                assigned_activity_types_json=json.dumps(["surfing", "kite_surfing", "jet_skiing"]),
+                notes="Wave dynamics and coastal board master. Supervised limit: 6 students per session.",
+            ),
+            StaffMember(
+                owner_id=user.id,
+                name="Suresh Patil",
+                role="GUIDE",
+                license_number="IRF-RAFT-GD-3312",
+                certifications="IRF Class IV Whitewater Raft Guide & Swiftwater Rescue Technician (SRT)",
+                phone="+91 98204 77665",
+                email="suresh.raft@crosshunt.com",
+                max_supervision_limit=8,
+                experience_years=7,
+                status="ACTIVE",
+                assigned_activity_types_json=json.dumps(["rafting", "kayaking", "white_water_rafting"]),
+                notes="Mandovi and Kali river rapids certified. High-current emergency rescue qualified.",
+            ),
+            StaffMember(
+                owner_id=user.id,
+                name="Pooja Vernekar",
+                role="SAFETY_CREW",
+                license_number="ILS-MED-SAFE-551",
+                certifications="ILS Senior Lifesaver, Red Cross CPR/AED & Marine First Aid Responder",
+                phone="+91 98205 33449",
+                email="pooja.safety@crosshunt.com",
+                max_supervision_limit=15,
+                experience_years=5,
+                status="ON_DUTY",
+                assigned_activity_types_json=json.dumps(["all"]),
+                notes="Dedicated medical officer on board. Monitors ocean safety, life jackets, and swimmer perimeter.",
+            ),
+        ]
+        for s in staff_samples:
+            db.add(s)
+        db.commit()
+
+    existing_equip = db.query(EquipmentItem).filter(EquipmentItem.owner_id == user.id).first()
+    if not existing_equip:
+        equip_samples = [
+            EquipmentItem(
+                owner_id=user.id,
+                name="Mustang Survival Solas Life Jackets (Adult & Youth)",
+                category="LIFE_JACKET",
+                serial_number="MS-SOLAS-BATCH-A",
+                total_quantity=24,
+                condition_status="OPERATIONAL",
+                safety_certification="ISO 12402-4 Marine Safety & IRS Approved",
+                notes="High-buoyancy 150N foam vests with integrated whistle and SOLAS reflective tape.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="AquaLung Pro HD Scuba Kit (BCD, Regulator, Octo & Tank)",
+                category="DIVING_EQUIPMENT",
+                serial_number="AL-PRO-HD-SET-01",
+                total_quantity=6,
+                condition_status="OPERATIONAL",
+                safety_certification="Annual Hydrostatic Tank Inspection Passed (IRS Lab)",
+                notes="Complete premium scuba setup: BCD, balanced diaphragm regulator, octopus, and 12L tank.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="Scuba Pro MK25 Diving Regulator Spare Kit",
+                category="DIVING_EQUIPMENT",
+                serial_number="SP-MK25-SPR-02",
+                total_quantity=2,
+                condition_status="MAINTENANCE",
+                safety_certification="Scheduled valve overhaul and high-pressure diaphragm replacement",
+                notes="Temporarily out of service for certified manufacturer servicing. Expected back next week.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="Yamaha WaveRunner VX-Deluxe (3-Seater Jet Ski)",
+                category="JET_SKI",
+                serial_number="YAM-VX-DLX-2024",
+                total_quantity=4,
+                condition_status="OPERATIONAL",
+                safety_certification="IRS Maritime Safety & Engine Seaworthiness Certificate",
+                notes="High performance 4-stroke TR-1 engine with RiDE reverse throttle system and lanyard cutoff.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="Sea-Doo Spark Trixx (2-Seater Jet Ski)",
+                category="JET_SKI",
+                serial_number="SD-SPARK-TRX-03",
+                total_quantity=1,
+                condition_status="MAINTENANCE",
+                safety_certification="Scheduled jet pump impeller bearing servicing",
+                notes="Impeller wear-ring inspection underway at marina drydock.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="Torq ACT Epoxy 8'0\" Foam-Top Surfboard Set",
+                category="SURFBOARD",
+                serial_number="TRQ-SURF-8FT-08",
+                total_quantity=8,
+                condition_status="OPERATIONAL",
+                safety_certification="Soft-rail beginner impact safety certified",
+                notes="Safe foam tops with durable epoxy core, flexible safety fins, and heavy-duty urethane leashes.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="NRS Outlaw 14-ft Heavy-Duty Inflatable Raft",
+                category="RAFT",
+                serial_number="NRS-OUTLAW-14-R3",
+                total_quantity=3,
+                condition_status="OPERATIONAL",
+                safety_certification="Class IV Rapids Commercial Outfitter Certified",
+                notes="Self-bailing welded PVC with 4 main air chambers, perimeter grab line, and 8 paddles.",
+            ),
+            EquipmentItem(
+                owner_id=user.id,
+                name="Cressi Panoramic Dry Snorkel & Silicone Mask Kits",
+                category="SNORKEL_GEAR",
+                serial_number="CRS-SNK-PAN-16",
+                total_quantity=16,
+                condition_status="OPERATIONAL",
+                safety_certification="Tempered glass and food-grade hypoallergenic silicone",
+                notes="Wide-angle 180 degree view masks with dry-top purge valve snorkels.",
+            ),
+        ]
+        for e in equip_samples:
+            db.add(e)
+        db.commit()
+
+
+@router.get("/staff")
+def list_operator_staff(
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    List all certified staff members, captains, instructors, and safety crew for this operator.
+    """
+    seed_default_staff_and_equipment_if_empty(current_user, db)
+
+    staff_members = (
+        db.query(StaffMember)
+        .options(joinedload(StaffMember.assigned_ship))
+        .filter(StaffMember.owner_id == current_user.id)
+        .order_by(desc(StaffMember.created_at))
+        .all()
+    )
+
+    stats = {
+        "total": len(staff_members),
+        "active": sum(1 for s in staff_members if s.status in ["ACTIVE", "ON_DUTY"]),
+        "on_duty": sum(1 for s in staff_members if s.status == "ON_DUTY"),
+        "on_leave": sum(1 for s in staff_members if s.status == "ON_LEAVE"),
+        "instructors_count": sum(1 for s in staff_members if s.role == "INSTRUCTOR"),
+        "captains_count": sum(1 for s in staff_members if s.role == "CAPTAIN"),
+        "guides_count": sum(1 for s in staff_members if s.role == "GUIDE"),
+        "safety_crew_count": sum(1 for s in staff_members if s.role == "SAFETY_CREW"),
+    }
+
+    return {
+        "staff": [s.to_dict() for s in staff_members],
+        "stats": stats,
+    }
+
+
+@router.post("/staff")
+def create_operator_staff(
+    data: StaffCreateRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Add a new staff member (Instructor, Captain, Guide, Safety Crew).
+    """
+    assigned_ship = None
+    if data.assigned_ship_id:
+        assigned_ship = db.query(Cross).filter(Cross.id == data.assigned_ship_id).first()
+        if not assigned_ship or (assigned_ship.owner_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=403, detail="Cannot assign staff to a vessel you do not own.")
+
+    staff = StaffMember(
+        owner_id=current_user.id,
+        name=data.name,
+        role=data.role.upper(),
+        license_number=data.license_number or "",
+        certifications=data.certifications or "",
+        phone=data.phone or "",
+        email=data.email or "",
+        max_supervision_limit=data.max_supervision_limit,
+        experience_years=data.experience_years,
+        status=data.status.upper(),
+        assigned_activity_types_json=json.dumps(data.assigned_activity_types or []),
+        assigned_ship_id=assigned_ship.id if assigned_ship else None,
+        notes=data.notes or "",
+    )
+
+    db.add(staff)
+    db.commit()
+    db.refresh(staff)
+
+    return {
+        "success": True,
+        "message": f"Staff member '{staff.name}' added successfully.",
+        "staff": staff.to_dict(),
+    }
+
+
+@router.put("/staff/{staff_id}")
+def update_operator_staff(
+    staff_id: int,
+    data: StaffUpdateRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Update staff member details, role, certifications, or supervision capacity.
+    """
+    staff = db.query(StaffMember).filter(StaffMember.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found.")
+
+    if not current_user.is_admin and staff.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to edit this staff member.")
+
+    update_dict = data.dict(exclude_unset=True)
+    if "assigned_activity_types" in update_dict:
+        staff.assigned_activity_types_json = json.dumps(update_dict.pop("assigned_activity_types") or [])
+
+    if "assigned_ship_id" in update_dict:
+        ship_id = update_dict.get("assigned_ship_id")
+        if ship_id:
+            ship = db.query(Cross).filter(Cross.id == ship_id).first()
+            if not ship or (ship.owner_id != current_user.id and not current_user.is_admin):
+                raise HTTPException(status_code=403, detail="Invalid vessel assignment.")
+            staff.assigned_ship_id = ship.id
+        else:
+            staff.assigned_ship_id = None
+
+    for k, v in update_dict.items():
+        if k != "assigned_ship_id" and hasattr(staff, k) and v is not None:
+            if k in ["role", "status"]:
+                setattr(staff, k, str(v).upper())
+            else:
+                setattr(staff, k, v)
+
+    db.commit()
+    db.refresh(staff)
+
+    return {
+        "success": True,
+        "message": f"Staff member '{staff.name}' updated successfully.",
+        "staff": staff.to_dict(),
+    }
+
+
+@router.delete("/staff/{staff_id}")
+def delete_operator_staff(
+    staff_id: int,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Remove staff member from roster.
+    """
+    staff = db.query(StaffMember).filter(StaffMember.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found.")
+
+    if not current_user.is_admin and staff.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized.")
+
+    # Unlink any activities using this staff member as default
+    db.query(Activity).filter(Activity.default_staff_id == staff.id).update({"default_staff_id": None})
+
+    name = staff.name
+    db.delete(staff)
+    db.commit()
+
+    return {"success": True, "message": f"Staff member '{name}' removed from roster."}
+
+
+@router.patch("/staff/{staff_id}/status")
+def toggle_staff_status(
+    staff_id: int,
+    status_str: str = Query(..., alias="status"),
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Quick status toggle for staff (ACTIVE, ON_DUTY, ON_LEAVE, INACTIVE).
+    """
+    staff = db.query(StaffMember).filter(StaffMember.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found.")
+
+    if not current_user.is_admin and staff.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized.")
+
+    valid_statuses = ["ACTIVE", "ON_DUTY", "ON_LEAVE", "INACTIVE"]
+    new_status = status_str.upper()
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
+
+    staff.status = new_status
+    db.commit()
+
+    return {"success": True, "status": staff.status, "message": f"Status updated to {staff.status}."}
+
+
+@router.get("/equipment")
+def list_operator_equipment(
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    List all water sports & maritime equipment items, categories, and maintenance status.
+    """
+    seed_default_staff_and_equipment_if_empty(current_user, db)
+
+    equipment_items = (
+        db.query(EquipmentItem)
+        .options(joinedload(EquipmentItem.assigned_activity), joinedload(EquipmentItem.assigned_ship))
+        .filter(EquipmentItem.owner_id == current_user.id)
+        .order_by(desc(EquipmentItem.created_at))
+        .all()
+    )
+
+    total_units = sum(e.total_quantity for e in equipment_items)
+    operational_units = sum(e.total_quantity for e in equipment_items if e.condition_status == "OPERATIONAL")
+    maintenance_units = sum(e.total_quantity for e in equipment_items if e.condition_status in ["MAINTENANCE", "RETIRED"])
+
+    stats = {
+        "total_items": len(equipment_items),
+        "total_units": total_units,
+        "operational_units": operational_units,
+        "maintenance_units": maintenance_units,
+        "compliance_rate": round((operational_units / total_units * 100), 1) if total_units > 0 else 100,
+        "by_category": {
+            "LIFE_JACKET": sum(e.total_quantity for e in equipment_items if e.category == "LIFE_JACKET"),
+            "DIVING_EQUIPMENT": sum(e.total_quantity for e in equipment_items if e.category == "DIVING_EQUIPMENT"),
+            "JET_SKI": sum(e.total_quantity for e in equipment_items if e.category == "JET_SKI"),
+            "SURFBOARD": sum(e.total_quantity for e in equipment_items if e.category == "SURFBOARD"),
+            "RAFT": sum(e.total_quantity for e in equipment_items if e.category == "RAFT"),
+            "SNORKEL_GEAR": sum(e.total_quantity for e in equipment_items if e.category == "SNORKEL_GEAR"),
+            "KAYAK": sum(e.total_quantity for e in equipment_items if e.category == "KAYAK"),
+        },
+    }
+
+    return {
+        "equipment": [e.to_dict() for e in equipment_items],
+        "stats": stats,
+    }
+
+
+@router.post("/equipment")
+def create_operator_equipment(
+    data: EquipmentCreateRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Register new water sports or safety equipment (Life jackets, Diving gear, Jet skis, Surfboards, Rafts).
+    """
+    assigned_activity = None
+    if data.assigned_activity_id:
+        assigned_activity = db.query(Activity).filter(Activity.id == data.assigned_activity_id).first()
+        if not assigned_activity or (assigned_activity.owner_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=403, detail="Cannot assign equipment to an activity you do not own.")
+
+    assigned_ship = None
+    if data.assigned_ship_id:
+        assigned_ship = db.query(Cross).filter(Cross.id == data.assigned_ship_id).first()
+        if not assigned_ship or (assigned_ship.owner_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=403, detail="Cannot assign equipment to a vessel you do not own.")
+
+    item = EquipmentItem(
+        owner_id=current_user.id,
+        name=data.name,
+        category=data.category.upper(),
+        serial_number=data.serial_number or "",
+        total_quantity=data.total_quantity,
+        condition_status=data.condition_status.upper(),
+        safety_certification=data.safety_certification or "Certified for Marine Use",
+        assigned_activity_id=assigned_activity.id if assigned_activity else None,
+        assigned_ship_id=assigned_ship.id if assigned_ship else None,
+        notes=data.notes or "",
+    )
+
+    if data.last_inspected_at:
+        try:
+            item.last_inspected_at = datetime.strptime(data.last_inspected_at, "%Y-%m-%d").date()
+        except Exception:
+            pass
+    if data.next_inspection_due:
+        try:
+            item.next_inspection_due = datetime.strptime(data.next_inspection_due, "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "success": True,
+        "message": f"Equipment '{item.name}' added to inventory.",
+        "equipment": item.to_dict(),
+    }
+
+
+@router.put("/equipment/{equipment_id}")
+def update_operator_equipment(
+    equipment_id: int,
+    data: EquipmentUpdateRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Update equipment inventory, quantity, inspection record, or maintenance status.
+    """
+    item = db.query(EquipmentItem).filter(EquipmentItem.id == equipment_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment item not found.")
+
+    if not current_user.is_admin and item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized.")
+
+    update_dict = data.dict(exclude_unset=True)
+
+    if "assigned_activity_id" in update_dict:
+        act_id = update_dict.get("assigned_activity_id")
+        if act_id:
+            act = db.query(Activity).filter(Activity.id == act_id).first()
+            if not act or (act.owner_id != current_user.id and not current_user.is_admin):
+                raise HTTPException(status_code=403, detail="Invalid activity assignment.")
+            item.assigned_activity_id = act.id
+        else:
+            item.assigned_activity_id = None
+
+    if "assigned_ship_id" in update_dict:
+        ship_id = update_dict.get("assigned_ship_id")
+        if ship_id:
+            ship = db.query(Cross).filter(Cross.id == ship_id).first()
+            if not ship or (ship.owner_id != current_user.id and not current_user.is_admin):
+                raise HTTPException(status_code=403, detail="Invalid vessel assignment.")
+            item.assigned_ship_id = ship.id
+        else:
+            item.assigned_ship_id = None
+
+    if "last_inspected_at" in update_dict:
+        val = update_dict.pop("last_inspected_at")
+        if val:
+            try:
+                item.last_inspected_at = datetime.strptime(val, "%Y-%m-%d").date()
+            except Exception:
+                pass
+        else:
+            item.last_inspected_at = None
+
+    if "next_inspection_due" in update_dict:
+        val = update_dict.pop("next_inspection_due")
+        if val:
+            try:
+                item.next_inspection_due = datetime.strptime(val, "%Y-%m-%d").date()
+            except Exception:
+                pass
+        else:
+            item.next_inspection_due = None
+
+    for k, v in update_dict.items():
+        if k not in ["assigned_activity_id", "assigned_ship_id"] and hasattr(item, k) and v is not None:
+            if k in ["category", "condition_status"]:
+                setattr(item, k, str(v).upper())
+            else:
+                setattr(item, k, v)
+
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "success": True,
+        "message": f"Equipment '{item.name}' updated successfully.",
+        "equipment": item.to_dict(),
+    }
+
+
+@router.delete("/equipment/{equipment_id}")
+def delete_operator_equipment(
+    equipment_id: int,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Remove equipment item from inventory.
+    """
+    item = db.query(EquipmentItem).filter(EquipmentItem.id == equipment_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment item not found.")
+
+    if not current_user.is_admin and item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized.")
+
+    name = item.name
+    db.delete(item)
+    db.commit()
+
+    return {"success": True, "message": f"Equipment '{name}' removed from inventory."}
+
+
+@router.patch("/equipment/{equipment_id}/condition")
+def toggle_equipment_condition(
+    equipment_id: int,
+    condition: str = Query(..., alias="condition"),
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Quick status toggle for equipment (OPERATIONAL, MAINTENANCE, RETIRED).
+    """
+    item = db.query(EquipmentItem).filter(EquipmentItem.id == equipment_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment item not found.")
+
+    if not current_user.is_admin and item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized.")
+
+    valid_conditions = ["OPERATIONAL", "IN_USE", "MAINTENANCE", "RETIRED"]
+    new_cond = condition.upper()
+    if new_cond not in valid_conditions:
+        raise HTTPException(status_code=400, detail=f"Invalid condition. Must be one of {valid_conditions}")
+
+    item.condition_status = new_cond
+    db.commit()
+
+    return {"success": True, "condition_status": item.condition_status, "message": f"Condition updated to {item.condition_status}."}
+
+
+@router.post("/availability-simulator")
+def run_availability_simulation(
+    req: AvailabilitySimulationRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db),
+):
+    """
+    Operator Availability Engine Simulator:
+    Simulate any hypothetical booking to inspect the 4-tier validation pipeline:
+    1. Vessel capacity & maintenance check
+    2. Instructor supervision limits & overlapping groups check
+    3. Equipment operational inventory check
+    4. Activity slot capacity check
+    """
+    act = db.query(Activity).filter(Activity.id == req.activity_id).first()
+    if not act:
+        raise HTTPException(status_code=404, detail="Activity not found.")
+
+    res = check_comprehensive_availability(
+        db=db,
+        activity=act,
+        booking_date=req.booking_date,
+        time_slot=req.time_slot,
+        requested_participants=req.participants,
+    )
+
+    return {
+        "success": True,
+        "activity_title": act.title,
+        "booking_date": req.booking_date,
+        "time_slot": req.time_slot,
+        "requested_participants": req.participants,
+        **res,
+    }
+
 
 

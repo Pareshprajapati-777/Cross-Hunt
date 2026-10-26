@@ -60,6 +60,20 @@ def ensure_db_migrations():
                     if col_name not in columns:
                         conn.execute(text(f"ALTER TABLE crosses_crossreview ADD COLUMN {col_name} {col_type}"))
                 conn.commit()
+
+        if "crosses_activity" in inspector.get_table_names():
+            act_cols = [c["name"] for c in inspector.get_columns("crosses_activity")]
+            act_new_cols = [
+                ("auto_confirm", "BOOLEAN DEFAULT 1 NOT NULL"),
+                ("required_equipment_category", "VARCHAR(50) NULL"),
+                ("equipment_units_per_participant", "INTEGER DEFAULT 1 NOT NULL"),
+                ("default_staff_id", "INTEGER NULL"),
+            ]
+            with engine.connect() as conn:
+                for col_name, col_type in act_new_cols:
+                    if col_name not in act_cols:
+                        conn.execute(text(f"ALTER TABLE crosses_activity ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
     except Exception as e:
         pass
 

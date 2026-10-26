@@ -24,6 +24,7 @@ from backend.app.schemas.activity import (
     ActivityUpdate,
     ActivityBookingRequest,
 )
+from backend.app.services.availability_engine import check_comprehensive_availability
 
 router = APIRouter(prefix="/activities", tags=["Activities & Water Sports"])
 
@@ -198,6 +199,39 @@ def get_operator_activities(
     return {"activities": [a.to_dict() for a in activities], "total": len(activities)}
 
 
+@router.get("/{slug_or_id}/availability-check")
+def check_activity_availability_endpoint(
+    slug_or_id: str,
+    booking_date: str = Query(..., description="YYYY-MM-DD"),
+    time_slot: str = Query("10:30 AM", description="e.g. 10:30 AM"),
+    participants: int = Query(1, ge=1),
+    db: Session = Depends(get_db),
+):
+    """
+    Multi-dimensional availability check verifying:
+    - Activity slot capacity
+    - Vessel availability & maintenance status
+    - Instructor supervision limits & concurrent groups
+    - Equipment operational inventory & condition
+    """
+    if slug_or_id.isdigit():
+        act = db.query(Activity).filter(Activity.id == int(slug_or_id)).first()
+    else:
+        act = db.query(Activity).filter(Activity.slug == slug_or_id).first()
+
+    if not act:
+        raise HTTPException(status_code=404, detail="Activity not found.")
+
+    res = check_comprehensive_availability(
+        db=db,
+        activity=act,
+        booking_date=booking_date,
+        time_slot=time_slot,
+        requested_participants=participants,
+    )
+    return res
+
+
 @router.get("/{slug_or_id}")
 def get_activity_detail(
     slug_or_id: str,
@@ -269,70 +303,19 @@ def book_activity(
     except Exception:
         pass
 
-    if req.participants > act.capacity_per_slot:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Requested participants ({req.participants}) exceeds maximum slot capacity ({act.capacity_per_slot}).",
-        )
-
-    # 1. Boat / Vessel Overlapping Double-Booking Prevention:
-    # If the activity requires a boat and has an assigned vessel, ensure vessel is not already engaged
-    if act.requires_boat and act.host_ship_id:
-        vessel_conflict = (
-            db.query(Booking)
-            .filter(
-                Booking.cross_id == act.host_ship_id,
-                Booking.booking_date == b_date,
-                Booking.status.in_(["CONFIRMED", "PENDING"]),
-                or_(
-                    and_(Booking.start_time <= start_t, Booking.end_time > start_t),
-                    and_(Booking.start_time < end_t, Booking.end_time >= end_t),
-                    and_(Booking.start_time >= start_t, Booking.end_time <= end_t),
-                ),
-            )
-            .first()
-        )
-        if vessel_conflict:
-            ship_name = act.host_ship.name if act.host_ship else "Assigned Vessel"
-            raise HTTPException(
-                status_code=409,
-                detail=f"Double-booking prevented: Vessel '{ship_name}' is already reserved for an overlapping session on {req.booking_date} ({vessel_conflict.start_time.strftime('%I:%M %p')} - {vessel_conflict.end_time.strftime('%I:%M %p')}). Please choose another time slot.",
-            )
-
-    # 2. Activity / Instructor / Equipment Slot Capacity & Double-Booking Prevention:
-    existing_slot_bookings = (
-        db.query(Booking)
-        .filter(
-            Booking.booking_type == "ACTIVITY",
-            Booking.booking_date == b_date,
-            or_(
-                Booking.event_type == f"ACT_{act.id}",
-                Booking.event_type == act.title,
-                Booking.cabin_type.like(f"ACT:{act.id}:%"),
-                Booking.cabin_type == f"Slot: {act.title}",
-            ),
-            Booking.status.in_(["CONFIRMED", "PENDING"]),
-            or_(
-                and_(Booking.start_time <= start_t, Booking.end_time > start_t),
-                and_(Booking.start_time < end_t, Booking.end_time >= end_t),
-                and_(Booking.start_time >= start_t, Booking.end_time <= end_t),
-            ),
-        )
-        .all()
+    # Multi-Dimensional Availability Engine (Vessel + Instructor Supervision + Equipment Inventory + Slot Capacity)
+    avail_check = check_comprehensive_availability(
+        db=db,
+        activity=act,
+        booking_date=b_date,
+        time_slot=req.time_slot,
+        requested_participants=req.participants,
     )
-    already_booked = sum(b.number_of_people for b in existing_slot_bookings)
-    if already_booked + req.participants > act.capacity_per_slot:
-        remaining = max(0, act.capacity_per_slot - already_booked)
-        if remaining == 0:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Slot fully booked: The {req.time_slot} session on {req.booking_date} is at full capacity ({act.capacity_per_slot} participants). Assigned instructor and equipment are fully engaged. Please choose another time slot.",
-            )
-        else:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Capacity exceeded: Only {remaining} spot(s) remaining for {req.time_slot} on {req.booking_date} (requested {req.participants}). Please reduce participants or choose another time slot.",
-            )
+    if not avail_check["is_available"]:
+        raise HTTPException(
+            status_code=409,
+            detail=avail_check["limiting_message"],
+        )
 
     # Calculate Pricing (Supports both PER_PERSON and PER_SESSION)
     base_unit_price = Decimal(str(act.price))
@@ -524,6 +507,9 @@ def create_activity(
         owner_id=current_user.id,
         operator_id=host_ship.operator_id if host_ship else None,
         auto_confirm=data.auto_confirm if getattr(data, "auto_confirm", None) is not None else True,
+        required_equipment_category=data.required_equipment_category,
+        equipment_units_per_participant=data.equipment_units_per_participant or 1,
+        default_staff_id=data.default_staff_id,
         is_active=data.is_active,
         is_featured=data.is_featured,
         rating=Decimal("5.0"),

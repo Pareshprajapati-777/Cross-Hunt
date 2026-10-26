@@ -59,11 +59,13 @@ import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
 import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
+import { OperatorStaffEquipmentView } from '../components/staff-equipment/OperatorStaffEquipmentView';
 
 type OperatorTab =
   | 'overview'
   | 'ships'
   | 'activities'
+  | 'staff-equipment'
   | 'extras'
   | 'availability'
   | 'requests'
@@ -812,6 +814,7 @@ export const OperatorDashboardPage: React.FC = () => {
           { id: 'overview', label: 'Fleet Overview & Analytics', icon: BarChart3 },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },
           { id: 'activities', label: 'Activities & Water Sports', icon: Waves },
+          { id: 'staff-equipment', label: 'Staff & Equipment', icon: ShieldCheck },
           { id: 'extras', label: 'Ship Extras', icon: Tag },
           { id: 'availability', label: 'Availability Timeline', icon: Calendar },
           { id: 'requests', label: `Booking Management (${data?.recent_bookings?.length || 0})`, icon: Clock },
@@ -1418,6 +1421,13 @@ export const OperatorDashboardPage: React.FC = () => {
       {/* TAB: WATER SPORTS & ACTIVITIES */}
       {activeTab === 'activities' && (
         <OperatorActivitiesView myShips={data?.my_ships || []} />
+      )}
+
+      {/* TAB: STAFF & EQUIPMENT MANAGEMENT */}
+      {activeTab === 'staff-equipment' && (
+        <OperatorStaffEquipmentView
+          vessels={data?.my_ships || data?.vessels || []}
+        />
       )}
 
       {/* TAB 3: SHIP EXTRAS */}

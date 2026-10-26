@@ -131,3 +131,103 @@ def test_operator_booking_management_actions(client):
     assert ref_res.json()["success"] is True
     assert ref_res.json()["booking"]["refund_amount"] >= 500.0
 
+
+def test_staff_and_equipment_and_availability_engine(client):
+    # 1. Login as owner
+    login_res = client.post("/api/auth/login/", json={"username": "owner1", "password": "Owner@12345"})
+    assert login_res.status_code == 200
+
+    # 2. List staff
+    staff_res = client.get("/api/operator/staff")
+    assert staff_res.status_code == 200
+    staff_data = staff_res.json()
+    assert "staff" in staff_data
+    assert "stats" in staff_data
+    assert staff_data["stats"]["total"] >= 5
+    assert staff_data["stats"]["instructors_count"] >= 1
+    assert staff_data["stats"]["captains_count"] >= 1
+
+    # 3. Create a specialized scuba instructor with max supervision limit = 4
+    new_staff_res = client.post("/api/operator/staff", json={
+        "name": "Arjun Divemaster",
+        "role": "INSTRUCTOR",
+        "license_number": "PADI-MSDT-771122",
+        "certifications": "PADI Deep Diver Specialist, First Aid",
+        "phone": "+91 99887 66554",
+        "email": "arjun.dive@crosshunt.com",
+        "max_supervision_limit": 4,
+        "experience_years": 5,
+        "status": "ON_DUTY",
+        "assigned_activity_types": ["scuba_diving", "scuba"],
+        "notes": "Approved for max 4 participants per session"
+    })
+    assert new_staff_res.status_code == 200
+    created_staff = new_staff_res.json()["staff"]
+    staff_id = created_staff["id"]
+    assert created_staff["max_supervision_limit"] == 4
+
+    # 4. Toggle staff status to ON_LEAVE and back to ON_DUTY
+    toggle_res = client.patch(f"/api/operator/staff/{staff_id}/status?status=ON_LEAVE")
+    assert toggle_res.status_code == 200
+    assert toggle_res.json()["status"] == "ON_LEAVE"
+
+    toggle_back = client.patch(f"/api/operator/staff/{staff_id}/status?status=ON_DUTY")
+    assert toggle_back.status_code == 200
+    assert toggle_back.json()["status"] == "ON_DUTY"
+
+    # 5. List equipment
+    equip_res = client.get("/api/operator/equipment")
+    assert equip_res.status_code == 200
+    equip_data = equip_res.json()
+    assert "equipment" in equip_data
+    assert "stats" in equip_data
+    assert equip_data["stats"]["total_units"] >= 20
+    assert equip_data["stats"]["by_category"]["LIFE_JACKET"] >= 10
+
+    # 6. Create custom equipment item (Jet Ski)
+    new_equip_res = client.post("/api/operator/equipment", json={
+        "name": "Kawasaki Ultra 310LX Jet Ski",
+        "category": "JET_SKI",
+        "serial_number": "KAW-ULTRA-310-09",
+        "total_quantity": 2,
+        "condition_status": "OPERATIONAL",
+        "safety_certification": "Certified High-Speed Maritime Vessel",
+        "notes": "Twin throttle supercharged watercraft"
+    })
+    assert new_equip_res.status_code == 200
+    created_equip = new_equip_res.json()["equipment"]
+    equip_id = created_equip["id"]
+
+    # 7. Toggle equipment condition to MAINTENANCE
+    cond_res = client.patch(f"/api/operator/equipment/{equip_id}/condition?condition=MAINTENANCE")
+    assert cond_res.status_code == 200
+    assert cond_res.json()["condition_status"] == "MAINTENANCE"
+
+    # 8. Test Availability Simulator
+    # Fetch an activity (e.g. Scuba Diving or Jet Ski)
+    act_res = client.get("/api/activities/")
+    assert act_res.status_code == 200
+    activities = act_res.json()["activities"]
+    assert len(activities) > 0
+    test_act = activities[0]
+
+    sim_res = client.post("/api/operator/availability-simulator", json={
+        "activity_id": test_act["id"],
+        "booking_date": "2026-11-28",
+        "time_slot": "10:30 AM",
+        "participants": 2
+    })
+    assert sim_res.status_code == 200
+    sim_data = sim_res.json()
+    assert "is_available" in sim_data
+    assert "max_available_spots" in sim_data
+    assert "breakdown" in sim_data
+    assert "activity_slot" in sim_data["breakdown"]
+
+    # 9. Clean up created test items
+    del_staff = client.delete(f"/api/operator/staff/{staff_id}")
+    assert del_staff.status_code == 200
+    del_equip = client.delete(f"/api/operator/equipment/{equip_id}")
+    assert del_equip.status_code == 200
+
+

@@ -35,6 +35,9 @@ class ActivityBase(BaseModel):
     gallery: List[str] = []
     host_ship_id: Optional[int] = None
     auto_confirm: bool = True
+    required_equipment_category: Optional[str] = None
+    equipment_units_per_participant: int = 1
+    default_staff_id: Optional[int] = None
     is_active: bool = True
     is_featured: bool = False
 
@@ -75,6 +78,9 @@ class ActivityUpdate(BaseModel):
     gallery: Optional[List[str]] = None
     host_ship_id: Optional[int] = None
     auto_confirm: Optional[bool] = None
+    required_equipment_category: Optional[str] = None
+    equipment_units_per_participant: Optional[int] = None
+    default_staff_id: Optional[int] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
 
@@ -122,6 +128,11 @@ class ActivityResponse(BaseModel):
     owner_name: str
     owner_phone: str
     auto_confirm: bool = True
+    required_equipment_category: Optional[str] = None
+    equipment_units_per_participant: int = 1
+    default_staff_id: Optional[int] = None
+    default_staff_name: Optional[str] = None
+    default_staff_supervision_limit: Optional[int] = None
     is_active: bool
     is_featured: bool
     rating: float

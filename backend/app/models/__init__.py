@@ -8,6 +8,7 @@ from backend.app.models.booking import Booking, SystemSetting, WhatsAppMessageLo
 from backend.app.models.offer import Offer, CrossReview
 from backend.app.models.favorite import FavoriteShip
 from backend.app.models.activity import Activity
+from backend.app.models.staff_equipment import StaffMember, EquipmentItem
 
 __all__ = [
     "User",
@@ -33,4 +34,6 @@ __all__ = [
     "CrossReview",
     "FavoriteShip",
     "Activity",
+    "StaffMember",
+    "EquipmentItem",
 ]
