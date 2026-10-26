@@ -221,9 +221,7 @@ export const AdminWhatsAppView: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
               Automated WhatsApp Trip Reminders
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Dispatches automated trip embarkation reminders before scheduled cruise departures with ship name, boarding gate & jetty instructions, route, passenger names, and verified digital boarding passes.
-            </p>
+
           </div>
 
           <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center gap-3">
