@@ -71,6 +71,12 @@ class Cross(Base):
     last_verified_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     availability_status: Mapped[str] = mapped_column(String(30), default="AVAILABLE", nullable=False)
 
+    registration_number: Mapped[str] = mapped_column(String(100), default="IND-GA-2024-REG", nullable=False)
+    vessel_type: Mapped[str] = mapped_column(String(80), default="Motor Yacht", nullable=False)
+    certifications: Mapped[str] = mapped_column(Text, default="IRS Seaworthiness Class A1, Annual Marine Safety Inspection Passed", nullable=False)
+    maintenance_schedule: Mapped[str] = mapped_column(Text, default="Bi-weekly routine check; Next drydock inspection: Scheduled", nullable=False)
+    supported_activities: Mapped[str] = mapped_column(Text, default="Scuba Diving, Deep-Sea Fishing, Sunset Cruise, Private Boat Charter", nullable=False)
+
     vessel_model: Mapped[str] = mapped_column(String(120), default="", nullable=False)
     ac_status: Mapped[str] = mapped_column(String(30), default="AC", nullable=False)
     food_service: Mapped[str] = mapped_column(String(200), default="Catering and refreshments available", nullable=False)

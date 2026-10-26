@@ -142,7 +142,12 @@ export interface Cruise {
   source_checked?: boolean;
   last_verified_at?: string;
   availability_status?: string;
-  operational_status?: 'AVAILABLE' | 'BOOKED' | 'ON_TOUR' | 'MAINTENANCE';
+  operational_status?: 'AVAILABLE' | 'BOOKED' | 'ON_TOUR' | 'MAINTENANCE' | 'UNDER_MAINTENANCE' | 'INACTIVE' | 'PENDING_APPROVAL';
+  registration_number?: string;
+  vessel_type?: string;
+  certifications?: string;
+  maintenance_schedule?: string;
+  supported_activities?: string;
   duration_days: number;
   ship_length_meters?: number;
   beam_meters?: number;

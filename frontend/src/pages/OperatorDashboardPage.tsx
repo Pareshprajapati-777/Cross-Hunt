@@ -57,6 +57,7 @@ import { Link } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
+import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 
 type OperatorTab =
   | 'overview'
@@ -1405,154 +1406,12 @@ export const OperatorDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: MY SHIPS */}
+      {/* TAB 2: MANAGE SHIPS & BOATS */}
       {activeTab === 'ships' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-extrabold text-[#102B46] tracking-tight">My Cruise Fleet</h2>
-              <p className="text-xs text-[#102B46]/60 mt-0.5">
-                Manage ship specifications, pricing rates, deck capabilities, and operational status.
-              </p>
-            </div>
-            <button
-              onClick={handleOpenAddShipModal}
-              className="px-5 py-2.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] font-black text-xs flex items-center gap-1.5 self-start cursor-pointer shadow-md shadow-[#051833]/20"
-            >
-              <Plus className="w-4 h-4 text-[#fff8dc]" /> Add New Ship
-            </button>
-          </div>
-
-          {/* Status Filter Chips (Pill Design matching screenshot) */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {[
-              { id: 'ALL', label: 'All Fleet Ships', count: data?.my_ships?.length || 0 },
-              { id: 'AVAILABLE', label: 'Available', count: stats.available_ships || 0 },
-              { id: 'BOOKED', label: 'Booked / Unavailable', count: stats.booked_ships || 0 },
-              { id: 'ON_TOUR', label: 'On Tour Departure', count: stats.on_tour_ships || 0 },
-              { id: 'MAINTENANCE', label: 'In Maintenance', count: stats.maintenance_ships || 0 },
-            ].map((chip) => {
-              const isActive = fleetFilter === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  onClick={() => setFleetFilter(chip.id as any)}
-                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
-                    isActive
-                      ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-sm shadow-[#0284c7]/25 font-black'
-                      : 'bg-white text-[#051833] border-[#0284c7]/25 hover:bg-sky-50/70 hover:border-[#0284c7]/40 shadow-sm'
-                  }`}
-                >
-                  <span>{chip.label}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-sky-50 text-[#0284c7] border border-[#0284c7]/20'
-                    }`}
-                  >
-                    ({chip.count})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredShips.map((ship) => {
-              const opStatus = ship.operational_status || (ship.is_active ? 'AVAILABLE' : 'MAINTENANCE');
-              return (
-              <div key={ship.id} className="bg-white rounded-3xl border border-[#0284c7]/20 shadow-sm p-6 sm:p-7 space-y-4 hover:border-[#0284c7]/50 hover:shadow-md transition group">
-                <div className="flex gap-4 sm:gap-5">
-                  <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0 bg-[#EAF4FB] border border-[#082F5B]/10">
-                    <img
-                      src={ship.image || (ship as any).image_url || '/static/images/vessels/cordelia_empress.jpg'}
-                      alt={ship.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                    />
-                  </div>
-                  <div className="space-y-1 min-w-0">
-                    {opStatus === 'AVAILABLE' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase inline-flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Available for Charter
-                      </span>
-                    )}
-                    {opStatus === 'BOOKED' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 uppercase inline-flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        Booked / Unavailable
-                      </span>
-                    )}
-                    {opStatus === 'ON_TOUR' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15 uppercase inline-flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#1677C8]" />
-                        On Tour Departure
-                      </span>
-                    )}
-                    {opStatus === 'MAINTENANCE' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase inline-flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        Maintenance / Drydock
-                      </span>
-                    )}
-                    <h3 className="font-extrabold text-lg text-[#102B46] truncate">{ship.name}</h3>
-                    <p className="text-xs text-[#102B46]/60">
-                      {ship.departure_port} → {ship.destination}
-                    </p>
-                    <p className="text-sm font-black text-[#102B46] pt-1">
-                      {formatINR(ship.price)} <span className="text-[10px] font-normal text-[#102B46]/50">/ {ship.price_unit || 'day base charter'}</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Vessel Tech Specs */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs bg-[#EAF4FB] p-3 rounded-2xl border border-[#082F5B]/10">
-                  <div>
-                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Capacity</span>
-                    <span className="font-bold text-[#102B46]">{ship.capacity} Guests</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Length / Beam</span>
-                    <span className="font-bold text-[#102B46]">{ship.ship_length_meters || 200}m / {ship.beam_meters || 28}m</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-[#102B46]/60 block uppercase">Decks / Cabins</span>
-                    <span className="font-bold text-[#102B46]">{ship.decks_count || 8} Decks • {ship.cabin_count || 80}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex flex-wrap items-center gap-2 justify-end">
-                  <button
-                    onClick={() => {
-                      setSelectedShipIdForTimeline(ship.id);
-                      setActiveTab('availability');
-                    }}
-                    className="px-4 py-1.5 rounded-full bg-[#EAF4FB] hover:bg-[#F8FCFF] border border-[#082F5B]/15 text-xs font-bold text-[#102B46] transition cursor-pointer"
-                  >
-                    View Availability
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewExtra((prev) => ({ ...prev, ship_id: ship.id.toString() }));
-                      setActiveTab('extras');
-                    }}
-                    className="px-4 py-1.5 rounded-full bg-[#1677C8] hover:bg-[#082F5B] text-white text-xs font-bold transition cursor-pointer shadow-sm"
-                  >
-                    Configure Extras
-                  </button>
-                  <button
-                    onClick={() => setShipToDelete(ship)}
-                    className="px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold text-rose-700 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    title="Delete this ship"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          </div>
-        </div>
+        <OperatorShipsView
+          myShips={data?.my_ships || data?.vessels || []}
+          onRefresh={fetchDashboard}
+        />
       )}
 
       {/* TAB: WATER SPORTS & ACTIVITIES */}

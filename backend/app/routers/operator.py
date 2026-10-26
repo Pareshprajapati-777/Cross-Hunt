@@ -349,8 +349,15 @@ async def create_operator_ship(
         image_url=data.get('image_url', ''),
         image=data.get('image', None),
         facilities=facilities_val,
-        is_active=True,
-        is_approved=True,
+        registration_number=data.get('registration_number', 'IND-GA-2024-REG'),
+        vessel_type=data.get('vessel_type', data.get('category', 'Motor Yacht')),
+        certifications=data.get('certifications', 'IRS Seaworthiness Class A1, Annual Marine Safety Inspection Passed'),
+        maintenance_schedule=data.get('maintenance_schedule', 'Bi-weekly routine check; Next drydock inspection: Scheduled'),
+        supported_activities=data.get('supported_activities', 'Scuba Diving, Deep-Sea Fishing, Sunset Cruise, Private Boat Charter'),
+        capacity_note=data.get('capacity_note', 'Vessel Max Passenger Capacity (Activity/Equipment capacity configured separately)'),
+        availability_status=data.get('availability_status', 'AVAILABLE'),
+        is_active=data.get('availability_status') != 'INACTIVE',
+        is_approved=data.get('availability_status') != 'PENDING_APPROVAL',
     )
     db.add(ship)
     db.commit()
@@ -397,9 +404,25 @@ async def update_operator_ship(
     except Exception:
         data = {}
 
-    for field in ['name', 'category', 'description', 'location', 'address', 'destination', 'route', 'departure_port', 'facilities']:
-        if field in data:
+    for field in [
+        'name', 'category', 'vessel_type', 'registration_number',
+        'certifications', 'maintenance_schedule', 'supported_activities',
+        'capacity_note', 'availability_status', 'description', 'location',
+        'address', 'destination', 'route', 'departure_port', 'facilities'
+    ]:
+        if field in data and hasattr(ship, field):
             setattr(ship, field, data[field])
+
+    if 'availability_status' in data:
+        status_val = data['availability_status']
+        ship.availability_status = status_val
+        if status_val == 'INACTIVE':
+            ship.is_active = False
+        elif status_val == 'PENDING_APPROVAL':
+            ship.is_approved = False
+        else:
+            ship.is_active = True
+            ship.is_approved = True
 
     if 'image_url' in data:
         ship.image_url = data['image_url']

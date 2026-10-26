@@ -174,6 +174,13 @@ export async function createOperatorShip(payload: Partial<Cruise>): Promise<{ su
   });
 }
 
+export async function updateOperatorShip(shipId: number, payload: Partial<Cruise>): Promise<{ success: boolean; ship: Cruise }> {
+  return apiRequest(`/api/operator/ships/${shipId}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteOperatorShip(shipId: number): Promise<{ success: boolean; message?: string }> {
   return apiRequest(`/api/operator/ships/${shipId}/`, {
     method: 'DELETE',
