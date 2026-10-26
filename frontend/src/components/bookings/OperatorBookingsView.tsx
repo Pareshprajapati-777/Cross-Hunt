@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   CloudSun,
   Wind,
   MessageSquare,
@@ -48,7 +49,7 @@ interface OperatorBookingsViewProps {
   onOpenInvoice?: (bookingId: string) => void;
 }
 
-type StatusFilter = 'ALL' | 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
+type StatusFilter = 'ALL' | 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
 type TypeFilter = 'ALL' | 'ACTIVITY' | 'EVENT' | 'TOUR';
 
 export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
@@ -115,10 +116,11 @@ export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
       all: bookings.length,
       pending: bookings.filter((b) => b.status === 'PENDING').length,
       confirmed: bookings.filter((b) => b.status === 'CONFIRMED').length,
-      in_progress: bookings.filter((b) => b.status === 'IN_PROGRESS').length,
+      in_progress: bookings.filter((b) => b.status === 'IN_PROGRESS' || b.tracking_status === 'ON_CRUISE').length,
       completed: bookings.filter((b) => b.status === 'COMPLETED').length,
       rejected: bookings.filter((b) => b.status === 'REJECTED').length,
       cancelled: bookings.filter((b) => b.status === 'CANCELLED').length,
+      expired: bookings.filter((b) => b.status === 'EXPIRED').length,
     };
   }, [bookings]);
 
@@ -347,6 +349,13 @@ export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
             <span>Cancelled</span>
           </span>
         );
+      case 'EXPIRED':
+        return (
+          <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-orange-50 text-orange-800 border border-orange-300 shadow-sm flex items-center gap-1.5">
+            <AlertCircle className="w-3 h-3 text-orange-600" />
+            <span>Expired</span>
+          </span>
+        );
       default:
         return (
           <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
@@ -386,70 +395,7 @@ export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Lifecycle Status Flow Pill Tracker */}
-      <div className="p-4 rounded-3xl bg-gradient-to-r from-sky-50/70 via-white to-blue-50/50 border border-[#0284c7]/20 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] uppercase font-black text-slate-500 tracking-wider">
-            Booking Lifecycle Progress Flow
-          </span>
-          <span className="text-[11px] font-bold text-slate-400">
-            Pending → Confirmed → In Progress → Completed (Alternative: Rejected / Cancelled)
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto py-1">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-full bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-sm">
-              1
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-[#051833]">Pending Request</p>
-              <p className="text-[10px] text-slate-500">{counts.pending} awaiting review</p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shadow-sm">
-              2
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-[#051833]">Confirmed & Valid</p>
-              <p className="text-[10px] text-slate-500">{counts.confirmed} active</p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-full bg-sky-600 text-white font-black text-xs flex items-center justify-center shadow-sm">
-              3
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-[#051833]">In Progress</p>
-              <p className="text-[10px] text-slate-500">{counts.in_progress} underway</p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-full bg-blue-700 text-white font-black text-xs flex items-center justify-center shadow-sm">
-              4
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-[#051833]">Completed</p>
-              <p className="text-[10px] text-slate-500">{counts.completed} fulfilled</p>
-            </div>
-          </div>
-          <div className="h-6 w-px bg-slate-200 mx-2 shrink-0 hidden md:block" />
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[11px] font-bold text-slate-400">Alternative:</span>
-            <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-              Rejected ({counts.rejected})
-            </span>
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-              Cancelled ({counts.cancelled})
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Filter Dock & Search Bar */}
+      {/* Filter Dock & Search Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Status Filter Chips */}
         <div className="flex flex-wrap items-center gap-2">
@@ -461,6 +407,7 @@ export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
             { id: 'COMPLETED', label: 'Completed', count: counts.completed },
             { id: 'REJECTED', label: 'Rejected', count: counts.rejected },
             { id: 'CANCELLED', label: 'Cancelled', count: counts.cancelled },
+            ...(counts.expired > 0 ? [{ id: 'EXPIRED', label: 'Expired', count: counts.expired }] : []),
           ].map((chip) => {
             const isActive = statusFilter === chip.id;
             return (

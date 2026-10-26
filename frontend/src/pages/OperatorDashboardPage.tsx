@@ -30,6 +30,7 @@ import {
   Tag,
   AlertCircle,
   TrendingUp,
+  ArrowUpRight,
   MapPin,
   Trash2,
   ShieldCheck,
@@ -53,7 +54,7 @@ import {
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
 import { getTourImageUrl } from '../utils/images';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
@@ -64,7 +65,6 @@ import { OperatorEarningsView } from '../components/finance/OperatorEarningsView
 
 type OperatorTab =
   | 'overview'
-  | 'earnings'
   | 'ships'
   | 'activities'
   | 'staff-equipment'
@@ -78,11 +78,25 @@ type OperatorTab =
 
 export const OperatorDashboardPage: React.FC = () => {
   const { user, refreshUser, updateUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<OperatorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OperatorTab>('overview');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Smart Dual-View inside Merged "Fleet Overview & Earnings" tab
+  const [overviewViewMode, setOverviewViewMode] = useState<'analytics' | 'earnings'>(() => {
+    return searchParams.get('tab') === 'earnings' || searchParams.get('view') === 'earnings' ? 'earnings' : 'analytics';
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'earnings') {
+      setActiveTab('overview');
+      setOverviewViewMode('earnings');
+    }
+  }, [searchParams]);
 
   // Profile Form state
   const [profileFirstName, setProfileFirstName] = useState(user?.first_name || '');
@@ -813,8 +827,7 @@ export const OperatorDashboardPage: React.FC = () => {
       {/* 2. SUB-NAVIGATION TABS BAR (Clean White Dock & Deep Navy Pill) */}
       <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full">
         {[
-          { id: 'overview', label: 'Fleet Overview & Analytics', icon: BarChart3 },
-          { id: 'earnings', label: 'Owner Earnings & Payouts', icon: DollarSign },
+          { id: 'overview', label: 'Fleet Overview & Earnings', icon: BarChart3 },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },
           { id: 'activities', label: 'Activities & Water Sports', icon: Waves },
           { id: 'staff-equipment', label: 'Staff & Equipment', icon: ShieldCheck },
@@ -855,40 +868,77 @@ export const OperatorDashboardPage: React.FC = () => {
         })}
       </div>
 
-      {/* TAB 1: FLEET OVERVIEW & ANALYTICS */}
+      {/* TAB 1: FLEET OVERVIEW & EARNINGS (SMARTLY MERGED) */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* Header banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#082F5B]/10 pb-4">
+          {/* Header banner with smart dual segmented switcher */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#082F5B]/10 pb-5">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-[#082F5B] text-[#63B8F0] shadow-md flex items-center justify-center">
-                <BarChart3 className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#082F5B] to-[#1677C8] text-[#F8FCFF] shadow-md flex items-center justify-center">
+                {overviewViewMode === 'earnings' ? (
+                  <DollarSign className="w-6 h-6 text-white" />
+                ) : (
+                  <BarChart3 className="w-6 h-6 text-white" />
+                )}
               </div>
               <div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-[#102B46] tracking-tight">
-                  Fleet Operations & Revenue Analytics
+                <h3 className="text-xl sm:text-2xl font-black text-[#102B46] tracking-tight">
+                  {overviewViewMode === 'earnings'
+                    ? 'Owner Earnings & Financial Ledger'
+                    : 'Fleet Operations & Revenue Analytics'}
                 </h3>
                 <p className="text-xs text-[#102B46]/60">
-                  Live performance metrics, monthly earnings trajectory, trip split, and ship utilization for your fleet.
+                  {overviewViewMode === 'earnings'
+                    ? 'Comprehensive financial ledger, platform commission (15%), payment gateway (2%), refunds, and bank payout records.'
+                    : 'Live performance metrics, monthly earnings trajectory, trip split, and ship utilization for your fleet.'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/10 text-xs font-bold shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#1677C8]" />
-                <span>Verified Owner Fleet (85% Payout)</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/10 text-xs font-bold shadow-sm">
-                <Activity className="w-3.5 h-3.5 text-[#1677C8]" />
-                <span>{analyticsData.status_breakdown.total} Total Bookings</span>
-              </span>
+
+            {/* Smart Dual Segmented Mode Switcher */}
+            <div className="inline-flex p-1.5 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner max-w-full overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setOverviewViewMode('analytics')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  overviewViewMode === 'analytics'
+                    ? 'bg-[#082F5B] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-[#082F5B] hover:bg-white/60'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Fleet Operations &amp; Analytics</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOverviewViewMode('earnings')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  overviewViewMode === 'earnings'
+                    ? 'bg-[#082F5B] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-[#082F5B] hover:bg-white/60'
+                }`}
+              >
+                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Owner Earnings &amp; Payouts</span>
+                {(stats.pending_payouts || stats.pending_requests || 0) > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Top 8 Owner Dashboard KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* 1. Total Revenue */}
-            <div className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition">
+          {/* VIEW MODE 1: FLEET OPERATIONS & ANALYTICS */}
+          {overviewViewMode === 'analytics' && (
+            <div className="space-y-8 animate-fadeIn">
+              {/* Top 8 Owner Dashboard KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* 1. Total Revenue */}
+                <div
+                  onClick={() => setOverviewViewMode('earnings')}
+                  className="bg-white rounded-3xl p-5 border border-[#0284c7]/20 shadow-sm space-y-1.5 hover:border-[#0284c7]/50 hover:shadow-md transition cursor-pointer"
+                  title="Click to view full financial ledger"
+                >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Total Revenue</span>
                 <DollarSign className="w-4 h-4 text-emerald-600" />
@@ -1119,6 +1169,21 @@ export const OperatorDashboardPage: React.FC = () => {
                 </span>
                 <p className="text-[11px] text-emerald-600">Disbursed directly to owner bank account</p>
               </div>
+            </div>
+
+            {/* Direct Switch to Full Earnings & Payout Ledger */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                Detailed transaction audit, bank UTR clearance records, itemized booking fee breakdown, and manual withdrawals.
+              </p>
+              <button
+                type="button"
+                onClick={() => setOverviewViewMode('earnings')}
+                className="px-4 py-2 rounded-xl bg-[#082F5B] hover:bg-[#1677C8] text-white text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm whitespace-nowrap self-start sm:self-auto"
+              >
+                <span>View Full Earnings &amp; Payout Ledger</span>
+                <ArrowUpRight className="w-4 h-4 text-emerald-300" />
+              </button>
             </div>
           </div>
 
@@ -1410,12 +1475,16 @@ export const OperatorDashboardPage: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* TAB: OWNER EARNINGS & FINANCIAL DASHBOARD */}
-      {activeTab === 'earnings' && (
-        <OperatorEarningsView />
+          {/* VIEW MODE 2: OWNER EARNINGS & FINANCIAL LEDGER */}
+          {overviewViewMode === 'earnings' && (
+            <div className="animate-fadeIn">
+              <OperatorEarningsView />
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 2: MANAGE SHIPS & BOATS */}

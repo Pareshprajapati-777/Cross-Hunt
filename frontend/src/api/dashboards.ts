@@ -25,6 +25,8 @@ export interface OperatorDashboardData {
     gross_booking_value?: number;
     refunds?: number;
     net_payout?: number;
+    pending_payouts?: number;
+    completed_payouts?: number;
     active_bookings: number;
     pending_bookings?: number;
     confirmed_bookings?: number;

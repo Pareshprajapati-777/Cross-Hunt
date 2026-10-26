@@ -111,8 +111,12 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
                 b.tracking_status = "COMPLETED"
                 completed_bookings_count += 1
             elif b.status == "PENDING":
-                b.status = "EXPIRED"
-                b.tracking_status = "COMPLETED"
+                if b.payment_status == "PAID":
+                    b.status = "COMPLETED"
+                    b.tracking_status = "COMPLETED"
+                else:
+                    b.status = "EXPIRED"
+                    b.tracking_status = "EXPIRED"
                 completed_bookings_count += 1
             elif b.status == "COMPLETED" and b.tracking_status != "COMPLETED":
                 b.tracking_status = "COMPLETED"
@@ -137,8 +141,12 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
             b.tracking_status = "COMPLETED"
             completed_bookings_count += 1
         elif b.status == "PENDING":
-            b.status = "EXPIRED"
-            b.tracking_status = "COMPLETED"
+            if b.payment_status == "PAID":
+                b.status = "COMPLETED"
+                b.tracking_status = "COMPLETED"
+            else:
+                b.status = "EXPIRED"
+                b.tracking_status = "EXPIRED"
             completed_bookings_count += 1
 
     # Commit any changes to database and invalidate cache so UI gets fresh data
