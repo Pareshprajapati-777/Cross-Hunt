@@ -712,5 +712,80 @@ export interface AvailabilitySimulationResult {
   time_slot?: string;
 }
 
+export type PayoutStatus = 'COMPLETED' | 'PROCESSING' | 'PENDING' | 'FAILED';
+
+export interface OwnerPayoutItem {
+  id: number;
+  owner_id: number;
+  payout_reference: string;
+  utr_number: string;
+  amount: number;
+  currency: string;
+  status: PayoutStatus;
+  bank_name: string;
+  account_number_masked: string;
+  ifsc_code: string;
+  payment_method: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  bookings_count: number;
+  notes?: string;
+  processed_at?: string | null;
+  created_at: string;
+}
+
+export interface BookingLedgerItem {
+  booking_id: number;
+  ticket_code: string;
+  booking_date: string;
+  booking_type: string;
+  item_name: string;
+  customer_name: string;
+  customer_whatsapp?: string;
+  gross_amount: number;
+  platform_commission: number;
+  platform_commission_rate: number;
+  payment_processing_fee: number;
+  payment_processing_rate: number;
+  refund_amount: number;
+  net_owner_share: number;
+  booking_status: string;
+  payout_status: 'SETTLED' | 'PENDING' | 'REFUNDED' | string;
+  payment_method: string;
+  payment_gateway_ref: string;
+  created_at: string;
+}
+
+export interface OwnerFinancialKPIs {
+  gross_booking_value: number;
+  platform_commission: number;
+  payment_processing_fees: number;
+  refunds: number;
+  net_earnings: number;
+  completed_payouts: number;
+  pending_payouts: number;
+  payout_rate_percentage: number;
+  platform_commission_percentage: number;
+  payment_processing_percentage: number;
+  total_bookings_count: number;
+  confirmed_bookings_count: number;
+  refunded_bookings_count: number;
+}
+
+export interface OwnerFinancialOverview {
+  kpis: OwnerFinancialKPIs;
+  payouts: OwnerPayoutItem[];
+  booking_ledger: BookingLedgerItem[];
+}
+
+export interface RequestPayoutPayload {
+  amount: number;
+  bank_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
+  notes?: string;
+}
+
+
 
 

@@ -231,3 +231,74 @@ def test_staff_and_equipment_and_availability_engine(client):
     assert del_equip.status_code == 200
 
 
+def test_owner_financial_dashboard_and_payouts(client):
+    # 1. Login as owner
+    login_res = client.post("/api/auth/login/", json={"username": "owner1", "password": "Owner@12345"})
+    assert login_res.status_code == 200
+
+    # 2. Financial Overview endpoint
+    fin_res = client.get("/api/operator/financial-overview")
+    assert fin_res.status_code == 200
+    fin_data = fin_res.json()
+    assert "kpis" in fin_data
+    assert "payouts" in fin_data
+    assert "booking_ledger" in fin_data
+
+    kpis = fin_data["kpis"]
+    assert "gross_booking_value" in kpis
+    assert "platform_commission" in kpis
+    assert "payment_processing_fees" in kpis
+    assert "refunds" in kpis
+    assert "net_earnings" in kpis
+    assert "completed_payouts" in kpis
+    assert "pending_payouts" in kpis
+    assert kpis["platform_commission_percentage"] == 15.0
+    assert kpis["payment_processing_percentage"] == 2.0
+    assert kpis["payout_rate_percentage"] == 83.0
+
+    # Verify booking ledger structure
+    ledger = fin_data["booking_ledger"]
+    if ledger:
+        b0 = ledger[0]
+        assert "booking_id" in b0
+        assert "ticket_code" in b0
+        assert "gross_amount" in b0
+        assert "platform_commission" in b0
+        assert "payment_processing_fee" in b0
+        assert "net_owner_share" in b0
+        assert "payout_status" in b0
+
+    # 3. Payouts List endpoint
+    payouts_res = client.get("/api/operator/payouts")
+    assert payouts_res.status_code == 200
+    payouts_data = payouts_res.json()
+    assert "payouts" in payouts_data
+    assert "stats" in payouts_data
+    assert "total_count" in payouts_data["stats"]
+
+    # 4. Request Payout endpoint
+    payout_req_res = client.post("/api/operator/request-payout", json={
+        "amount": 1500.0,
+        "bank_name": "State Bank of India",
+        "account_number": "•••• •••• 9842",
+        "ifsc_code": "SBIN0004521",
+        "notes": "Test owner earnings settlement"
+    })
+    assert payout_req_res.status_code == 200
+    req_json = payout_req_res.json()
+    assert req_json["success"] is True
+    assert req_json["payout"]["amount"] == 1500.0
+    assert req_json["payout"]["status"] == "PROCESSING"
+    assert req_json["payout"]["bank_name"] == "State Bank of India"
+    assert req_json["payout"]["payout_reference"].startswith("PAY-")
+
+    # 5. Invalid payout amount check (<= 0)
+    bad_req = client.post("/api/operator/request-payout", json={
+        "amount": 0.0,
+        "bank_name": "HDFC Bank",
+    })
+    assert bad_req.status_code in [400, 422]
+
+
+
+

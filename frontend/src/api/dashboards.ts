@@ -2,7 +2,8 @@ import { apiRequest } from './client';
 import {
   Booking, Cruise, PublicTour, Offer, OperatorSummary, WhatsAppLog, WhatsAppConfig, WhatsAppQueueItem,
   WhatsAppCredentialsPayload, WhatsAppConnectionTestResult,
-  StaffMemberItem, EquipmentItemModel, AvailabilitySimulationResult
+  StaffMemberItem, EquipmentItemModel, AvailabilitySimulationResult,
+  OwnerFinancialOverview, OwnerPayoutItem, RequestPayoutPayload
 } from './types';
 
 export interface OperatorDashboardData {
@@ -1213,5 +1214,36 @@ export async function testAdminWhatsAppConnection(): Promise<WhatsAppConnectionT
     method: 'POST',
   });
 }
+
+// ==============================================================================
+// OWNER EARNINGS & FINANCIAL DASHBOARD
+// ==============================================================================
+
+export async function getOwnerFinancialOverview(): Promise<OwnerFinancialOverview> {
+  return apiRequest<OwnerFinancialOverview>('/api/operator/financial-overview');
+}
+
+export async function getOwnerPayouts(): Promise<{
+  payouts: OwnerPayoutItem[];
+  stats: {
+    total_count: number;
+    total_disbursed: number;
+    total_processing: number;
+  };
+}> {
+  return apiRequest('/api/operator/payouts');
+}
+
+export async function requestOwnerPayout(payload: RequestPayoutPayload): Promise<{
+  success: boolean;
+  message: string;
+  payout: OwnerPayoutItem;
+}> {
+  return apiRequest('/api/operator/request-payout', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 
 

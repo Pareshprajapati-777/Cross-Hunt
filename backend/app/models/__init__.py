@@ -9,6 +9,7 @@ from backend.app.models.offer import Offer, CrossReview
 from backend.app.models.favorite import FavoriteShip
 from backend.app.models.activity import Activity
 from backend.app.models.staff_equipment import StaffMember, EquipmentItem
+from backend.app.models.payout import OwnerPayout
 
 __all__ = [
     "User",
@@ -36,4 +37,6 @@ __all__ = [
     "Activity",
     "StaffMember",
     "EquipmentItem",
+    "OwnerPayout",
 ]
+

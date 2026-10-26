@@ -60,9 +60,11 @@ import { OperatorActivitiesView } from '../components/activities/OperatorActivit
 import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
 import { OperatorStaffEquipmentView } from '../components/staff-equipment/OperatorStaffEquipmentView';
+import { OperatorEarningsView } from '../components/finance/OperatorEarningsView';
 
 type OperatorTab =
   | 'overview'
+  | 'earnings'
   | 'ships'
   | 'activities'
   | 'staff-equipment'
@@ -812,6 +814,7 @@ export const OperatorDashboardPage: React.FC = () => {
       <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full">
         {[
           { id: 'overview', label: 'Fleet Overview & Analytics', icon: BarChart3 },
+          { id: 'earnings', label: 'Owner Earnings & Payouts', icon: DollarSign },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },
           { id: 'activities', label: 'Activities & Water Sports', icon: Waves },
           { id: 'staff-equipment', label: 'Staff & Equipment', icon: ShieldCheck },
@@ -1408,6 +1411,11 @@ export const OperatorDashboardPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* TAB: OWNER EARNINGS & FINANCIAL DASHBOARD */}
+      {activeTab === 'earnings' && (
+        <OperatorEarningsView />
       )}
 
       {/* TAB 2: MANAGE SHIPS & BOATS */}
