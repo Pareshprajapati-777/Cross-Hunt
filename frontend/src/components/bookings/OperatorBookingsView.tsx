@@ -116,7 +116,7 @@ export const OperatorBookingsView: React.FC<OperatorBookingsViewProps> = ({
       all: bookings.length,
       pending: bookings.filter((b) => b.status === 'PENDING').length,
       confirmed: bookings.filter((b) => b.status === 'CONFIRMED').length,
-      in_progress: bookings.filter((b) => b.status === 'IN_PROGRESS' || b.tracking_status === 'ON_CRUISE').length,
+      in_progress: bookings.filter((b) => b.status === 'IN_PROGRESS').length,
       completed: bookings.filter((b) => b.status === 'COMPLETED').length,
       rejected: bookings.filter((b) => b.status === 'REJECTED').length,
       cancelled: bookings.filter((b) => b.status === 'CANCELLED').length,
