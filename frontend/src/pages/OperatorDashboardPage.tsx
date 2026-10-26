@@ -58,6 +58,7 @@ import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
 import { OperatorShipsView } from '../components/ships/OperatorShipsView';
+import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
 
 type OperatorTab =
   | 'overview'
@@ -813,7 +814,7 @@ export const OperatorDashboardPage: React.FC = () => {
           { id: 'activities', label: 'Activities & Water Sports', icon: Waves },
           { id: 'extras', label: 'Ship Extras', icon: Tag },
           { id: 'availability', label: 'Availability Timeline', icon: Calendar },
-          { id: 'requests', label: `Booking Requests (${data?.recent_bookings?.length || 0})`, icon: Clock },
+          { id: 'requests', label: `Booking Management (${data?.recent_bookings?.length || 0})`, icon: Clock },
           { id: 'tours', label: `Public Tours (${data?.my_tours?.length || 0})`, icon: Anchor },
           { id: 'passengers', label: 'Tour Passengers', icon: Users },
           {
@@ -1615,176 +1616,13 @@ export const OperatorDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 5: PRIVATE BOOKING REQUESTS */}
+      {/* TAB 5: BOOKING MANAGEMENT (Lifecycle tracking & owner operations) */}
       {activeTab === 'requests' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-[11px] font-black tracking-widest uppercase text-[#1677C8] block mb-1">
-                Charter Bookings & Logistics
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-[#102B46] font-heading tracking-tight">Private Charter Reservations</h2>
-              <p className="text-xs text-[#102B46]/65 mt-1 font-medium">
-                Review passenger requests, approve charter slots, track trip departures, and inspect GST tax invoices.
-              </p>
-            </div>
-          </div>
-
-          {/* Status Filter Chips (Pill Design matching screenshot) */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {[
-              { id: 'ALL', label: 'All Reservations', count: data?.recent_bookings?.length || 0 },
-              { id: 'PENDING', label: 'Pending Requests', count: (data?.recent_bookings || []).filter(b => b.status === 'PENDING').length },
-              { id: 'CONFIRMED', label: 'Confirmed', count: (data?.recent_bookings || []).filter(b => b.status === 'CONFIRMED').length },
-              { id: 'COMPLETED', label: 'Completed', count: (data?.recent_bookings || []).filter(b => b.status === 'COMPLETED').length },
-              { id: 'CANCELLED', label: 'Cancelled', count: (data?.recent_bookings || []).filter(b => b.status === 'CANCELLED').length },
-            ].map((chip) => {
-              const isActive = bookingFilter === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  onClick={() => setBookingFilter(chip.id as any)}
-                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
-                    isActive
-                      ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-sm shadow-[#0284c7]/25 font-black'
-                      : 'bg-white text-[#051833] border-[#0284c7]/25 hover:bg-sky-50/70 hover:border-[#0284c7]/40 shadow-sm'
-                  }`}
-                >
-                  <span>{chip.label}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-sky-50 text-[#0284c7] border border-[#0284c7]/20'
-                  }`}>
-                    ({chip.count})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-4">
-            {filteredBookings.length === 0 ? (
-              <div className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 p-12 text-center text-[#102B46]/60 shadow-[0_4px_20px_rgba(8,47,91,0.03)]">
-                <Clock className="w-12 h-12 text-[#1677C8]/40 mx-auto mb-3" />
-                <p className="font-bold text-[#102B46] text-base">No reservations found</p>
-                <p className="text-xs text-[#102B46]/60 mt-1 font-medium">There are no bookings matching the selected status filter.</p>
-              </div>
-            ) : (
-              filteredBookings.map((b) => (
-              <div
-                key={b.id}
-                className="bg-[#F8FCFF] rounded-3xl border border-[#082F5B]/10 shadow-[0_4px_20px_rgba(8,47,91,0.04)] hover:shadow-[0_12px_30px_rgba(8,47,91,0.08)] transition-all p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
-              >
-                <div className="space-y-2 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-black font-mono text-[#082F5B] bg-[#EAF4FB] px-2.5 py-0.5 rounded-full border border-[#082F5B]/10">
-                      #{b.booking_id}
-                    </span>
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                        b.status === 'CONFIRMED'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : b.status === 'PENDING'
-                          ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                          : b.status === 'COMPLETED'
-                          ? 'bg-[#EAF4FB] text-[#1677C8] border border-[#63B8F0]/30'
-                          : 'bg-rose-100 text-rose-800 border border-rose-200'
-                      }`}
-                    >
-                      {b.status}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#1677C8] bg-[#EAF4FB] px-2.5 py-0.5 rounded-full uppercase border border-[#1677C8]/20">
-                      {b.booking_type === 'EVENT' ? 'Private Event Charter' : 'Public Tour Ticket'}
-                    </span>
-                  </div>
-
-                  <h3 className="font-black text-xl text-[#102B46] font-heading tracking-tight">{b.cruise_name}</h3>
-                  <p className="text-xs text-[#102B46]/75 font-medium">
-                    Passenger: <strong className="text-[#102B46] font-bold">{b.customer_name}</strong> • Contact: {b.customer_email} {b.customer_phone ? `(${b.customer_phone})` : ''}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/65 font-medium pt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
-                      Trip Date: <strong className="text-[#102B46]">{b.booking_date}</strong>
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-[#1677C8]" />
-                      Guests: <strong className="text-[#102B46]">{b.passengers_count || b.number_of_people}</strong>
-                    </span>
-                    <span>•</span>
-                    <span>Cabin: <strong className="text-[#102B46]">{b.cabin_name || b.cabin_type || 'Private Charter'}</strong></span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-start md:items-end gap-3.5 shrink-0 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#082F5B]/10">
-                  <span className="text-2xl font-black text-[#102B46] font-heading tracking-tight">{formatINR(b.total_price)}</span>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => setSelectedInvoiceId(b.booking_id)}
-                      className="px-3.5 py-1.5 rounded-full border border-[#082F5B]/20 text-xs font-bold text-[#082F5B] hover:bg-[#EAF4FB] transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Receipt className="w-3.5 h-3.5 text-[#1677C8]" />
-                      Invoice
-                    </button>
-
-                    {b.status === 'PENDING' && (
-                      <>
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'confirm')}
-                          disabled={actionLoading === `${b.booking_id}-confirm`}
-                          className="px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer shadow-sm hover:shadow"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'cancel')}
-                          disabled={actionLoading === `${b.booking_id}-cancel`}
-                          className="px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold text-xs transition-all cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-
-                    {b.status === 'CONFIRMED' && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'board')}
-                          disabled={actionLoading === `${b.booking_id}-board`}
-                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] hover:bg-[#1677C8] hover:text-white border border-[#082F5B]/10 font-bold text-[11px] transition-all cursor-pointer"
-                        >
-                          Boarding
-                        </button>
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'depart')}
-                          disabled={actionLoading === `${b.booking_id}-depart`}
-                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#1677C8] hover:bg-[#1677C8] hover:text-white border border-[#1677C8]/20 font-bold text-[11px] transition-all cursor-pointer"
-                        >
-                          Depart
-                        </button>
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'arrive')}
-                          disabled={actionLoading === `${b.booking_id}-arrive`}
-                          className="px-3 py-1 rounded-full bg-[#EAF4FB] text-[#082F5B] hover:bg-[#082F5B] hover:text-white border border-[#082F5B]/10 font-bold text-[11px] transition-all cursor-pointer"
-                        >
-                          Arrive
-                        </button>
-                        <button
-                          onClick={() => handleAction(b.booking_id, 'complete')}
-                          disabled={actionLoading === `${b.booking_id}-complete`}
-                          className="px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all cursor-pointer shadow-sm"
-                        >
-                          Complete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )))}
-          </div>
-        </div>
+        <OperatorBookingsView
+          bookings={data?.recent_bookings || []}
+          onRefresh={fetchDashboard}
+          onOpenInvoice={(bookingId) => setSelectedInvoiceId(bookingId)}
+        />
       )}
 
       {/* TAB 6: PUBLIC CRUISE TOURS */}

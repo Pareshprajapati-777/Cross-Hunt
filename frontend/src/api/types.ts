@@ -382,8 +382,11 @@ export interface Booking {
   booking_id: string;
   invoice_number?: string;
   booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT' | 'ACTIVITY';
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REJECTED' | 'EXPIRED';
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
   tracking_status?: string;
+  activity_id?: number | null;
+  activity_title?: string;
+  time_slot_display?: string;
   cruise_id: number;
   cruise_name: string;
   cruise_title: string;
@@ -417,6 +420,9 @@ export interface Booking {
   discount_amount?: number;
   tax_amount?: number;
   total_price: number;
+  refund_amount?: number;
+  refund_reason?: string;
+  refund_date?: string | null;
   qr_code_hash: string;
   created_at: string;
   special_requests?: string;
@@ -568,6 +574,7 @@ export interface ActivityItem {
   owner_id?: number | null;
   owner_name: string;
   owner_phone: string;
+  auto_confirm?: boolean;
   is_active: boolean;
   is_featured: boolean;
   rating: number;

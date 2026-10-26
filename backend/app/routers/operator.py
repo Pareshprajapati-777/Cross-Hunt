@@ -8,13 +8,16 @@ from pathlib import Path
 import shutil
 import uuid
 import json
+import re
+import urllib.parse
+from pydantic import BaseModel, Field
 
 from backend.app.database.session import get_db
 from backend.app.dependencies.auth import get_current_user, require_operator
 from backend.app.models.user import User
 from backend.app.models.cross import Cross, ShipExtra
 from backend.app.models.tour import PublicTour
-from backend.app.models.booking import Booking, PlatformNotification
+from backend.app.models.booking import Booking, PlatformNotification, WhatsAppMessageLog
 from backend.app.models.offer import CrossReview
 from backend.app.models.activity import Activity
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
@@ -52,7 +55,20 @@ def get_operator_dashboard(
     else:
         vessels = db.query(Cross).options(*vessel_opts).filter(Cross.owner_id == current_user.id).order_by(desc(Cross.created_at), desc(Cross.id)).all()
         vessel_ids = [v.id for v in vessels]
-        bookings_query = db.query(Booking).filter(Booking.cross_id.in_(vessel_ids)).order_by(desc(Booking.created_at), desc(Booking.id))
+        owned_act_ids = [a.id for a in db.query(Activity.id).filter(Activity.owner_id == current_user.id).all()]
+        owned_act_tokens = [f"ACT_{aid}" for aid in owned_act_ids]
+
+        filter_conds = []
+        if vessel_ids:
+            filter_conds.append(Booking.cross_id.in_(vessel_ids))
+        if owned_act_tokens:
+            filter_conds.append(Booking.event_type.in_(owned_act_tokens))
+
+        if filter_conds:
+            bookings_query = db.query(Booking).filter(or_(*filter_conds)).order_by(desc(Booking.created_at), desc(Booking.id))
+        else:
+            bookings_query = db.query(Booking).filter(Booking.id == -1)
+
         tours = db.query(PublicTour).options(joinedload(PublicTour.ship), joinedload(PublicTour.operator)).filter(PublicTour.ship_id.in_(vessel_ids)).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
 
     all_bookings = bookings_query.all()
@@ -946,6 +962,393 @@ def get_operator_revenue(
     }
 
 
+class BookingScheduleUpdate(BaseModel):
+    booking_date: str
+    start_time: str
+    end_time: Optional[str] = None
+    reason: Optional[str] = "Operator schedule adjustment"
+    notify_customer: bool = True
+
+
+class WeatherRescheduleRequest(BaseModel):
+    new_date: str
+    new_time_slot: str
+    weather_condition: str = "Adverse Weather & High Swell Alert"
+    customer_note: Optional[str] = None
+    notify_customer: bool = True
+
+
+class VerifyParticipantsRequest(BaseModel):
+    number_of_people: int
+    adults_count: Optional[int] = None
+    children_count: Optional[int] = None
+    notes: Optional[str] = None
+    recalculate_price: bool = False
+
+
+class ProcessRefundRequest(BaseModel):
+    refund_amount: float
+    refund_reason: str
+    cancel_booking: bool = True
+    customer_notes: Optional[str] = None
+
+
+class SendCustomerMessageRequest(BaseModel):
+    message: str
+    template_type: str = "CUSTOM"
+    channel: str = "ALL"
+
+
+def check_operator_booking_access(booking: Booking, user: User, db: Session) -> bool:
+    if user.is_superuser or user.role == 'ADMIN':
+        return True
+    if booking.cross and booking.cross.owner_id == user.id:
+        return True
+    if booking.booking_type == "ACTIVITY" and booking.event_type and booking.event_type.startswith("ACT_"):
+        try:
+            aid = int(booking.event_type.split("_")[1])
+            act = db.query(Activity).filter(Activity.id == aid).first()
+            if act and (act.owner_id == user.id or (act.host_ship and act.host_ship.owner_id == user.id)):
+                return True
+        except Exception:
+            pass
+    return False
+
+
+@router.post("/bookings/{booking_id}/update-schedule")
+def operator_update_schedule(
+    booking_id: str,
+    req: BookingScheduleUpdate,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="Unauthorized to manage this booking.")
+
+    try:
+        new_b_date = datetime.strptime(req.booking_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
+
+    try:
+        new_start = datetime.strptime(req.start_time.strip().upper(), "%I:%M %p").time()
+    except Exception:
+        try:
+            new_start = datetime.strptime(req.start_time.strip(), "%H:%M").time()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid start time format. Use '09:00 AM' or '09:00'.")
+
+    if req.end_time:
+        try:
+            new_end = datetime.strptime(req.end_time.strip().upper(), "%I:%M %p").time()
+        except Exception:
+            try:
+                new_end = datetime.strptime(req.end_time.strip(), "%H:%M").time()
+            except Exception:
+                new_end = (datetime.combine(new_b_date, new_start) + timedelta(hours=1)).time()
+    else:
+        dur = float(booking.duration_hours or 1.0)
+        new_end = (datetime.combine(new_b_date, new_start) + timedelta(hours=dur)).time()
+
+    # Double-booking check against other bookings
+    conflict = db.query(Booking).filter(
+        Booking.id != booking.id,
+        Booking.cross_id == booking.cross_id,
+        Booking.booking_date == new_b_date,
+        Booking.status.in_(["CONFIRMED", "PENDING", "IN_PROGRESS"]),
+        or_(
+            and_(Booking.start_time <= new_start, Booking.end_time > new_start),
+            and_(Booking.start_time < new_end, Booking.end_time >= new_end),
+            and_(Booking.start_time >= new_start, Booking.end_time <= new_end),
+        )
+    ).first()
+    if conflict and booking.booking_type != "ACTIVITY":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Schedule conflict: Vessel is already booked on {new_b_date} from {conflict.start_time.strftime('%I:%M %p')} to {conflict.end_time.strftime('%I:%M %p')}."
+        )
+
+    booking.booking_date = new_b_date
+    booking.start_time = new_start
+    booking.end_time = new_end
+
+    note_entry = f"\n[Schedule Updated by Owner on {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}]: Moved to {new_b_date} ({new_start.strftime('%I:%M %p')} - {new_end.strftime('%I:%M %p')}). Note: {req.reason or 'Adjusted by operator'}"
+    booking.special_request = (booking.special_request or "") + note_entry
+
+    if req.notify_customer and booking.user_id:
+        notif = PlatformNotification(
+            title=f"Schedule Updated: Booking #{booking.booking_id}",
+            message=f"Your trip has been rescheduled to {new_b_date.strftime('%A, %b %d, %Y')} at {new_start.strftime('%I:%M %p')}. Note: {req.reason or 'Adjusted by vessel operator'}.",
+            notification_type="BOOKING_UPDATE",
+            target_audience="SINGLE_USER",
+            target_user_id=booking.user_id,
+            action_link=f"/bookings/{booking.booking_id}",
+            sender_name=current_user.full_name or "Fleet Operator",
+            is_read=False,
+        )
+        db.add(notif)
+
+        wa_log = WhatsAppMessageLog(
+            booking_id=booking.id,
+            recipient=booking.customer_whatsapp or (booking.user.phone if booking.user else ""),
+            customer_name=booking.user.full_name if booking.user else "Valued Passenger",
+            message_type="SCHEDULE_UPDATE",
+            message_body=f"Hello! Your Cross-Hunt booking #{booking.booking_id} has been rescheduled to {new_b_date.strftime('%d-%b-%Y')} at {new_start.strftime('%I:%M %p')}. Ticket code: {booking.ticket_code}.",
+            status="SENT"
+        )
+        db.add(wa_log)
+
+    db.commit()
+    db.refresh(booking)
+    return {
+        "success": True,
+        "message": f"Schedule updated successfully to {new_b_date} at {new_start.strftime('%I:%M %p')}.",
+        "booking": serialize_booking(booking)
+    }
+
+
+@router.post("/bookings/{booking_id}/weather-reschedule")
+def operator_weather_reschedule(
+    booking_id: str,
+    req: WeatherRescheduleRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="Unauthorized to manage this booking.")
+
+    try:
+        new_b_date = datetime.strptime(req.new_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
+
+    try:
+        new_start = datetime.strptime(req.new_time_slot.strip().upper(), "%I:%M %p").time()
+        new_end = (datetime.combine(new_b_date, new_start) + timedelta(minutes=int(float(booking.duration_hours or 1) * 60))).time()
+    except Exception:
+        try:
+            new_start = datetime.strptime(req.new_time_slot.strip(), "%H:%M").time()
+            new_end = (datetime.combine(new_b_date, new_start) + timedelta(minutes=int(float(booking.duration_hours or 1) * 60))).time()
+        except Exception:
+            new_start = time(10, 0)
+            new_end = time(11, 30)
+
+    booking.booking_date = new_b_date
+    booking.start_time = new_start
+    booking.end_time = new_end
+    # Ensure status is CONFIRMED for rescheduled safe date
+    booking.status = "CONFIRMED"
+    booking.tracking_status = "CONFIRMED"
+    booking.ticket_status = "VALID"
+
+    advisory_text = req.customer_note or "Rescheduled to prioritize passenger safety during turbulent sea weather."
+    note_entry = f"\n[WEATHER RESCHEDULE - {req.weather_condition}]: Rescheduled to {new_b_date} ({req.new_time_slot}). Advisory: {advisory_text}"
+    booking.special_request = (booking.special_request or "") + note_entry
+
+    if req.notify_customer and booking.user_id:
+        notif = PlatformNotification(
+            title=f"⚠️ Marine Weather Advisory: Rescheduled #{booking.booking_id}",
+            message=f"Due to '{req.weather_condition}', your booking has been safely rescheduled to {new_b_date.strftime('%A, %b %d, %Y')} at {req.new_time_slot}. Your boarding pass ticket #{booking.ticket_code} remains valid.",
+            notification_type="WEATHER_ADVISORY",
+            target_audience="SINGLE_USER",
+            target_user_id=booking.user_id,
+            action_link=f"/bookings/{booking.booking_id}",
+            sender_name=current_user.full_name or "Marine Harbor Master",
+            is_read=False,
+        )
+        db.add(notif)
+
+        wa_log = WhatsAppMessageLog(
+            booking_id=booking.id,
+            recipient=booking.customer_whatsapp or (booking.user.phone if booking.user else ""),
+            customer_name=booking.user.full_name if booking.user else "Valued Guest",
+            message_type="WEATHER_RESCHEDULE",
+            message_body=f"Marine Weather Notice: Due to '{req.weather_condition}', your session is rescheduled to {new_b_date.strftime('%d-%b-%Y')} at {req.new_time_slot}. Your ticket #{booking.ticket_code} is confirmed for this new slot.",
+            status="SENT"
+        )
+        db.add(wa_log)
+
+    db.commit()
+    db.refresh(booking)
+    return {
+        "success": True,
+        "message": f"Weather-related rescheduling applied. Slot moved to {new_b_date} ({req.new_time_slot}). Customer notified.",
+        "booking": serialize_booking(booking)
+    }
+
+
+@router.post("/bookings/{booking_id}/update-participants")
+def operator_update_participants(
+    booking_id: str,
+    req: VerifyParticipantsRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="Unauthorized to manage this booking.")
+
+    if req.number_of_people < 1:
+        raise HTTPException(status_code=400, detail="Participant count must be at least 1.")
+
+    # Capacity check
+    if booking.cross and req.number_of_people > booking.cross.capacity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Participant count ({req.number_of_people}) exceeds maximum vessel passenger capacity ({booking.cross.capacity})."
+        )
+
+    old_count = booking.number_of_people
+    booking.number_of_people = req.number_of_people
+    if req.adults_count is not None:
+        booking.adults_count = req.adults_count
+    else:
+        booking.adults_count = req.number_of_people
+    if req.children_count is not None:
+        booking.children_count = req.children_count
+
+    if req.recalculate_price and booking.booking_type == "ACTIVITY" and old_count > 0:
+        unit_price = float(booking.base_price) or (float(booking.subtotal) / old_count)
+        new_subtotal = Decimal(str(round(unit_price * req.number_of_people, 2)))
+        booking.subtotal = new_subtotal
+        new_tax = (new_subtotal * Decimal("0.05")).quantize(Decimal("0.01"))
+        booking.tax_amount = new_tax
+        booking.total_price = new_subtotal + new_tax + booking.extras_amount - booking.discount_amount
+
+    note = f"\n[Participant Verification on {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}]: Verified count: {req.number_of_people} guests (was {old_count}). {req.notes or ''}"
+    booking.special_request = (booking.special_request or "") + note
+
+    db.commit()
+    db.refresh(booking)
+    return {
+        "success": True,
+        "message": f"Participant count verified and updated to {req.number_of_people} passengers.",
+        "booking": serialize_booking(booking)
+    }
+
+
+@router.post("/bookings/{booking_id}/process-refund")
+def operator_process_refund(
+    booking_id: str,
+    req: ProcessRefundRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="Unauthorized to manage this booking.")
+
+    total_val = float(booking.total_price or 0)
+    current_refunded = float(booking.refund_amount or 0)
+    max_refundable = max(0.0, total_val - current_refunded)
+
+    if req.refund_amount <= 0:
+        raise HTTPException(status_code=400, detail="Refund amount must be greater than 0.")
+    if req.refund_amount > (max_refundable + 0.01):
+        raise HTTPException(status_code=400, detail=f"Refund amount exceeds refundable balance (Max available: ₹{max_refundable:,.2f}).")
+
+    new_refund_amount = Decimal(str(round(current_refunded + req.refund_amount, 2)))
+    booking.refund_amount = new_refund_amount
+    booking.refund_reason = req.refund_reason
+    booking.refund_date = datetime.utcnow()
+
+    if req.cancel_booking or float(new_refund_amount) >= (total_val - 0.01):
+        booking.status = "CANCELLED"
+        booking.tracking_status = "CANCELLED"
+        booking.ticket_status = "CANCELLED"
+        booking.cancellation_reason = f"Refunded ₹{req.refund_amount:,.2f}: {req.refund_reason}"
+
+    if booking.user_id:
+        notif = PlatformNotification(
+            title=f"Refund Processed: ₹{req.refund_amount:,.2f}",
+            message=f"A refund of ₹{req.refund_amount:,.2f} has been processed for booking #{booking.booking_id}. Reason: {req.refund_reason}.",
+            notification_type="REFUND_PROCESSED",
+            target_audience="SINGLE_USER",
+            target_user_id=booking.user_id,
+            action_link=f"/bookings/{booking.booking_id}",
+            sender_name=current_user.full_name or "Finance & Accounts",
+            is_read=False,
+        )
+        db.add(notif)
+
+    db.commit()
+    db.refresh(booking)
+    return {
+        "success": True,
+        "message": f"Refund of ₹{req.refund_amount:,.2f} successfully processed for booking #{booking.booking_id}.",
+        "booking": serialize_booking(booking)
+    }
+
+
+@router.post("/bookings/{booking_id}/send-message")
+def operator_send_customer_message(
+    booking_id: str,
+    req: SendCustomerMessageRequest,
+    current_user: User = Depends(require_operator),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="Unauthorized to manage this booking.")
+
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+
+    target_phone = booking.customer_whatsapp or (booking.user.phone if booking.user else "")
+    customer_name = booking.user.full_name if booking.user else "Valued Passenger"
+
+    # 1. Log WhatsApp entry
+    wa_log = WhatsAppMessageLog(
+        booking_id=booking.id,
+        recipient=target_phone or "Customer",
+        customer_name=customer_name,
+        message_type=req.template_type,
+        message_body=req.message.strip(),
+        status="SENT"
+    )
+    db.add(wa_log)
+
+    # 2. Dispatch Platform In-App Notification
+    if booking.user_id:
+        notif = PlatformNotification(
+            title=f"Message from Operator (#{booking.booking_id})",
+            message=req.message.strip(),
+            notification_type="OPERATOR_MESSAGE",
+            target_audience="SINGLE_USER",
+            target_user_id=booking.user_id,
+            action_link=f"/bookings/{booking.booking_id}",
+            sender_name=current_user.full_name or "Fleet Operator",
+            is_read=False,
+        )
+        db.add(notif)
+
+    db.commit()
+
+    # Clean phone for WhatsApp web direct URL
+    clean_phone = re.sub(r"[^0-9]", "", target_phone)
+    if clean_phone and len(clean_phone) == 10:
+        clean_phone = f"91{clean_phone}"
+    whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(req.message.strip())}" if clean_phone else ""
+
+    return {
+        "success": True,
+        "message": f"Message dispatched to customer {customer_name}.",
+        "whatsapp_url": whatsapp_url
+    }
+
+
 @router.post("/bookings/{booking_id}/{action}/")
 @router.post("/bookings/{booking_id}/{action}")
 def operator_booking_action(
@@ -958,21 +1361,29 @@ def operator_booking_action(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
 
-    if booking.cross and booking.cross.owner_id != current_user.id and not current_user.is_superuser and current_user.role != 'ADMIN':
-        raise HTTPException(status_code=403, detail="You can only manage your own vessels.")
+    if not check_operator_booking_access(booking, current_user, db):
+        raise HTTPException(status_code=403, detail="You can only manage bookings for your own vessels and activities.")
 
     action_lower = action.lower()
-    if action_lower == 'confirm':
+    if action_lower in ['confirm', 'approve']:
         booking.status = 'CONFIRMED'
         booking.tracking_status = 'CONFIRMED'
         booking.ticket_status = 'VALID'
-    elif action_lower in ['reject', 'cancel']:
-        booking.status = 'CANCELLED'
-        booking.tracking_status = 'CANCELLED'
-        booking.ticket_status = 'CANCELLED'
+    elif action_lower in ['in_progress', 'start']:
+        booking.status = 'IN_PROGRESS'
+        booking.tracking_status = 'IN_PROGRESS'
     elif action_lower == 'complete':
         booking.status = 'COMPLETED'
         booking.tracking_status = 'COMPLETED'
+        booking.ticket_status = 'USED'
+    elif action_lower == 'reject':
+        booking.status = 'REJECTED'
+        booking.tracking_status = 'REJECTED'
+        booking.ticket_status = 'CANCELLED'
+    elif action_lower == 'cancel':
+        booking.status = 'CANCELLED'
+        booking.tracking_status = 'CANCELLED'
+        booking.ticket_status = 'CANCELLED'
     elif action_lower == 'board':
         booking.tracking_status = 'BOARDING'
     elif action_lower == 'depart':

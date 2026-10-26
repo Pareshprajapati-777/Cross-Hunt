@@ -345,19 +345,43 @@ def serialize_booking(b) -> Dict[str, Any]:
         tour_return_date = None
         tour_return_date_formatted = None
 
+    activity_title = ""
+    activity_id = None
+    if b.booking_type == "ACTIVITY":
+        if b.event_type and b.event_type.startswith("ACT_"):
+            try:
+                activity_id = int(b.event_type.split("_")[1])
+            except Exception:
+                pass
+        if b.special_request and "Water Sports Ride Booking: " in b.special_request:
+            try:
+                part = b.special_request.split("Water Sports Ride Booking: ")[1]
+                activity_title = part.split(" at ")[0].strip()
+            except Exception:
+                pass
+        if not activity_title and b.cabin_type and b.cabin_type.startswith("ACT:"):
+            parts = b.cabin_type.split(":")
+            if len(parts) >= 3:
+                activity_title = f"Activity #{parts[1]} ({parts[2]})"
+
+    time_slot_display = f"{b.start_time.strftime('%I:%M %p')} - {b.end_time.strftime('%I:%M %p')}" if (b.start_time and b.end_time) else ""
+
     return {
         "id": b.id,
         "booking_id": b.booking_id,
         "invoice_number": b.invoice_number,
         "booking_type": b.booking_type,
+        "activity_id": activity_id,
+        "activity_title": activity_title,
+        "time_slot_display": time_slot_display,
         "cabin_type": b.cabin_type,
         "cabin_name": b.cabin_type,
         "event_type": b.event_type or "",
         "event_package": b.event_package or "",
         "qr_code_hash": b.qr_code_hash or b.booking_id,
         "cruise_id": b.cross.id if b.cross else 0,
-        "cruise_name": b.cross.name if b.cross else "",
-        "cruise_title": tour_title,
+        "cruise_name": b.cross.name if b.cross else (activity_title or "Charter Vessel"),
+        "cruise_title": activity_title or tour_title,
         "cruise_slug": b.cross.slug if b.cross else "",
         "cruise_image": (tour.image_url.strip() if tour and getattr(tour, 'image_url', None) and tour.image_url.strip() else None) or (b.cross.display_image_url if b.cross else ""),
         "destination": tour_destination,

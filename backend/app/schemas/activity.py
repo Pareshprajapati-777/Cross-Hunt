@@ -34,6 +34,7 @@ class ActivityBase(BaseModel):
     image: str = ""
     gallery: List[str] = []
     host_ship_id: Optional[int] = None
+    auto_confirm: bool = True
     is_active: bool = True
     is_featured: bool = False
 
@@ -73,6 +74,7 @@ class ActivityUpdate(BaseModel):
     image: Optional[str] = None
     gallery: Optional[List[str]] = None
     host_ship_id: Optional[int] = None
+    auto_confirm: Optional[bool] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
 
@@ -119,6 +121,7 @@ class ActivityResponse(BaseModel):
     owner_id: Optional[int] = None
     owner_name: str
     owner_phone: str
+    auto_confirm: bool = True
     is_active: bool
     is_featured: bool
     rating: float

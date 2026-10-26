@@ -160,10 +160,87 @@ export async function getOperatorDashboard(): Promise<OperatorDashboardData> {
 
 export async function operatorBookingAction(
   bookingId: string,
-  action: 'confirm' | 'cancel' | 'complete' | 'board' | 'depart' | 'arrive'
+  action: 'confirm' | 'approve' | 'in_progress' | 'complete' | 'reject' | 'cancel' | 'board' | 'depart' | 'arrive'
 ): Promise<{ success: boolean; message: string; booking?: Booking }> {
-  return apiRequest(`/api/operator/bookings/${bookingId}/${action}/`, {
+  return apiRequest(`/api/operator/bookings/${bookingId}/${action}`, {
     method: 'POST',
+  });
+}
+
+export async function operatorUpdateSchedule(
+  bookingId: string,
+  payload: {
+    booking_date: string;
+    start_time: string;
+    end_time?: string;
+    reason?: string;
+    notify_customer?: boolean;
+  }
+): Promise<{ success: boolean; message: string; booking?: Booking }> {
+  return apiRequest(`/api/operator/bookings/${bookingId}/update-schedule`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function operatorWeatherReschedule(
+  bookingId: string,
+  payload: {
+    new_date: string;
+    new_time_slot: string;
+    weather_condition: string;
+    customer_note?: string;
+    notify_customer?: boolean;
+  }
+): Promise<{ success: boolean; message: string; booking?: Booking }> {
+  return apiRequest(`/api/operator/bookings/${bookingId}/weather-reschedule`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function operatorUpdateParticipants(
+  bookingId: string,
+  payload: {
+    number_of_people: number;
+    adults_count?: number;
+    children_count?: number;
+    notes?: string;
+    recalculate_price?: boolean;
+  }
+): Promise<{ success: boolean; message: string; booking?: Booking }> {
+  return apiRequest(`/api/operator/bookings/${bookingId}/update-participants`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function operatorProcessRefund(
+  bookingId: string,
+  payload: {
+    refund_amount: number;
+    refund_reason: string;
+    cancel_booking?: boolean;
+    customer_notes?: string;
+  }
+): Promise<{ success: boolean; message: string; booking?: Booking }> {
+  return apiRequest(`/api/operator/bookings/${bookingId}/process-refund`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function operatorSendCustomerMessage(
+  bookingId: string,
+  payload: {
+    message: string;
+    template_type?: string;
+    channel?: string;
+  }
+): Promise<{ success: boolean; message: string; whatsapp_url?: string }> {
+  return apiRequest(`/api/operator/bookings/${bookingId}/send-message`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

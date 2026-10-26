@@ -102,6 +102,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
     cancellation_policy: 'Free cancellation up to 24 hours before start time. 100% refund if cancelled due to weather.',
     safety_guidelines: 'Life vests mandatory during transit. Listen to certified instructor safety briefing before immersion.',
     host_ship_id: myShips[0]?.id || 0, // 0 = Shore-based (no boat needed)
+    auto_confirm: true,
     is_active: true,
   };
 
@@ -164,6 +165,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       cancellation_policy: act.cancellation_policy || 'Free cancellation up to 24 hours before start time.',
       safety_guidelines: act.safety_guidelines || '',
       host_ship_id: act.host_ship_id || 0,
+      auto_confirm: act.auto_confirm !== false,
       is_active: act.is_active,
     });
     setShowModal(true);
@@ -243,6 +245,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       cancellation_policy: form.cancellation_policy.trim(),
       safety_guidelines: form.safety_guidelines.trim(),
       image: form.image.trim(),
+      auto_confirm: form.auto_confirm,
       is_active: form.is_active,
     };
 
@@ -571,6 +574,15 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                     }`}>
                       <LifeBuoy className="w-3 h-3" />
                       {act.included_gear && act.included_gear.length > 0 ? 'Gear Included' : 'Standard'}
+                    </span>
+
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 ${
+                      act.auto_confirm !== false
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}>
+                      <Clock className="w-3 h-3" />
+                      {act.auto_confirm !== false ? 'Instant Auto-Confirm' : 'Manual Approval'}
                     </span>
                   </div>
 
@@ -1070,6 +1082,70 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                       required
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* SECTION G: Booking Policy & Confirmation Mode */}
+              <div className="p-4 rounded-2xl bg-sky-50/60 border border-[#0284c7]/20 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#0284c7]" />
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#051833]">
+                    7. Booking Confirmation Policy
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  Control whether paid bookings for this activity are confirmed immediately by the system or require your manual approval in Booking Management.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, auto_confirm: true })}
+                    className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 cursor-pointer ${
+                      form.auto_confirm
+                        ? 'bg-white border-[#0284c7] ring-2 ring-[#0284c7]/20 shadow-sm'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full mt-0.5 border flex items-center justify-center shrink-0 ${
+                      form.auto_confirm ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
+                    }`}>
+                      {form.auto_confirm && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#051833] flex items-center gap-1.5">
+                        <span>Automatic Instant Confirmation</span>
+                        <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Recommended</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Paid bookings are automatically confirmed with valid digital pass tickets.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, auto_confirm: false })}
+                    className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 cursor-pointer ${
+                      !form.auto_confirm
+                        ? 'bg-white border-amber-500 ring-2 ring-amber-500/20 shadow-sm'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full mt-0.5 border flex items-center justify-center shrink-0 ${
+                      !form.auto_confirm ? 'border-amber-500 bg-amber-500' : 'border-slate-300'
+                    }`}>
+                      {!form.auto_confirm && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#051833] flex items-center gap-1.5">
+                        <span>Manual Owner Confirmation</span>
+                        <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Owner Action</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Paid bookings stay 'Pending' until you manually review & approve them.
+                      </p>
+                    </div>
+                  </button>
                 </div>
               </div>
 

@@ -16,6 +16,7 @@ db.sqlite3-shm
 db.sqlite3-wal
 db.sqlite3.backup
 cross_hunt.db
+*.db
 *.db-shm
 *.db-wal
 test_db.sqlite3*

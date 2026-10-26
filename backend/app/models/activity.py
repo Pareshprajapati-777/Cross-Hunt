@@ -60,6 +60,9 @@ class Activity(Base):
     operator_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("crosses_operator.id"), nullable=True)
     owner_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("accounts_user.id"), nullable=True)
 
+    # Booking confirmation policy: True = Instant Auto-Confirm, False = Manual Owner Approval Required
+    auto_confirm: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rating: Mapped[Decimal] = mapped_column(Numeric(3, 1), default=4.9, nullable=False)
@@ -156,6 +159,7 @@ class Activity(Base):
             "owner_id": self.owner_id,
             "owner_name": f"{self.owner.first_name} {self.owner.last_name}".strip() if self.owner and (self.owner.first_name or self.owner.last_name) else (self.operator.name if self.operator else "Fleet Owner"),
             "owner_phone": self.host_ship.whatsapp_number if self.host_ship and self.host_ship.whatsapp_number else (self.owner.phone if self.owner and self.owner.phone else "+919820012345"),
+            "auto_confirm": bool(getattr(self, "auto_confirm", True)),
             "is_active": self.is_active,
             "is_featured": self.is_featured,
             "rating": float(self.rating),

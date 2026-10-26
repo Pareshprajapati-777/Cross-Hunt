@@ -419,10 +419,10 @@ def book_activity(
         platform_commission_amount=platform_fee,
         net_platform_profit=platform_fee,
         ticket_code=ticket_code,
-        ticket_status="VALID",
+        ticket_status="VALID" if getattr(act, "auto_confirm", True) else "PENDING",
         special_request=req.special_request or f"Water Sports Ride Booking: {act.title} at {req.time_slot}",
-        status="CONFIRMED",
-        tracking_status="BOOKED",
+        status="CONFIRMED" if getattr(act, "auto_confirm", True) else "PENDING",
+        tracking_status="BOOKED" if getattr(act, "auto_confirm", True) else "PENDING_APPROVAL",
         customer_whatsapp=cust_whatsapp,
         whatsapp_reminder_opt_in=True,
         payment_status="PAID",
@@ -436,9 +436,10 @@ def book_activity(
     db.commit()
     db.refresh(booking)
 
+    confirm_status_text = "confirmed" if getattr(act, "auto_confirm", True) else "pending owner approval"
     return {
         "success": True,
-        "message": f"Successfully reserved slot for {act.title} on {req.booking_date}!",
+        "message": f"Successfully reserved slot for {act.title} on {req.booking_date} ({confirm_status_text})!",
         "booking": {
             "id": booking.id,
             "booking_id": booking.booking_id,
@@ -522,6 +523,7 @@ def create_activity(
         host_ship_id=host_ship.id if host_ship else None,
         owner_id=current_user.id,
         operator_id=host_ship.operator_id if host_ship else None,
+        auto_confirm=data.auto_confirm if getattr(data, "auto_confirm", None) is not None else True,
         is_active=data.is_active,
         is_featured=data.is_featured,
         rating=Decimal("5.0"),
