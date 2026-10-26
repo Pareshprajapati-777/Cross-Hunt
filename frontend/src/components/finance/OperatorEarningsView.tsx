@@ -570,7 +570,7 @@ export const OperatorEarningsView: React.FC = () => {
                             <div className="font-bold text-[#102B46]">{b.customer_name}</div>
                             {b.customer_whatsapp && (
                               <a
-                                href={`https://wa.me/${b.customer_whatsapp.replace(/[^0-9]/g, '')}`}
+                                href={`https://web.whatsapp.com/send?phone=${b.customer_whatsapp.replace(/[^0-9]/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-[11px] text-emerald-600 font-semibold hover:underline flex items-center gap-1"

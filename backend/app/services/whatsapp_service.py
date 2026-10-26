@@ -209,7 +209,7 @@ def send_whatsapp_api_message(
     """
     WhatsApp integration service. Executes live Meta Cloud API request if tokens exist,
     or realistic development simulator. Saves audit log in WhatsAppMessageLog and returns
-    a direct wa.me link for instantaneous WhatsApp Web / App delivery.
+    a direct web.whatsapp.com/send link for instantaneous WhatsApp Web delivery.
     """
     import urllib.parse
 
@@ -231,7 +231,7 @@ def send_whatsapp_api_message(
 
     customer_name = (booking.user.full_name if booking and booking.user else "")
     clean_digits = normalized_to.replace("+", "")
-    wa_link = f"https://wa.me/{clean_digits}?text={urllib.parse.quote(message_text)}"
+    wa_link = f"https://web.whatsapp.com/send?phone={clean_digits}&text={urllib.parse.quote(message_text)}"
 
     msg_id = f"wamid.HBgL{uuid.uuid4().hex[:12].upper()}V1"
 

@@ -723,7 +723,7 @@ async def api_booking_whatsapp_link(
 
     clean_digits = norm.replace("+", "")
     reminder_text = build_tour_reminder_text(booking)
-    wa_link = f"https://wa.me/{clean_digits}?text={urllib.parse.quote(reminder_text)}"
+    wa_link = f"https://web.whatsapp.com/send?phone={clean_digits}&text={urllib.parse.quote(reminder_text)}"
 
     return {
         "success": True,

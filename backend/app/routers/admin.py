@@ -2359,7 +2359,7 @@ def get_admin_whatsapp_config(
         if norm_phone:
             clean_digits = norm_phone.replace("+", "")
             msg_preview = build_tour_reminder_text(b)
-            wa_link = f"https://wa.me/{clean_digits}?text={urllib.parse.quote(msg_preview)}"
+            wa_link = f"https://web.whatsapp.com/send?phone={clean_digits}&text={urllib.parse.quote(msg_preview)}"
 
         upcoming_queue.append({
             'booking_id': b.booking_id,

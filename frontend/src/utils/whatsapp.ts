@@ -85,5 +85,5 @@ export function generateWhatsAppUrl(
     message += ` Note: ${customMessage.trim()}`;
   }
 
-  return `https://wa.me/${formattedDigits}?text=${encodeURIComponent(message)}`;
+  return `https://web.whatsapp.com/send?phone=${formattedDigits}&text=${encodeURIComponent(message)}`;
 }

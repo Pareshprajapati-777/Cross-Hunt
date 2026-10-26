@@ -1355,7 +1355,7 @@ def operator_send_customer_message(
     clean_phone = re.sub(r"[^0-9]", "", target_phone)
     if clean_phone and len(clean_phone) == 10:
         clean_phone = f"91{clean_phone}"
-    whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(req.message.strip())}" if clean_phone else ""
+    whatsapp_url = f"https://web.whatsapp.com/send?phone={clean_phone}&text={urllib.parse.quote(req.message.strip())}" if clean_phone else ""
 
     return {
         "success": True,

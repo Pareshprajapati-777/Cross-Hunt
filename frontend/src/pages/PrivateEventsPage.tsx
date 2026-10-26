@@ -217,7 +217,7 @@ Could you please confirm slot availability and discuss custom arrangements?
 Thank you!
 - ${customerName}`;
 
-    return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(waIntroMessage)}`;
+    return `https://web.whatsapp.com/send?phone=${normalizedPhone}&text=${encodeURIComponent(waIntroMessage)}`;
   };
 
   const toggleVipPreset = (preset: string) => {
