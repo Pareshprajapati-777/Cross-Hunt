@@ -628,7 +628,7 @@ export const AdminWhatsAppView: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {item.wa_link && (
+                        {item.wa_link ? (
                           <a
                             href={item.wa_link}
                             target="_blank"
@@ -640,17 +640,9 @@ export const AdminWhatsAppView: React.FC = () => {
                             <span>Open WhatsApp</span>
                             <ArrowUpRight className="w-3 h-3 opacity-80" />
                           </a>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-mono">—</span>
                         )}
-                        <button
-                          type="button"
-                          disabled={testingBookingId === item.booking_id}
-                          onClick={() => handleSendSingleTest(item.booking_id, item.wa_link)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          title="Dispatch via Meta Cloud API / Simulator"
-                        >
-                          <Send className="w-3 h-3 text-slate-600" />
-                          <span>{testingBookingId === item.booking_id ? 'Sending...' : 'Send Test'}</span>
-                        </button>
                       </div>
                     </td>
                   </tr>
