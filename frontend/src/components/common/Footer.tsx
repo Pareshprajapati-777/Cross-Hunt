@@ -69,7 +69,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) =>
               </span>
             </div>
             <p className="text-[#475569] text-xs leading-relaxed font-medium">
-              OD Studio · India's premier luxury maritime platform for verified ship tours, guaranteed private yacht charters, and cinematic ocean milestones.
+              India's premier luxury maritime platform for verified ship tours, guaranteed private yacht charters, and cinematic ocean milestones.
             </p>
             <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-orange-200 text-orange-800 shadow-xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />

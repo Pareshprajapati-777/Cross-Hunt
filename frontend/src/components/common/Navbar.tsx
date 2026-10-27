@@ -225,9 +225,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
               <span className="font-heading-more text-lg tracking-wider text-[#051833] flex items-center gap-1.5 leading-none">
                 CRUISE <span className="text-[#0284c7]">HUNT</span>
               </span>
-              <span className="block text-[9px] uppercase tracking-widest text-[#334155]/80 font-bold mt-0.5">
-                OD Studio · Luxury Maritime Fleet
-              </span>
             </div>
           </button>
 

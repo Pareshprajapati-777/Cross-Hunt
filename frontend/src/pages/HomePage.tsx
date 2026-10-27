@@ -351,7 +351,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-50 text-[#0284c7] text-xs font-bold uppercase tracking-wider mb-2 border border-[#0284c7]/30">
               <Anchor className="w-3.5 h-3.5 text-[#0284c7]" />
-              OD Studio Private Fleet
+              Cruise Hunt Fleet
             </div>
             <h2 className="section-heading-more text-3xl sm:text-5xl font-black tracking-tight font-serif text-[#051833]">
               Featured Flagship Fleet
@@ -422,7 +422,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* Header Row */}
           <div className="marine-compare-row bg-sky-50/80 text-[#051833] font-bold text-xs uppercase tracking-wider border-b border-[#0284c7]/20">
             <span>Platform Capabilities & Guarantees</span>
-            <span className="text-center text-[#0284c7] font-black">Cruise-Hunt OD Studio</span>
+            <span className="text-center text-[#0284c7] font-black">Cruise Hunt</span>
             <span className="text-center text-slate-500">Local Agents</span>
           </div>
 
