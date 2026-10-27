@@ -1,7 +1,7 @@
 // Helper to extract CSRF token from browser cookies
 function getCookie(name: string): string | null {
   let cookieValue: string | null = null;
-  if (document.cookie && document.cookie !== '') {
+  if (typeof document !== 'undefined' && document.cookie && document.cookie !== '') {
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
@@ -62,17 +62,23 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
-const DEFAULT_PROD_API_URL = 'https://cruise-hunt.onrender.com';
+// Active live backend service on Render
+export const DEFAULT_PROD_API_URL = 'https://cross-hunt.onrender.com';
 
 function resolveApiBaseUrl(): string {
-  const envUrl =
+  let envUrl =
     (typeof import.meta !== 'undefined' &&
       import.meta.env &&
       (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
     '';
 
-  if (envUrl && envUrl.trim()) {
-    return envUrl.trim().replace(/\/+$/, '');
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    let clean = envUrl.trim().replace(/\/+$/, '');
+    // Automatically sanitize non-existent or misconfigured Render URL to the live active service
+    if (clean.includes('cruise-hunt.onrender.com')) {
+      clean = clean.replace('cruise-hunt.onrender.com', 'cross-hunt.onrender.com');
+    }
+    return clean;
   }
 
   // If running in browser and NOT on local machine (e.g. deployed on Vercel, Netlify, custom domain),
@@ -101,22 +107,205 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 export function getFullApiUrl(endpoint: string): string {
   if (!endpoint) return '';
-  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
-    return endpoint;
+  let cleanEndpoint = endpoint;
+  if (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://')) {
+    if (cleanEndpoint.includes('cruise-hunt.onrender.com')) {
+      cleanEndpoint = cleanEndpoint.replace('cruise-hunt.onrender.com', 'cross-hunt.onrender.com');
+    }
+    return cleanEndpoint;
   }
   if (!API_BASE_URL) {
-    return endpoint;
+    return cleanEndpoint;
   }
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_BASE_URL}${cleanEndpoint}`;
+  const prefix = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+  let base = API_BASE_URL;
+  if (base.includes('cruise-hunt.onrender.com')) {
+    base = base.replace('cruise-hunt.onrender.com', 'cross-hunt.onrender.com');
+  }
+  return `${base}${prefix}`;
 }
 
 import { apiCache, clearApiCache } from '../utils/apiCache';
+import { CATALOG_FALLBACK } from '../data/catalogFallback';
 export { clearApiCache };
 
 export interface ApiRequestOptions extends RequestInit {
   cacheTtlMs?: number;
   bypassCache?: boolean;
+}
+
+// Background wake-up monitor for Render free tier
+let isWakingUpProbeActive = false;
+function triggerBackgroundBackendProbe(): void {
+  if (isWakingUpProbeActive || typeof window === 'undefined') return;
+  isWakingUpProbeActive = true;
+  let attempts = 0;
+  const probeInterval = setInterval(async () => {
+    attempts++;
+    try {
+      const probeUrl = `${DEFAULT_PROD_API_URL}/api/health`;
+      const res = await fetch(probeUrl, { method: 'GET', mode: 'cors' });
+      if (res.ok) {
+        clearInterval(probeInterval);
+        isWakingUpProbeActive = false;
+        clearApiCache();
+        window.dispatchEvent(new CustomEvent('cruisehunt:backend-ready'));
+      }
+    } catch {
+      // Continue probing
+    }
+    if (attempts >= 15) {
+      clearInterval(probeInterval);
+      isWakingUpProbeActive = false;
+    }
+  }, 4000);
+}
+
+/**
+ * Fallback data provider if live backend is temporarily unreachable or spinning up from sleep
+ */
+function tryGetFallbackData(endpoint: string): any | null {
+  try {
+    const [pathPart, queryPart] = endpoint.split('?');
+    const cleanPath = pathPart.replace(/\/+$/, '');
+    const query = new URLSearchParams(queryPart || '');
+
+    // 1. Cruises list (/api/cruises or /api/cruises/)
+    if (cleanPath === '/api/cruises') {
+      let cruises = [...(CATALOG_FALLBACK.cruises?.cruises || [])];
+      const q = query.get('q')?.toLowerCase();
+      const city = query.get('city') || query.get('destination');
+      const cat = query.get('category') || query.get('vessel_category');
+      const maxPrice = Number(query.get('max_price'));
+
+      if (q) {
+        cruises = cruises.filter(
+          (c: any) =>
+            (c.name || '').toLowerCase().includes(q) ||
+            (c.destination || '').toLowerCase().includes(q) ||
+            (c.location || '').toLowerCase().includes(q)
+        );
+      }
+      if (city) {
+        cruises = cruises.filter(
+          (c: any) =>
+            (c.destination || '').toLowerCase().includes(city.toLowerCase()) ||
+            (c.location || '').toLowerCase().includes(city.toLowerCase())
+        );
+      }
+      if (cat) {
+        cruises = cruises.filter((c: any) => c.category === cat || c.vessel_category === cat);
+      }
+      if (maxPrice && !isNaN(maxPrice) && maxPrice > 0) {
+        cruises = cruises.filter((c: any) => Number(c.price) <= maxPrice);
+      }
+
+      return {
+        cruises,
+        total: cruises.length,
+        destinations: CATALOG_FALLBACK.cruises?.destinations || ['Goa', 'Andaman', 'Kochi', 'Mumbai', 'Lakshadweep'],
+        categories: CATALOG_FALLBACK.cruises?.categories || [],
+        filters: CATALOG_FALLBACK.cruises?.filters || { destinations: [], categories: [], durations: [] },
+      };
+    }
+
+    // 2. Cruise detail (/api/cruises/:idOrSlug)
+    const cruiseDetailMatch = cleanPath.match(/^\/api\/cruises\/([^/]+)$/);
+    if (cruiseDetailMatch && cruiseDetailMatch[1] !== 'match') {
+      const slugOrId = decodeURIComponent(cruiseDetailMatch[1]);
+      const found = (CATALOG_FALLBACK.cruises?.cruises || []).find(
+        (c: any) => String(c.id) === slugOrId || c.slug === slugOrId
+      );
+      if (found) {
+        return { cruise: found, ...found };
+      }
+    }
+
+    // 3. Match Engine fallback (/api/cruises/match)
+    if (cleanPath === '/api/cruises/match') {
+      const all = CATALOG_FALLBACK.cruises?.cruises || [];
+      return {
+        total_exact: Math.min(3, all.length),
+        total_alternatives: Math.min(6, all.length),
+        exact_matches: all.slice(0, 3),
+        close_alternatives: all.slice(3, 9),
+        results: all.slice(0, 9),
+      };
+    }
+
+    // 4. Public Tours list (/api/tours or /api/tours/)
+    if (cleanPath === '/api/tours') {
+      let tours = [...(CATALOG_FALLBACK.tours?.tours || [])];
+      const q = query.get('q')?.toLowerCase();
+      const dest = query.get('destination')?.toLowerCase();
+      const port = query.get('departure_port')?.toLowerCase();
+      if (q) {
+        tours = tours.filter(
+          (t: any) =>
+            (t.tour_title || t.title || '').toLowerCase().includes(q) ||
+            (t.destination || '').toLowerCase().includes(q)
+        );
+      }
+      if (dest) {
+        tours = tours.filter((t: any) => (t.destination || '').toLowerCase().includes(dest));
+      }
+      if (port) {
+        tours = tours.filter((t: any) => (t.departure_port || '').toLowerCase().includes(port));
+      }
+      return { tours, total: tours.length };
+    }
+
+    // 5. Tour detail (/api/tours/:id)
+    const tourDetailMatch = cleanPath.match(/^\/api\/tours\/([^/]+)$/);
+    if (tourDetailMatch) {
+      const tourId = tourDetailMatch[1];
+      const found = (CATALOG_FALLBACK.tours?.tours || []).find(
+        (t: any) => String(t.id) === tourId || t.slug === tourId
+      );
+      if (found) {
+        return { tour: found, ...found };
+      }
+    }
+
+    // 6. Water sports activities (/api/activities)
+    if (cleanPath === '/api/activities') {
+      return CATALOG_FALLBACK.activities || { activities: [], total: 0, categories: [] };
+    }
+
+    // 7. Activity detail (/api/activities/:slug)
+    const actDetailMatch = cleanPath.match(/^\/api\/activities\/([^/]+)$/);
+    if (actDetailMatch) {
+      const slug = actDetailMatch[1];
+      const found = (CATALOG_FALLBACK.activities?.activities || []).find(
+        (a: any) => String(a.id) === slug || a.slug === slug
+      );
+      if (found) return found;
+    }
+
+    // 8. Public verified operators (/api/operators)
+    if (cleanPath === '/api/operators') {
+      return CATALOG_FALLBACK.operators || { operators: [] };
+    }
+
+    // 9. Event packages (/api/events/packages)
+    if (cleanPath === '/api/events/packages') {
+      return CATALOG_FALLBACK.events || { event_types: [], packages: [], charter_ships: [] };
+    }
+
+    // 10. Offers (/api/offers)
+    if (cleanPath === '/api/offers') {
+      return CATALOG_FALLBACK.offers || { offers: [] };
+    }
+
+    // 11. Health check
+    if (cleanPath === '/api/health' || cleanPath === '/health') {
+      return { status: 'ok', framework: 'FastAPI', version: '1.0.0', fallback: true };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function apiRequest<T = any>(
@@ -146,7 +335,7 @@ export async function apiRequest<T = any>(
 
   const execute = async (): Promise<T> => {
     const headers = new Headers(options.headers || {});
-    
+
     // Set default Content-Type for JSON if body is provided and not FormData
     if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
@@ -163,8 +352,10 @@ export async function apiRequest<T = any>(
       headers.set('X-CSRFToken', csrfToken);
     }
 
-    const targetUrl = getFullApiUrl(endpoint);
-    let response: Response;
+    let targetUrl = getFullApiUrl(endpoint);
+    let response: Response | null = null;
+    let networkErrorMessage = '';
+
     try {
       response = await fetch(targetUrl, {
         ...options,
@@ -172,8 +363,43 @@ export async function apiRequest<T = any>(
         credentials: 'include', // vital for session cookies
       });
     } catch (networkErr: any) {
+      networkErrorMessage = networkErr?.message || 'Network error';
+
+      // If network call failed and URL had cruise-hunt, try once directly with cross-hunt
+      if (targetUrl.includes('cruise-hunt.onrender.com')) {
+        try {
+          const directUrl = targetUrl.replace('cruise-hunt.onrender.com', 'cross-hunt.onrender.com');
+          response = await fetch(directUrl, {
+            ...options,
+            headers,
+            credentials: 'include',
+          });
+        } catch {
+          // Keep response as null
+        }
+      }
+    }
+
+    // If server returned 404 (Render no-server) or 502/503/504 (cold start), or network failed:
+    if (!response || !response.ok) {
+      const status = response ? response.status : 0;
+      if (status === 0 || status === 404 || status === 502 || status === 503 || status === 504) {
+        const fallback = tryGetFallbackData(endpoint);
+        if (fallback !== null) {
+          triggerBackgroundBackendProbe();
+          if (isGet && !options.bypassCache) {
+            // Cache fallback briefly (30s) so it re-attempts live backend soon
+            apiCache.set(cacheKey, fallback, 30000);
+          }
+          return fallback as T;
+        }
+      }
+    }
+
+    if (!response) {
+      triggerBackgroundBackendProbe();
       throw new ApiError(
-        networkErr?.message || 'Network error: Failed to reach the server. Please check your connection.',
+        networkErrorMessage || 'Network error: Failed to reach the server. Please check your connection.',
         0,
         'NetworkError',
         null,
@@ -199,6 +425,14 @@ export async function apiRequest<T = any>(
     }
 
     if (!response.ok) {
+      // Check fallback once more for 404 on GET
+      if (response.status === 404 && isGet) {
+        const fallback = tryGetFallbackData(endpoint);
+        if (fallback !== null) {
+          return fallback as T;
+        }
+      }
+
       const errorMsg =
         data?.error ||
         data?.detail ||

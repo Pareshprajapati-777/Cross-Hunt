@@ -14,8 +14,9 @@ export function getTourImageUrl(url?: string | null): string {
   if (cleanUrl.startsWith('/static/images/tours/') && !cleanUrl.includes('?v=')) {
     finalUrl = `${cleanUrl}?v=20261020_v2`;
   }
-  if (BACKEND_URL && finalUrl.startsWith('/')) {
+  if (BACKEND_URL && finalUrl.startsWith('/media/')) {
     return `${BACKEND_URL}${finalUrl}`;
   }
   return finalUrl;
 }
+
