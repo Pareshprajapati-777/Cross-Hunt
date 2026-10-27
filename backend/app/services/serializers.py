@@ -80,7 +80,7 @@ def serialize_cruise(cruise) -> Dict[str, Any]:
             op_booking_url = cruise.booking_url or ""
         else:
             management_type = "PLATFORM"
-            op_name = "Cross-Hunt Fleet Concierge"
+            op_name = "Cruise-Hunt Fleet Concierge"
             op_phone = ""
             op_wa = ""
             op_email = ""
@@ -498,8 +498,8 @@ def serialize_invoice(b) -> Dict[str, Any]:
         "customer_name": b.user.full_name if b.user else "Passenger",
         "customer_email": b.user.email if b.user else "",
         "customer_phone": b.user.phone or "" if b.user else "",
-        "operator_name": b.cross.effective_operator_name if b.cross else "Cross-Hunt Fleet",
-        "operator_company": b.cross.effective_operator_name if b.cross else "Cross-Hunt Fleet",
+        "operator_name": b.cross.effective_operator_name if b.cross else "Cruise-Hunt Fleet",
+        "operator_company": b.cross.effective_operator_name if b.cross else "Cruise-Hunt Fleet",
         "ship_name": inv_ship,
         "departure_port": inv_dep,
         "destination": inv_dest,

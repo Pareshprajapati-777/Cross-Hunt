@@ -1,4 +1,4 @@
-# Cross Hunt Ship Booking — Design System
+# Cruise Hunt Ship Booking — Design System
 
 **Version**: 2.0 (Phase 2 — Impeccable Spatial Refinement)  
 **Last Updated**: 2026-10-13  

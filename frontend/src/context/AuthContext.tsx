@@ -3,7 +3,7 @@ import { User } from '../api/types';
 import { getCurrentUser, loginUser, logoutUser, registerUser } from '../api/auth';
 import { getAuthToken, setAuthToken, clearApiCache } from '../api/client';
 
-export const CACHED_USER_KEY = 'crosshunt_cached_user';
+export const CACHED_USER_KEY = 'cruisehunt_cached_user';
 
 function getInitialUserState(): { user: User | null; loading: boolean } {
   try {
@@ -12,7 +12,7 @@ function getInitialUserState(): { user: User | null; loading: boolean } {
       // Guest visitor: immediate 0ms load, NO loading spinner
       return { user: null, loading: false };
     }
-    const cached = localStorage.getItem(CACHED_USER_KEY);
+    const cached = localStorage.getItem(CACHED_USER_KEY) || localStorage.getItem('crosshunt_cached_user');
     if (cached) {
       // Logged-in user: immediately restore profile from cache! Zero spinner!
       return { user: JSON.parse(cached), loading: false };

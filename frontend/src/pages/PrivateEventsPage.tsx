@@ -200,7 +200,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
 
     const waIntroMessage = `Hello ${ownerDisplayName},
 My name is ${customerName}.
-I am interested in chartering your ship "${vesselName}" on Cross Hunt for a ${selectedEventType.toUpperCase()} event.
+I am interested in chartering your ship "${vesselName}" on Cruise Hunt for a ${selectedEventType.toUpperCase()} event.
 
 📋 Inquired Voyage Details:
 • Vessel: ${vesselName} (${selectedShip.category || 'Luxury Charter'})

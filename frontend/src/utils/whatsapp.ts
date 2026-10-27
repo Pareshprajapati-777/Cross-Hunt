@@ -1,5 +1,5 @@
 /**
- * WhatsApp link and phone formatting utility for Cross-Hunt
+ * WhatsApp link and phone formatting utility for Cruise-Hunt
  */
 
 export function cleanPhoneNumber(phone: string | undefined | null): string {

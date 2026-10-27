@@ -40,9 +40,9 @@ export async function getPaymentConfig(): Promise<PaymentConfig> {
   } catch (e) {
     // Fallback safe defaults if offline/disconnected
     return {
-      razorpay_key_id: 'rzp_test_CrossHuntMaritime',
-      merchant_name: 'Cross Hunt Maritime',
-      upi_id: 'crosshunt@razorpay',
+      razorpay_key_id: 'rzp_test_CruiseHuntMaritime',
+      merchant_name: 'Cruise Hunt Maritime',
+      upi_id: 'cruisehunt@razorpay',
       currency: 'INR',
       is_test_mode: true,
     };

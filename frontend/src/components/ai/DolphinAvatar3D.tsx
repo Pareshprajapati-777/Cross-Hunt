@@ -97,7 +97,7 @@ export const DolphinAvatar3D: React.FC<DolphinAvatar3DProps> = ({
     let isDisposed = false;
 
     loader.load(
-      '/cross_hunt_dolphin_assistant.glb',
+      '/cruise_hunt_dolphin_assistant.glb',
       (gltf) => {
         if (isDisposed) return;
         const model = gltf.scene;
@@ -214,7 +214,7 @@ export const DolphinAvatar3D: React.FC<DolphinAvatar3DProps> = ({
       onClick={onClick}
       style={{ width: size, height: size }}
       className={`relative select-none cursor-pointer flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95 ${className}`}
-      title="Click to chat with Cross-Hunt AI 🐬"
+      title="Click to chat with Cruise-Hunt AI 🐬"
     >
       {/* 3D Canvas Mount */}
       {!hasError && (
@@ -230,7 +230,7 @@ export const DolphinAvatar3D: React.FC<DolphinAvatar3DProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
           <img
             src="/dolphin_icon.png"
-            alt="Cross-Hunt AI Dolphin"
+            alt="Cruise-Hunt AI Dolphin"
             className={`w-full h-full object-contain filter drop-shadow-lg transition-transform duration-500 ${
               isSpeaking ? 'animate-bounce' : 'animate-pulse'
             }`}

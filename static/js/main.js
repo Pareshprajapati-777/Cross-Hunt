@@ -1,4 +1,4 @@
-// Main JavaScript for Cross Booking Management System
+// Main JavaScript for Cruise Booking Management System
 
 document.addEventListener('DOMContentLoaded', function () {
     // 1. Live Price Estimator for Booking Form

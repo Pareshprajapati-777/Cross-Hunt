@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Cross-Hunt API"
+    PROJECT_NAME: str = "Cruise-Hunt API"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
     SECRET_KEY: str = os.environ.get(
@@ -94,10 +94,10 @@ class Settings(BaseSettings):
     WHATSAPP_REMINDER_HOURS_BEFORE: int = int(os.environ.get("WHATSAPP_REMINDER_HOURS_BEFORE", 24))
 
     # Razorpay & Online UPI Payment Gateway
-    RAZORPAY_KEY_ID: str = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_CrossHuntMaritime")
+    RAZORPAY_KEY_ID: str = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_CruiseHuntMaritime")
     RAZORPAY_KEY_SECRET: str = os.environ.get("RAZORPAY_KEY_SECRET", "")
-    RAZORPAY_MERCHANT_NAME: str = os.environ.get("RAZORPAY_MERCHANT_NAME", "Cross Hunt Maritime")
-    RAZORPAY_UPI_ID: str = os.environ.get("RAZORPAY_UPI_ID", "crosshunt@razorpay")
+    RAZORPAY_MERCHANT_NAME: str = os.environ.get("RAZORPAY_MERCHANT_NAME", "Cruise Hunt Maritime")
+    RAZORPAY_UPI_ID: str = os.environ.get("RAZORPAY_UPI_ID", "cruisehunt@razorpay")
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

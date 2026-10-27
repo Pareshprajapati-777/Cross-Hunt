@@ -1,4 +1,4 @@
-# 🗄️ Cross Hunt — Complete Database & Accounts Directory
+# 🗄️ Cruise Hunt — Complete Database & Accounts Directory
 
 > ℹ️ **Notice for GitHub Viewers:** SQLite database binary files (`db.sqlite3`) cannot be previewed in GitHub's web interface. This document and the associated [`database/database_export.json`](database/database_export.json) / [`database/database_dump.sql`](database/database_dump.sql) files provide full visibility into all database records, user accounts, owner accounts, fleet operators, cruise vessels, and bookings.
 

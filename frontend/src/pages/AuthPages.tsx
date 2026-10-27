@@ -163,7 +163,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
             <h1 className="text-2xl font-display font-extrabold text-slate-900 tracking-tight">
               {mode === 'login'
-                ? 'Sign In to Cross Hunt'
+                ? 'Sign In to Cruise Hunt'
                 : mode === 'register'
                 ? 'Create an Account'
                 : 'Reset Your Password'}
@@ -264,7 +264,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-sky-500 transition"
                     >
                       <option value="USER">Travel User</option>
-                      <option value="CROSS_OWNER">Ship Owner</option>
+                      <option value="CRUISE_OWNER">Ship Owner</option>
                     </select>
                   </div>
                 </>

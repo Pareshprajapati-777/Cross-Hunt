@@ -69,7 +69,7 @@ def lookup_user_ticket(code: str, user: Optional[User] = None, db: Optional[Sess
             "success": False,
             "error": "auth_required",
             "requires_login": True,
-            "message": f"Ticket code '{clean_code}' mil gaya hai, lekin details dekhne ke liye kripya Cross-Hunt account me Sign In karein.",
+            "message": f"Ticket code '{clean_code}' mil gaya hai, lekin details dekhne ke liye kripya Cruise-Hunt account me Sign In karein.",
             "actions": [{"label": "Sign In to View Ticket", "url": "/login", "type": "navigate"}]
         }
 
@@ -86,7 +86,7 @@ def lookup_user_ticket(code: str, user: Optional[User] = None, db: Optional[Sess
         }
 
     ship = booking.cross
-    op_name = ship.effective_operator_name if ship else "Cross-Hunt Fleet"
+    op_name = ship.effective_operator_name if ship else "Cruise-Hunt Fleet"
     dep_port = booking.public_tour.departure_port if booking.public_tour else (ship.departure_port if ship else "")
     dest = booking.public_tour.destination if booking.public_tour else (ship.destination if ship else "")
 
@@ -240,14 +240,14 @@ def smart_local_rag_respond(query: str, user: Optional[User] = None, db: Optiona
                 }
             else:
                 return {
-                    "reply": f"🐬 **Cross-Hunt AI:**\n{lookup.get('message')}",
+                    "reply": f"🐬 **Cruise-Hunt AI:**\n{lookup.get('message')}",
                     "actions": lookup.get("actions", [{"label": "Go to Dashboard", "url": "/dashboard", "type": "navigate"}]),
                     "data": {}
                 }
         elif user and db:
             my_bookings = db.query(Booking).filter(Booking.user_id == user.id).order_by(Booking.created_at.desc()).limit(3).all()
             if my_bookings:
-                reply = "Here are your recent Cross-Hunt bookings:\n\n"
+                reply = "Here are your recent Cruise-Hunt bookings:\n\n"
                 for b in my_bookings:
                     t_code = b.ticket_code or b.booking_id
                     reply += (
@@ -296,7 +296,7 @@ def smart_local_rag_respond(query: str, user: Optional[User] = None, db: Optiona
             }
         else:
             reply = (
-                "🐬 **Booking Steps on Cross-Hunt:**\n\n"
+                "🐬 **Booking Steps on Cruise-Hunt:**\n\n"
                 "1. **Explore:** Browse `/explore` for private yachts or `/tours` for scheduled public voyages.\n"
                 "2. **Select:** Choose your destination (Goa, Mumbai, Kochi, Andaman) and vessel.\n"
                 "3. **Customize:** Pick departure dates, stateroom cabins, and add-on extras.\n"
@@ -312,7 +312,7 @@ def smart_local_rag_respond(query: str, user: Optional[User] = None, db: Optiona
 
     # General welcome or recommendation
     reply = (
-        "Welcome to **Cross-Hunt**! 🐬⚓\n\n"
+        "Welcome to **Cruise-Hunt**! 🐬⚓\n\n"
         "I am your maritime AI assistant. You can ask me to:\n"
         "• Find private yacht charters in Goa, Mumbai, Kochi, or the Andaman Islands.\n"
         "• Book seats on Cordelia Cruises or scenic sunset river voyages.\n"
@@ -338,7 +338,7 @@ def get_ai_suggestions_list(user: Optional[User] = None) -> List[Dict[str, str]]
             {"id": "events", "label": "🎉 Private Birthday Celebration", "query": "30 guests ke liye birthday celebration package cruise par kaise book karein?"},
         ]
     return [
-        {"id": "explore_ships", "label": "🚢 Explore Luxury Vessels", "query": "Cross-Hunt par kaun se luxury yachts aur ships available hain?"},
+        {"id": "explore_ships", "label": "🚢 Explore Luxury Vessels", "query": "Cruise-Hunt par kaun se luxury yachts aur ships available hain?"},
         {"id": "lookup_ticket", "label": "🎫 Look up My Ticket", "query": "Mera ticket code verify karein."},
         {"id": "cordelia", "label": "🌊 Ocean Liner Sailings", "query": "Cordelia Cruise Mumbai to Goa ki dates aur fares kya hain?"},
         {"id": "andaman", "label": "🏝️ Andaman Catamaran Ferries", "query": "Havelock aur Neil Island ke fast catamarans ki details bataiye."},

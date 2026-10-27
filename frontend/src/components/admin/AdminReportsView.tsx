@@ -83,7 +83,7 @@ export const AdminReportsView: React.FC = () => {
     const link = document.createElement('a');
     link.setAttribute('href', csvContent);
     const dateStr = new Date().toISOString().slice(0, 10);
-    link.setAttribute('download', `cross_hunt_${reportType}_report_${dateStr}.csv`);
+    link.setAttribute('download', `cruise_hunt_${reportType}_report_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -373,7 +373,7 @@ export const AdminReportsView: React.FC = () => {
         {/* Footer info */}
         <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
           <span>Showing {filteredRows.length} total entries</span>
-          <span>Cross Hunt Executive Analytics Engine • RFC 4180 Certified CSV</span>
+          <span>Cruise Hunt Executive Analytics Engine • RFC 4180 Certified CSV</span>
         </div>
       </div>
     </div>

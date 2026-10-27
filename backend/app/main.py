@@ -90,7 +90,7 @@ except Exception:
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Cross-Hunt India Ship & Cruise Rental Marketplace REST API (FastAPI + SQLAlchemy)",
+    description="Cruise-Hunt India Ship & Cruise Rental Marketplace REST API (FastAPI + SQLAlchemy)",
     version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",

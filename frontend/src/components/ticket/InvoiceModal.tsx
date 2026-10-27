@@ -40,7 +40,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
         <div className="flex items-center justify-between px-6 py-4 bg-[#051833] text-[#fff8dc] border-b border-[#38bdf8]/20">
           <div className="flex items-center gap-2">
             <Anchor className="w-5 h-5 text-[#38bdf8]" />
-            <span className="font-serif font-bold tracking-wider text-sm">CROSS-HUNT TAX INVOICE</span>
+            <span className="font-serif font-bold tracking-wider text-sm">CRUISE-HUNT TAX INVOICE</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -76,7 +76,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-7 h-7 rounded-lg bg-[#1677C8] text-white flex items-center justify-center font-black text-xs">CH</div>
-                  <span className="text-xl font-black tracking-tight text-[#102B46] font-serif">CROSS-HUNT</span>
+                  <span className="text-xl font-black tracking-tight text-[#102B46] font-serif">CRUISE-HUNT</span>
                 </div>
                 <p className="text-xs text-[#102B46]/70">Cruise Bookings & Boat Rentals India</p>
                 <p className="text-xs text-[#102B46]/60">GSTIN: 27AABCC1234F1Z5</p>
@@ -167,7 +167,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ bookingId, onClose }
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 <span>Verified GST Invoice in INR (₹)</span>
               </div>
-              <span>Thank you for traveling with Cross-Hunt</span>
+              <span>Thank you for traveling with Cruise-Hunt</span>
             </div>
           </div>
         )}

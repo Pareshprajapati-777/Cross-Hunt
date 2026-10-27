@@ -142,7 +142,7 @@ async def api_register(
             detail="Public registration for administrator role is strictly forbidden."
         )
 
-    role = "OWNER" if raw_role in ("OWNER", "CROSS_OWNER") else "USER"
+    role = "OWNER" if raw_role in ("OWNER", "CRUISE_OWNER", "CROSS_OWNER") else "USER"
 
     if db.query(User).filter(User.username.ilike(username)).first():
         raise HTTPException(

@@ -98,7 +98,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const faqs = [
     {
       q: 'How does real-time slot locking prevent double booking?',
-      a: 'When you begin a charter reservation, Cross-Hunt locks the vessel for your chosen departure date and time window server-side. No other customer or operator can confirm an overlapping reservation on that ship.'
+      a: 'When you begin a charter reservation, Cruise-Hunt locks the vessel for your chosen departure date and time window server-side. No other customer or operator can confirm an overlapping reservation on that ship.'
     },
     {
       q: 'What is the difference between Public Tours and Private Charters?',
@@ -106,7 +106,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     },
     {
       q: 'Are all vessels and crew members licensed and verified?',
-      a: 'Yes. Every vessel registered on Cross-Hunt undergoes inspection for maritime seaworthiness, valid marine insurance, and passenger safety certifications with verified licensed captains.'
+      a: 'Yes. Every vessel registered on Cruise-Hunt undergoes inspection for maritime seaworthiness, valid marine insurance, and passenger safety certifications with verified licensed captains.'
     },
     {
       q: 'How do I receive my boarding pass and tax invoice?',
@@ -155,10 +155,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 Charter The Seas.<br />
                 <span className="text-[#0284c7] italic font-serif text-stroke-dark">Redefine Luxury.</span>
               </h1>
-
-              <p className="text-sm sm:text-base text-slate-600 max-w-xl font-medium leading-relaxed">
-                Cross Hunt OD Studio operates an exclusive verified fleet of luxury yachts, private party catamarans, and scheduled ocean trips across India’s premier coastal gateways.
-              </p>
 
               {/* CTAs with OD Studio Luxury Buttons */}
               <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -418,7 +414,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             See The Difference.
           </h2>
           <p className="text-slate-600 text-sm mt-2 font-medium">
-            How Cross-Hunt’s verified maritime booking platform compares to traditional unverified local agents.
+            How Cruise-Hunt’s verified maritime booking platform compares to traditional unverified local agents.
           </p>
         </div>
 
@@ -426,7 +422,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* Header Row */}
           <div className="marine-compare-row bg-sky-50/80 text-[#051833] font-bold text-xs uppercase tracking-wider border-b border-[#0284c7]/20">
             <span>Platform Capabilities & Guarantees</span>
-            <span className="text-center text-[#0284c7] font-black">Cross-Hunt OD Studio</span>
+            <span className="text-center text-[#0284c7] font-black">Cruise-Hunt OD Studio</span>
             <span className="text-center text-slate-500">Local Agents</span>
           </div>
 
@@ -435,37 +431,37 @@ export const HomePage: React.FC<HomePageProps> = ({
             {
               title: 'Real-Time Direct Slot Locking',
               desc: 'Server-side timestamp reservation prevents double booking',
-              cross: true,
+              cruise: true,
               other: false,
             },
             {
               title: '100% Certified Captains & Seaworthy Audits',
               desc: 'Verified maritime licenses, marine insurance, and safety equipment',
-              cross: true,
+              cruise: true,
               other: false,
             },
             {
               title: 'Itemized GST Tax Invoice & Clear Pricing',
               desc: 'Official tax invoice with zero hidden pier charges or dock fees',
-              cross: true,
+              cruise: true,
               other: false,
             },
             {
               title: 'Live WhatsApp Reminders & GPS Boarding QR Pass',
               desc: 'Instant QR ticket scanning at jetty and automated departure updates',
-              cross: true,
+              cruise: true,
               other: false,
             },
             {
               title: 'Guaranteed Full Vessel or Stateroom Berth',
               desc: 'Direct contract ensuring your vessel is clean, fueled, and ready',
-              cross: true,
+              cruise: true,
               other: false,
             },
             {
               title: '24/7 AI Maritime Concierge',
               desc: 'Instant ticket lookup, weather checking, and itinerary assistance',
-              cross: true,
+              cruise: true,
               other: false,
             },
           ].map((item, idx) => (

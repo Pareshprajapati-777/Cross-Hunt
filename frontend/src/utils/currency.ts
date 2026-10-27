@@ -1,5 +1,5 @@
 /**
- * Centralized Indian Rupee (INR ₹) Currency Formatter for Cross-Hunt
+ * Centralized Indian Rupee (INR ₹) Currency Formatter for Cruise-Hunt
  */
 
 export function formatINR(amount: number | string | undefined | null): string {

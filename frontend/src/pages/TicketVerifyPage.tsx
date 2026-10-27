@@ -109,7 +109,7 @@ export const TicketVerifyPage: React.FC = () => {
             className="inline-flex items-center gap-2 text-xs font-bold text-sky-700 hover:text-sky-900 transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Cross-Hunt</span>
+            <span>Back to Cruise-Hunt</span>
           </button>
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white border border-sky-200 text-sky-800 text-[11px] font-bold shadow-xs">
             <Smartphone className="w-3.5 h-3.5 text-sky-600" />
@@ -255,7 +255,7 @@ export const TicketVerifyPage: React.FC = () => {
             {/* Action Bar below Boarding Pass */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs print:hidden">
               <span className="text-slate-500 font-medium">
-                Official Cross-Hunt Maritime Verification Seal • Cryptographic Hash {ticketData.verification_code?.slice(0, 12)}
+                Official Cruise-Hunt Maritime Verification Seal • Cryptographic Hash {ticketData.verification_code?.slice(0, 12)}
               </span>
               <div className="flex items-center gap-2">
                 <button

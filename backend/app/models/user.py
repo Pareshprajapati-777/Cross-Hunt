@@ -37,11 +37,15 @@ class User(Base):
 
     @property
     def is_owner(self) -> bool:
-        return self.role in ("OWNER", "CROSS_OWNER") or self.is_superuser
+        return self.role in ("OWNER", "CRUISE_OWNER", "CROSS_OWNER") or self.is_superuser
 
     @property
     def is_operator(self) -> bool:
         return self.is_owner
+
+    @property
+    def cruises(self):
+        return self.crosses
 
     @property
     def is_admin(self) -> bool:

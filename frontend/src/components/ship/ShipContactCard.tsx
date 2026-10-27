@@ -54,7 +54,7 @@ export const ShipContactCard: React.FC<ShipContactCardProps> = ({
   const managementName =
     cruise.management_name ||
     cruise.operator_name ||
-    'Cross-Hunt Marine Fleet';
+    'Cruise-Hunt Marine Fleet';
 
   const isOperator = cruise.management_type === 'OPERATOR' || !!cruise.operator_name;
   const isOwner = cruise.management_type === 'OWNER';
@@ -110,7 +110,7 @@ export const ShipContactCard: React.FC<ShipContactCardProps> = ({
                 {formatIndianPhoneNumber(contactPhone)}
               </p>
             ) : (
-              <p className="text-slate-400 text-[11px]">Contact via Cross-Hunt</p>
+              <p className="text-slate-400 text-[11px]">Contact via Cruise-Hunt</p>
             )}
           </div>
         </div>

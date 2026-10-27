@@ -12,7 +12,7 @@ interface NavbarProps {
 const getReadNotifIds = (userId?: number): Set<number> => {
   if (!userId) return new Set();
   try {
-    const raw = localStorage.getItem(`crosshunt_read_notifs_${userId}`);
+    const raw = localStorage.getItem(`cruisehunt_read_notifs_${userId}`) || localStorage.getItem(`crosshunt_read_notifs_${userId}`);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
@@ -23,7 +23,7 @@ const saveReadNotifIds = (userId: number, ids: number[]) => {
   try {
     const existing = getReadNotifIds(userId);
     ids.forEach((id) => existing.add(id));
-    localStorage.setItem(`crosshunt_read_notifs_${userId}`, JSON.stringify(Array.from(existing)));
+    localStorage.setItem(`cruisehunt_read_notifs_${userId}`, JSON.stringify(Array.from(existing)));
   } catch {}
 };
 
@@ -223,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             </div>
             <div>
               <span className="font-heading-more text-lg tracking-wider text-[#051833] flex items-center gap-1.5 leading-none">
-                CROSS <span className="text-[#0284c7]">HUNT</span>
+                CRUISE <span className="text-[#0284c7]">HUNT</span>
               </span>
               <span className="block text-[9px] uppercase tracking-widest text-[#334155]/80 font-bold mt-0.5">
                 OD Studio · Luxury Maritime Fleet

@@ -8,12 +8,13 @@ export async function getCurrentUser(): Promise<User | null> {
     });
     if (res.authenticated && res.user) {
       try {
-        localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+        localStorage.setItem('cruisehunt_cached_user', JSON.stringify(res.user));
       } catch {}
       return res.user;
     }
     setAuthToken(null);
     try {
+      localStorage.removeItem('cruisehunt_cached_user');
       localStorage.removeItem('crosshunt_cached_user');
     } catch {}
     return null;
@@ -34,7 +35,7 @@ export async function loginUser(username: string, password: string): Promise<Use
   }
   if (res.user) {
     try {
-      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+      localStorage.setItem('cruisehunt_cached_user', JSON.stringify(res.user));
     } catch {}
   }
   return res.user;
@@ -60,7 +61,7 @@ export async function registerUser(payload: {
   }
   if (res.user) {
     try {
-      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+      localStorage.setItem('cruisehunt_cached_user', JSON.stringify(res.user));
     } catch {}
   }
   return res.user;
@@ -77,6 +78,7 @@ export async function logoutUser(): Promise<void> {
   } finally {
     setAuthToken(null);
     try {
+      localStorage.removeItem('cruisehunt_cached_user');
       localStorage.removeItem('crosshunt_cached_user');
     } catch {}
     clearApiCache();
@@ -101,7 +103,7 @@ export async function updateUserProfile(payload: {
   });
   if (res.user) {
     try {
-      localStorage.setItem('crosshunt_cached_user', JSON.stringify(res.user));
+      localStorage.setItem('cruisehunt_cached_user', JSON.stringify(res.user));
     } catch {}
   }
   clearApiCache();

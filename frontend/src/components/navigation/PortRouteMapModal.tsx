@@ -376,7 +376,7 @@ export const PortRouteMapModal: React.FC<PortRouteMapModalProps> = ({
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Official Cross Hunt Maritime Boarding Terminal Information</span>
+            <span>Official Cruise Hunt Maritime Boarding Terminal Information</span>
           </div>
           <button
             onClick={onClose}

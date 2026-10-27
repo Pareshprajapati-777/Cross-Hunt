@@ -39,11 +39,11 @@ export class ApiError extends Error {
   }
 }
 
-export const AUTH_TOKEN_KEY = 'crosshunt_auth_token';
+export const AUTH_TOKEN_KEY = 'cruisehunt_auth_token';
 
 export function getAuthToken(): string | null {
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem('crosshunt_auth_token');
   } catch {
     return null;
   }
@@ -55,13 +55,14 @@ export function setAuthToken(token: string | null): void {
       localStorage.setItem(AUTH_TOKEN_KEY, token.trim());
     } else {
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem('crosshunt_auth_token');
     }
   } catch {
     // Ignore storage errors in restricted browser contexts
   }
 }
 
-const DEFAULT_PROD_API_URL = 'https://cross-hunt.onrender.com';
+const DEFAULT_PROD_API_URL = 'https://cruise-hunt.onrender.com';
 
 function resolveApiBaseUrl(): string {
   const envUrl =

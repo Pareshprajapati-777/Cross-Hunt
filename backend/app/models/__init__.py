@@ -1,11 +1,11 @@
 from backend.app.models.user import User
 from backend.app.models.operator import Operator
 from backend.app.models.cross import (
-    Cross, Ship, Vessel, ShipExtra, Extra, PrivateCharterRate, ShipImage, VesselImage, ShipMaintenance, Route
+    Cross, Cruise, Ship, Vessel, ShipExtra, Extra, PrivateCharterRate, ShipImage, VesselImage, ShipMaintenance, Route
 )
 from backend.app.models.tour import PublicTour, TourFare, TourCabin
 from backend.app.models.booking import Booking, SystemSetting, WhatsAppMessageLog, PlatformNotification
-from backend.app.models.offer import Offer, CrossReview
+from backend.app.models.offer import Offer, CrossReview, CruiseReview
 from backend.app.models.favorite import FavoriteShip
 from backend.app.models.activity import Activity
 from backend.app.models.staff_equipment import StaffMember, EquipmentItem
@@ -15,6 +15,7 @@ __all__ = [
     "User",
     "Operator",
     "Cross",
+    "Cruise",
     "Ship",
     "Vessel",
     "ShipExtra",
@@ -33,6 +34,7 @@ __all__ = [
     "PlatformNotification",
     "Offer",
     "CrossReview",
+    "CruiseReview",
     "FavoriteShip",
     "Activity",
     "StaffMember",

@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 console.log('='.repeat(65));
-console.log('  ⚓ CROSS-HUNT HIGH-AVAILABILITY DEV RUNNER (FastAPI + Vite)');
+console.log('  ⚓ CRUISE-HUNT HIGH-AVAILABILITY DEV RUNNER (FastAPI + Vite)');
 console.log('='.repeat(65));
 console.log('[DEV] Starting Backend and Frontend with Auto-Restart Protection...');
 console.log('[DEV] Note: If you press Ctrl+C once (e.g. copying text), the app will KEEP running.');
@@ -48,7 +48,7 @@ function startFrontend() {
 function fullShutdown() {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  console.log('\n[DEV] Shutting down Cross-Hunt server processes gracefully...');
+  console.log('\n[DEV] Shutting down Cruise-Hunt server processes gracefully...');
 
   const killProc = (proc, name) => {
     if (!proc || !proc.pid) return;

@@ -1,7 +1,7 @@
 # PRODUCT.md — Cruise Hunt Product Specification
 
 ## 1. Product Mission & Identity
-**Cruise Hunt** (Cross Hunt Fleet) is a luxury, cinematic Cruise Ship Tour, Travel Ticket, and Private Maritime Event Booking Platform.
+**Cruise Hunt** (Cruise Hunt Fleet) is a luxury, cinematic Cruise Ship Tour, Travel Ticket, and Private Maritime Event Booking Platform.
 
 The platform unites two premier maritime offerings:
 1. **Cruise Tour & Travel Tickets**:
@@ -33,7 +33,7 @@ The platform unites two premier maritime offerings:
 | Role | Persona | Primary Goals & Conversions |
 | :--- | :--- | :--- |
 | **Guest / Traveler** (`USER`) | Ocean adventurer, couple, family, or event planner | Discover voyage $\rightarrow$ explore ship amenities $\rightarrow$ select departure & cabin $\rightarrow$ book $\rightarrow$ receive authenticated pass $\rightarrow$ manage trip $\rightarrow$ leave verified review. |
-| **Ship Operator** (`CROSS_OWNER`) | Cruise line operator, vessel captain, event coordinator | Manage fleet vessels $\rightarrow$ define itineraries, stateroom tiers, and event packages $\rightarrow$ review, accept, or reject incoming reservations $\rightarrow$ track vessel earnings. |
+| **Ship Operator** (`CRUISE_OWNER` / `CROSS_OWNER`) | Cruise line operator, vessel captain, event coordinator | Manage fleet vessels $\rightarrow$ define itineraries, stateroom tiers, and event packages $\rightarrow$ review, accept, or reject incoming reservations $\rightarrow$ track vessel earnings. |
 | **System Admin** (`ADMIN`) | Platform executive / operations controller | Supervise all vessels, manage operators, govern user accounts, inspect global bookings, audit revenue metrics, and maintain platform integrity. |
 
 ---

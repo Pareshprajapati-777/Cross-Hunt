@@ -101,3 +101,6 @@ class CrossReview(Base):
             "date": self.created_at.strftime("%Y-%m-%d") if self.created_at else "",
         }
 
+
+CruiseReview = CrossReview
+

@@ -291,10 +291,10 @@ INSERT INTO "bookings_booking" VALUES(144,'CRS-2026-7D3B64','2027-07-25','16:00:
 CREATE TABLE "bookings_platformnotification" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "title" varchar(200) NOT NULL, "message" text NOT NULL, "notification_type" varchar(30) NOT NULL, "target_audience" varchar(30) NOT NULL, "action_link" varchar(255) NOT NULL, "sender_name" varchar(100) NOT NULL, "is_read" bool NOT NULL, "recipients_count" integer unsigned NOT NULL CHECK ("recipients_count" >= 0), "created_at" datetime NOT NULL, "target_user_id" bigint NULL REFERENCES "accounts_user" ("id") DEFERRABLE INITIALLY DEFERRED);
 INSERT INTO "bookings_platformnotification" VALUES(1,'Cyclone / Monsoon High Seas Advisory in Goa','Safety notice: Coast Guard issues rough sea warning for Panaji & Mandovi river mouth. Ensure passenger lifejackets are deployed.','IMPORTANT_UPDATE','ALL_USERS','/explore','Chief Maritime Officer',0,1,'2026-10-14 04:13:51.200162',NULL);
 INSERT INTO "bookings_platformnotification" VALUES(2,'Diwali & Festive Cruise Flat 20% Off Vouchers Live!','Use coupon code FESTIVE20 to claim 20% instant discount on luxury yacht private charters across Goa and Mumbai.','OFFER','ALL_USERS','/tours','Marketing Director',0,1,'2026-10-14 04:13:51.204077',NULL);
-INSERT INTO "bookings_platformnotification" VALUES(3,'New 120-Foot Superyacht Cordelia Star Joined Mumbai Fleet','We are proud to welcome Cordelia Star with helipad, jacuzzi deck, and banquet dining hall to the Cross Hunt fleet.','ANNOUNCEMENT','ALL_USERS','/explore','Executive Admin',0,1,'2026-10-14 04:13:51.207644',NULL);
+INSERT INTO "bookings_platformnotification" VALUES(3,'New 120-Foot Superyacht Cordelia Star Joined Mumbai Fleet','We are proud to welcome Cordelia Star with helipad, jacuzzi deck, and banquet dining hall to the Cruise Hunt fleet.','ANNOUNCEMENT','ALL_USERS','/explore','Executive Admin',0,1,'2026-10-14 04:13:51.207644',NULL);
 CREATE TABLE "bookings_systemsetting" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "key" varchar(60) NOT NULL UNIQUE, "value" text NOT NULL, "description" varchar(255) NOT NULL, "updated_at" datetime NOT NULL);
 CREATE TABLE "bookings_whatsappmessagelog" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "recipient" varchar(30) NOT NULL, "customer_name" varchar(120) NOT NULL, "message_type" varchar(30) NOT NULL, "message_body" text NOT NULL, "provider" varchar(30) NOT NULL, "provider_message_id" varchar(120) NOT NULL, "status" varchar(20) NOT NULL, "error_message" text NOT NULL, "created_at" datetime NOT NULL, "booking_id" bigint NULL REFERENCES "bookings_booking" ("id") DEFERRABLE INITIALLY DEFERRED);
-INSERT INTO "bookings_whatsappmessagelog" VALUES(1,'+15554567890','Alex Rivera','TOUR_REMINDER_TEST','🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓
+INSERT INTO "bookings_whatsappmessagelog" VALUES(1,'+15554567890','Alex Rivera','TOUR_REMINDER_TEST','🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓
 
 Hello *Alex Rivera*,
 
@@ -314,12 +314,12 @@ Your upcoming maritime voyage is scheduled to depart soon! Here are your officia
 • Present your Digital Boarding Pass QR or pass code for express gate entry.
 • Carry a government-approved photo ID (Aadhaar / Passport / Driving License) for port security.
 
-📱 *Digital Boarding Pass:* https://cross-hunt.in/ticket/verify/TK-2026981A
+📱 *Digital Boarding Pass:* https://cruise-hunt.in/ticket/verify/TK-2026981A
 📞 *Ship Operator Assistance:* +91 98200 12345
 
 We wish you a wonderful and safe voyage across Indian waters!
-🌊 *Team Cross-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgL2FA9D96B15A3V1','SENT','','2026-10-12 06:46:17.153032',16);
-INSERT INTO "bookings_whatsappmessagelog" VALUES(2,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓
+🌊 *Team Cruise-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgL2FA9D96B15A3V1','SENT','','2026-10-12 06:46:17.153032',16);
+INSERT INTO "bookings_whatsappmessagelog" VALUES(2,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓
 
 Hello *PARESH Prajapati*,
 
@@ -339,12 +339,12 @@ Your upcoming maritime voyage is scheduled to depart soon! Here are your officia
 • Present your Digital Boarding Pass QR or pass code for express gate entry.
 • Carry a government-approved photo ID (Aadhaar / Passport / Driving License) for port security.
 
-📱 *Digital Boarding Pass:* https://cross-hunt.in/ticket/verify/TK-259CF7
+📱 *Digital Boarding Pass:* https://cruise-hunt.in/ticket/verify/TK-259CF7
 📞 *Ship Operator Assistance:* +91 98200 12345
 
 We wish you a wonderful and safe voyage across Indian waters!
-🌊 *Team Cross-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLDAEA38AE8BE1V1','SENT','','2026-10-20 14:20:50.353318',129);
-INSERT INTO "bookings_whatsappmessagelog" VALUES(3,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓
+🌊 *Team Cruise-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLDAEA38AE8BE1V1','SENT','','2026-10-20 14:20:50.353318',129);
+INSERT INTO "bookings_whatsappmessagelog" VALUES(3,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓
 
 Hello *PARESH Prajapati*,
 
@@ -364,12 +364,12 @@ Your upcoming maritime voyage is scheduled to depart soon! Here are your officia
 • Present your Digital Boarding Pass QR or pass code for express gate entry.
 • Carry a government-approved photo ID (Aadhaar / Passport / Driving License) for port security.
 
-📱 *Digital Boarding Pass:* https://cross-hunt.in/ticket/verify/TK-067329
+📱 *Digital Boarding Pass:* https://cruise-hunt.in/ticket/verify/TK-067329
 📞 *Ship Operator Assistance:* +91 98200 12345
 
 We wish you a wonderful and safe voyage across Indian waters!
-🌊 *Team Cross-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLAF77626CEE0FV1','SENT','','2026-10-20 16:11:28.157171',131);
-INSERT INTO "bookings_whatsappmessagelog" VALUES(4,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓
+🌊 *Team Cruise-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLAF77626CEE0FV1','SENT','','2026-10-20 16:11:28.157171',131);
+INSERT INTO "bookings_whatsappmessagelog" VALUES(4,'+917096377561','PARESH Prajapati','TOUR_REMINDER_TEST','🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓
 
 Hello *PARESH Prajapati*,
 
@@ -389,11 +389,11 @@ Your upcoming maritime voyage is scheduled to depart soon! Here are your officia
 • Present your Digital Boarding Pass QR or pass code for express gate entry.
 • Carry a government-approved photo ID (Aadhaar / Passport / Driving License) for port security.
 
-📱 *Digital Boarding Pass:* https://cross-hunt.in/ticket/verify/TK-7C4A9A
+📱 *Digital Boarding Pass:* https://cruise-hunt.in/ticket/verify/TK-7C4A9A
 📞 *Ship Operator Assistance:* +91 98200 12345
 
 We wish you a wonderful and safe voyage across Indian waters!
-🌊 *Team Cross-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLDB0B28FB2877V1','SENT','','2026-10-20 16:54:18.037808',128);
+🌊 *Team Cruise-Hunt India*','META_CLOUD_SIMULATOR','wamid.HBgLDB0B28FB2877V1','SENT','','2026-10-20 16:54:18.037808',128);
 CREATE TABLE "crosses_cross" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "name" varchar(150) NOT NULL, "slug" varchar(180) NOT NULL UNIQUE, "category" varchar(50) NOT NULL, "description" text NOT NULL, "location" varchar(100) NOT NULL, "address" text NOT NULL, "price" decimal NOT NULL, "capacity" integer unsigned NOT NULL CHECK ("capacity" >= 0), "image" varchar(100) NULL, "image_url" varchar(600) NULL, "facilities" text NOT NULL, "rules" text NOT NULL, "cancellation_policy" text NOT NULL, "is_active" bool NOT NULL, "is_approved" bool NOT NULL, "created_at" datetime NOT NULL, "updated_at" datetime NOT NULL, "owner_id" bigint NULL REFERENCES "accounts_user" ("id") DEFERRABLE INITIALLY DEFERRED, "decks_count" integer unsigned NOT NULL CHECK ("decks_count" >= 0), "departure_port" varchar(120) NOT NULL, "destination" varchar(150) NOT NULL, "dining_venues" text NOT NULL, "duration_days" integer unsigned NOT NULL CHECK ("duration_days" >= 0), "entertainment" text NOT NULL, "itinerary_highlights" text NOT NULL, "route" varchar(250) NOT NULL, "ship_length_meters" integer unsigned NOT NULL CHECK ("ship_length_meters" >= 0), "beam_meters" integer unsigned NOT NULL CHECK ("beam_meters" >= 0), "cabin_count" integer unsigned NOT NULL CHECK ("cabin_count" >= 0), "supports_birthdays" bool NOT NULL, "supports_conferences" bool NOT NULL, "supports_corporate" bool NOT NULL, "supports_dinners" bool NOT NULL, "supports_parties" bool NOT NULL, "supports_private_charter" bool NOT NULL, "supports_public_tours" bool NOT NULL, "supports_weddings" bool NOT NULL, "availability_status" varchar(30) NOT NULL, "capacity_note" varchar(150) NOT NULL, "duration_display" varchar(100) NOT NULL, "extra_charges" text NOT NULL, "fuel_surcharge_note" varchar(200) NOT NULL, "has_unknown_capacity" bool NOT NULL, "included" text NOT NULL, "is_quote_based" bool NOT NULL, "last_verified_at" date NULL, "listing_type" varchar(30) NOT NULL, "permit_note" varchar(200) NOT NULL, "price_unit" varchar(30) NOT NULL, "source_checked" varchar(80) NOT NULL, "source_url" varchar(600) NULL, "tax_note" varchar(200) NOT NULL, "vessel_category" varchar(50) NULL, "operator_id" bigint NULL REFERENCES "crosses_operator" ("id") DEFERRABLE INITIALLY DEFERRED, "ac_status" varchar(30) NOT NULL, "booking_url" varchar(500) NOT NULL, "contact_number" varchar(100) NOT NULL, "decoration_service" bool NOT NULL, "dj_music" bool NOT NULL, "email" varchar(120) NOT NULL, "extra_services" text NOT NULL, "food_service" varchar(200) NOT NULL, "is_external_operator" bool NOT NULL, "photography_service" bool NOT NULL, "price_review_flag" bool NOT NULL, "price_review_reason" varchar(255) NOT NULL, "source_price" decimal NULL, "valid_from" date NULL, "valid_to" date NULL, "vessel_model" varchar(120) NOT NULL, "water_sports" bool NOT NULL, "website" varchar(400) NOT NULL, "whatsapp_number" varchar(100) NOT NULL);
 INSERT INTO "crosses_cross" VALUES(1,'Apex Oceanic Sovereign','apex-oceanic-sovereign','Mega Cruise Liner','Apex Oceanic Sovereign is a flagship mega liner engineered for supreme Atlantic comfort. Features expansive multi-deck atriums, infinity wake pools, Michelin-inspired dining, and Broadway-grade celestial entertainment.','New York Harbor, USA','742 Zenith Boulevard, Downtown Metro',250000,3200,'','/static/images/vessels/apex_oceanic_sovereign.jpg','Helipad, Infinity Wake Pool, Royal Casino, 12 Gourmet Restaurants, Thalassotherapy Spa, Broadway Theatre, Sky Lounge','Non-marking athletic footwear required. No glassware inside the arena perimeter.','Free cancellation up to 24 hours prior to booking start time.',1,1,'2026-09-27 14:12:49.896712','2026-10-04 06:42:05.491142',2,16,'Manhattan Cruise Terminal, Pier 88','Bermuda & Atlantic Crossing','The Grand Sovereign Dining Salon, Le Cirque Coastal Grill, Prime 1855 Steakhouse, Horizon Gelato Bar',8,'Broadway Cast Musical Revues, Midnight Jazz Cellar, Casino Royale, Open-Air Starlight Cinema','Day 1: Sailaway from Manhattan with skyline champagne salute
 Day 2: At Sea - Culinary masterclass & gala evening
@@ -447,7 +447,7 @@ INSERT INTO "crosses_cross" VALUES(8,'Eastside Odyssey Catamaran','eastside-odys
 Day 2: Key Largo coral reef diving & mangrove kayaking
 Day 3: Key West historic Mallory Square sunset sail
 Day 4: Dry Tortugas fortress & return to Miami','Miami - Key Largo - Marathon - Key West - Dry Tortugas - Miami',42,34,180,1,1,1,1,1,1,1,1,'AVAILABLE','','2.5 hours','','',0,'',0,'2026-10-01','PRIVATE_CHARTER','','PER_BOAT','01 Oct 2026',NULL,'GST Extra as applicable','Private Charter Yacht',NULL,'AC','','',1,1,'','','Catering and refreshments available',0,1,0,'',35000,'2026-01-01','2026-12-31','',0,'','');
-INSERT INTO "crosses_cross" VALUES(9,'MS Horizon Empress','ms-horizon-empress','Luxury Ocean Cruise','The flagship of the Cross Hunt fleet. Featuring revolutionary architectural glass facades, panoramic sky lounges, and Michelin-inspired culinary experiences across the azure waters of the Caribbean.','Miami, Florida','Port of Miami, 1015 North America Way, Miami, FL 33132',220000,1850,'','/static/images/vessels/ms_horizon_empress.jpg','Helipad, Infinity Glass Pool, Broadway Theatre, Full-Service Ocean Spa, Casino Royale, 12 Specialty Restaurants, Star Gazing Observatory, Butler Stateroom Concierge','Formal evening attire for Captain’s Gala. Valid international passport required. Non-smoking in all staterooms and balconies.','Full refund up to 48 hours prior to scheduled departure. Flexible date rescheduling available.',1,1,'2026-09-27 16:06:46.762538','2026-10-04 06:42:05.530190',2,18,'Port of Miami, Terminal A','Caribbean Paradise','The Grand Sovereign Dining Room, Chef''s Atelier Tasting Menu, Le Cirque French Bistro, Ocean Horizon Lido Market, Wave Bar & Grill',7,'West End Musical Production, Cirque de la Mer Acrobatic Show, Starlight Jazz Speakeasy, Ocean Cinema under the Stars','Day 1: Embarkation in Miami & Sunset Champagne Sail-Away
+INSERT INTO "crosses_cross" VALUES(9,'MS Horizon Empress','ms-horizon-empress','Luxury Ocean Cruise','The flagship of the Cruise Hunt fleet. Featuring revolutionary architectural glass facades, panoramic sky lounges, and Michelin-inspired culinary experiences across the azure waters of the Caribbean.','Miami, Florida','Port of Miami, 1015 North America Way, Miami, FL 33132',220000,1850,'','/static/images/vessels/ms_horizon_empress.jpg','Helipad, Infinity Glass Pool, Broadway Theatre, Full-Service Ocean Spa, Casino Royale, 12 Specialty Restaurants, Star Gazing Observatory, Butler Stateroom Concierge','Formal evening attire for Captain’s Gala. Valid international passport required. Non-smoking in all staterooms and balconies.','Full refund up to 48 hours prior to scheduled departure. Flexible date rescheduling available.',1,1,'2026-09-27 16:06:46.762538','2026-10-04 06:42:05.530190',2,18,'Port of Miami, Terminal A','Caribbean Paradise','The Grand Sovereign Dining Room, Chef''s Atelier Tasting Menu, Le Cirque French Bistro, Ocean Horizon Lido Market, Wave Bar & Grill',7,'West End Musical Production, Cirque de la Mer Acrobatic Show, Starlight Jazz Speakeasy, Ocean Cinema under the Stars','Day 1: Embarkation in Miami & Sunset Champagne Sail-Away
 Day 2: At Sea – Spa Wellness & Broadway Theatre Gala
 Day 3: Nassau, Bahamas – Private Island Catamaran Excursion
 Day 4: St. Thomas – Magens Bay Coral Reef Snorkel

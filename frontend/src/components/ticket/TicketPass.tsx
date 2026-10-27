@@ -43,7 +43,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
   const [detectedLanUrl, setDetectedLanUrl] = useState<string>('');
   const [customScanBase, setCustomScanBase] = useState<string>(() => {
     try {
-      return localStorage.getItem('crosshunt_qr_scan_base') || '';
+      return localStorage.getItem('cruisehunt_qr_scan_base') || localStorage.getItem('crosshunt_qr_scan_base') || '';
     } catch {
       return '';
     }
@@ -99,8 +99,9 @@ export const TicketPass: React.FC<TicketPassProps> = ({
     setCustomScanBase(cleaned);
     try {
       if (cleaned) {
-        localStorage.setItem('crosshunt_qr_scan_base', cleaned);
+        localStorage.setItem('cruisehunt_qr_scan_base', cleaned);
       } else {
+        localStorage.removeItem('cruisehunt_qr_scan_base');
         localStorage.removeItem('crosshunt_qr_scan_base');
       }
     } catch {}
@@ -123,7 +124,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               <span className="text-[10px] tracking-widest font-mono uppercase text-[#38bdf8] block font-bold">
                 OFFICIAL DIGITAL BOARDING PASS
               </span>
-              <h2 className="text-xl font-display font-black tracking-tight text-[#fff8dc]">CROSS-HUNT CRUISES & TRIPS</h2>
+              <h2 className="text-xl font-display font-black tracking-tight text-[#fff8dc]">CRUISE-HUNT CRUISES & TRIPS</h2>
             </div>
           </div>
 
@@ -377,6 +378,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
                         type="button"
                         onClick={() => {
                           setCustomScanBase('');
+                          localStorage.removeItem('cruisehunt_qr_scan_base');
                           localStorage.removeItem('crosshunt_qr_scan_base');
                           setShowConfig(false);
                         }}

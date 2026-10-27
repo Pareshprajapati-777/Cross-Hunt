@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DolphinAvatar3D } from './DolphinAvatar3D';
-import { CrossHuntChatModal } from './CrossHuntChatModal';
+import { CruiseHuntChatModal, CrossHuntChatModal } from './CrossHuntChatModal';
 import { Sparkles, MessageCircle, X } from 'lucide-react';
 
-export const CrossHuntAiWidget: React.FC = () => {
+export const CruiseHuntAiWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('cross_hunt_ai_open') === 'true';
+      return (sessionStorage.getItem('cruise_hunt_ai_open') || sessionStorage.getItem('cross_hunt_ai_open')) === 'true';
     } catch {
       return false;
     }
   });
   const [isMinimized, setIsMinimized] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('cross_hunt_ai_minimized') === 'true';
+      return (sessionStorage.getItem('cruise_hunt_ai_minimized') || sessionStorage.getItem('cross_hunt_ai_minimized')) === 'true';
     } catch {
       return false;
     }
@@ -23,7 +23,7 @@ export const CrossHuntAiWidget: React.FC = () => {
   // Sync state to sessionStorage for seamless resume across navigation / back button
   useEffect(() => {
     try {
-      sessionStorage.setItem('cross_hunt_ai_open', isOpen ? 'true' : 'false');
+      sessionStorage.setItem('cruise_hunt_ai_open', isOpen ? 'true' : 'false');
     } catch {
       // ignore
     }
@@ -31,7 +31,7 @@ export const CrossHuntAiWidget: React.FC = () => {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem('cross_hunt_ai_minimized', isMinimized ? 'true' : 'false');
+      sessionStorage.setItem('cruise_hunt_ai_minimized', isMinimized ? 'true' : 'false');
     } catch {
       // ignore
     }
@@ -64,8 +64,12 @@ export const CrossHuntAiWidget: React.FC = () => {
       setIsMinimized(false);
       setShowTooltip(false);
     };
+    window.addEventListener('open-cruise-hunt-ai', handleOpenAi);
     window.addEventListener('open-cross-hunt-ai', handleOpenAi);
-    return () => window.removeEventListener('open-cross-hunt-ai', handleOpenAi);
+    return () => {
+      window.removeEventListener('open-cruise-hunt-ai', handleOpenAi);
+      window.removeEventListener('open-cross-hunt-ai', handleOpenAi);
+    };
   }, []);
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -109,7 +113,7 @@ export const CrossHuntAiWidget: React.FC = () => {
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
 
     if (position) {
-      localStorage.setItem('cross_hunt_dolphin_pos', JSON.stringify(position));
+      localStorage.setItem('cruise_hunt_dolphin_pos', JSON.stringify(position));
     }
 
     // If user clicked without dragging, toggle chat open / resume
@@ -207,7 +211,7 @@ export const CrossHuntAiWidget: React.FC = () => {
             >
               <img
                 src="/dolphin_icon_transparent.png"
-                alt="Cross-Hunt AI"
+                alt="Cruise-Hunt AI"
                 className="w-20 h-20 object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-300 select-none pointer-events-none"
               />
               <div className="absolute inset-2 bg-sky-400/25 rounded-full blur-md group-hover:bg-sky-400/45 transition-all pointer-events-none" />
@@ -224,7 +228,7 @@ export const CrossHuntAiWidget: React.FC = () => {
       {/* ============================================================== */}
       {/* 2. CHAT MODAL WINDOW                                           */}
       {/* ============================================================== */}
-      <CrossHuntChatModal
+      <CruiseHuntChatModal
         isOpen={isOpen}
         onClose={handleCloseChat}
         onMinimize={handleMinimizeChat}
@@ -234,3 +238,5 @@ export const CrossHuntAiWidget: React.FC = () => {
     </>
   );
 };
+
+export const CrossHuntAiWidget = CruiseHuntAiWidget;

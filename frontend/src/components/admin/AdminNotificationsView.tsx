@@ -60,7 +60,7 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [actionLink, setActionLink] = useState('');
-  const [senderName, setSenderName] = useState('Chief Marine Officer - Cross Hunt');
+  const [senderName, setSenderName] = useState('Chief Marine Officer - Cruise Hunt');
 
   // Coupon / Promo Code State for Special Offer / Deal
   const [promoCode, setPromoCode] = useState('FESTIVE20');
@@ -149,7 +149,7 @@ export const AdminNotificationsView: React.FC<AdminNotificationsViewProps> = ({
     } else {
       setNotifType('ANNOUNCEMENT');
       setTitle('New 85-Foot Luxury Flybridge Cruiser Added to Mumbai Fleet');
-      setMessage('Cross Hunt is thrilled to announce the arrival of "Oceanic Sovereign" at Gateway Jetty, equipped with master stateroom, jacuzzi lounge deck, and live BBQ kitchen.');
+      setMessage('Cruise Hunt is thrilled to announce the arrival of "Oceanic Sovereign" at Gateway Jetty, equipped with master stateroom, jacuzzi lounge deck, and live BBQ kitchen.');
       setActionLink('/explore');
       setSenderName('Executive Platform Management');
     }

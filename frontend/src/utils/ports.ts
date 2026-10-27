@@ -289,7 +289,7 @@ export function getPortDetails(
     country: 'India',
     lat: 18.9482,
     lng: 72.8465,
-    reportingAdvice: 'Arrive 60-90 minutes prior to departure with your official Cross Hunt Boarding Pass.',
+    reportingAdvice: 'Arrive 60-90 minutes prior to departure with your official Cruise Hunt Boarding Pass.',
     amenities: ['Boarding Concourse', 'Luggage Assistance', 'Tourist Help Desk'],
     parkingInfo: 'Terminal public & valet parking adjacent to the jetty.',
   };

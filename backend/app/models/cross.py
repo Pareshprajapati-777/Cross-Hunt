@@ -129,7 +129,7 @@ class Cross(Base):
             return self.operator.name
         if self.owner:
             return self.owner.full_name
-        return "Cross-Hunt Fleet"
+        return "Cruise-Hunt Fleet"
 
     @property
     def display_capacity_text(self) -> str:
@@ -213,6 +213,7 @@ class Cross(Base):
 
 
 # Backward compatibility aliases
+Cruise = Cross
 Ship = Cross
 Vessel = Cross
 

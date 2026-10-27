@@ -159,7 +159,7 @@ export const OpenDesignDeckShowcase: React.FC<OpenDesignDeckShowcaseProps> = ({
                   />
                   <line x1="70" y1="268" x2="960" y2="268" stroke="#0284c7" strokeWidth="1.5" opacity="0.6" />
                   <text x="148" y="252" fill="#94a3b8" fontSize="12" letterSpacing="4" fontFamily="Jost, sans-serif">
-                    CHV MERIDIAN · CROSS HUNT FLEET
+                    CHV MERIDIAN · CRUISE HUNT FLEET
                   </text>
 
                   {/* Funnel */}

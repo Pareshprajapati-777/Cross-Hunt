@@ -1,4 +1,4 @@
-# 🚢 Cross Hunt — Luxury Cruise & Maritime Experience Booking Platform
+# 🚢 Cruise Hunt — Luxury Cruise & Maritime Experience Booking Platform
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Pytest-31%20Passed-449C44?style=for-the-badge&logo=pytest&logoColor=white" alt="Pytest">
 </p>
 
-> 🌊 **Cross-Hunt** is an enterprise-grade, full-stack maritime booking and fleet management ecosystem. It seamlessly bridges ocean cruise travelers, luxury private charter organizers, extreme water sports operators, and platform administrators into a unified, high-performance platform.
+> 🌊 **Cruise-Hunt** is an enterprise-grade, full-stack maritime booking and fleet management ecosystem. It seamlessly bridges ocean cruise travelers, luxury private charter organizers, extreme water sports operators, and platform administrators into a unified, high-performance platform.
 
 ---
 
@@ -45,7 +45,7 @@
 
 ## 🌟 Executive Overview
 
-Cross-Hunt is engineered to solve the complex operational logistics of the maritime tourism and water sports industry:
+Cruise-Hunt is engineered to solve the complex operational logistics of the maritime tourism and water sports industry:
 - **For Travelers**: Intuitive discovery of luxury cruises, private island charters, shared public expeditions, and adrenaline-packed water activities with instant booking, digital boarding passes, and automated WhatsApp trip updates.
 - **For Vessel & Activity Owners**: Full fleet custody, crew supervision limits, safety gear auditing, multi-slot availability enforcement, booking schedule/weather rescheduling, and transparent net revenue accounting.
 - **For Platform Admins**: Real-time business oversight, fleet compliance review, commission settlement, automated marketing notifications, and customer complaint moderation.
@@ -85,12 +85,12 @@ The platform includes a pre-seeded SQLite database (`db.sqlite3`) populated with
 - **Icons**: Lucide React icons for crisp and consistent visual language.
 
 ```
-Cross-Hunt/
+Cruise-Hunt/
 ├── backend/
 │   ├── app/
 │   │   ├── core/           # Security, JWT tokens, PBKDF2 hashing, config
 │   │   ├── database/       # SQLAlchemy engine, session maker, base model
-│   │   ├── models/         # User, Cross, Activity, Staff, Equipment, Booking, Payout, etc.
+│   │   ├── models/         # User, Cruise/Cross, Activity, Staff, Equipment, Booking, Payout, etc.
 │   │   ├── schemas/        # Pydantic validation & response contracts
 │   │   ├── routers/        # 11 Modular REST endpoints (auth, operator, admin, activities, etc.)
 │   │   ├── services/       # WhatsApp gateway, notification engine, serializers
@@ -208,7 +208,7 @@ The Owner Dashboard (`/operator`) is a dedicated mission-control center for vess
 - Safety inspection log, mandatory testing intervals, and CE/ISO/SOLAS certifications.
 
 #### E. Multi-Tier Availability Engine
-Cross-Hunt implements a proprietary 4-dimensional constraint solver preventing double-booking and safety violations:
+Cruise-Hunt implements a proprietary 4-dimensional constraint solver preventing double-booking and safety violations:
 1. **Dimension 1 — Slot Headroom**: Does the time slot have sufficient available spots based on existing active bookings?
 2. **Dimension 2 — Vessel Capacity**: Does the assigned boat have sufficient passenger seats for the total group size?
 3. **Dimension 3 — Instructor Supervision Limit**: Is the instructor already assigned to a concurrent group? If so, does adding this new group violate their certified maximum participant ratio?
@@ -284,12 +284,12 @@ Located at `/verify`, this dedicated terminal serves harbor gate staff and boat 
 
 ## 🧮 Financial Waterfall & Payout Formula
 
-Cross-Hunt operates on an explicit, transparent 100% distribution waterfall with zero hidden charges:
+Cruise-Hunt operates on an explicit, transparent 100% distribution waterfall with zero hidden charges:
 
 ```mermaid
 graph TD
     A[Customer Gross Payment - 100%] --> B[Net Owner Earnings - 83%]
-    A --> C[Cross-Hunt Platform Commission - 15%]
+    A --> C[Cruise-Hunt Platform Commission - 15%]
     A --> D[Payment Gateway Processing - 2%]
     B --> E[Less: Approved Customer Refunds]
     E --> F[Disbursable Owner Bank Payout]
@@ -331,8 +331,8 @@ The SQLite database (`db.sqlite3`) uses clean SQLAlchemy 2.0 relational mappings
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/Pareshprajapati-777/Cross-Hunt.git
-cd Cross-Hunt
+git clone https://github.com/Pareshprajapati-777/Cruise-Hunt.git
+cd Cruise-Hunt
 ```
 
 ### 2. Dual-Service Startup (One Command)
@@ -416,10 +416,10 @@ python -m pytest tests/ -v
 
 **Paresh Prajapati**
 - 🐙 **GitHub Profile**: [@Pareshprajapati-777](https://github.com/Pareshprajapati-777)
-- 📦 **Project Repository**: [Cross-Hunt on GitHub](https://github.com/Pareshprajapati-777/Cross-Hunt)
+- 📦 **Project Repository**: [Cruise-Hunt on GitHub](https://github.com/Pareshprajapati-777/Cruise-Hunt)
 
 ---
 
 <p align="center">
-  🌊 <b>Cross-Hunt — Discover the Voyage. Reserve the Experience. Celebrate at Sea.</b> 🚢
+  🌊 <b>Cruise-Hunt — Discover the Voyage. Reserve the Experience. Celebrate at Sea.</b> 🚢
 </p>

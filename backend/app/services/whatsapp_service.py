@@ -140,10 +140,10 @@ def build_tour_reminder_text(booking: Booking) -> str:
         or (getattr(booking.cross.owner, "phone", None) if booking.cross.owner else None)
         or "+91 98200 12345"
     )
-    boarding_pass_url = f"https://cross-hunt.in/ticket/verify/{ticket_code}"
+    boarding_pass_url = f"https://cruise-hunt.in/ticket/verify/{ticket_code}"
 
     message = (
-        f"🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓\n\n"
+        f"🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓\n\n"
         f"Hello *{customer_name}*,\n\n"
         f"Your upcoming maritime voyage is scheduled to depart soon! Here are your official tour & boarding details:\n\n"
         f"📋 *Booking Ref:* #{booking_id}\n"
@@ -161,7 +161,7 @@ def build_tour_reminder_text(booking: Booking) -> str:
         f"📱 *Digital Boarding Pass:* {boarding_pass_url}\n"
         f"📞 *Ship Operator Assistance:* {operator_phone}\n\n"
         f"We wish you a wonderful and safe voyage across Indian waters!\n"
-        f"🌊 *Team Cross-Hunt India*"
+        f"🌊 *Team Cruise-Hunt India*"
     )
     return message
 

@@ -85,6 +85,14 @@ class Booking(Base):
     whatsapp_logs = relationship("WhatsAppMessageLog", back_populates="booking", cascade="all, delete-orphan")
 
     @property
+    def cruise(self):
+        return self.cross
+
+    @property
+    def cruise_id(self):
+        return self.cross_id
+
+    @property
     def extras_list(self) -> List[Any]:
         if not self.selected_extras:
             return []
@@ -151,7 +159,7 @@ class PlatformNotification(Base):
     target_audience: Mapped[str] = mapped_column(String(30), default="ALL_USERS", index=True, nullable=False)
     target_user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("accounts_user.id"), nullable=True)
     action_link: Mapped[str] = mapped_column(String(255), default="", nullable=False)
-    sender_name: Mapped[str] = mapped_column(String(100), default="Cross Hunt Admin", nullable=False)
+    sender_name: Mapped[str] = mapped_column(String(100), default="Cruise Hunt Admin", nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     recipients_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True, nullable=False)

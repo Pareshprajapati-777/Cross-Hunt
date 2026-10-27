@@ -488,7 +488,7 @@ export const AdminWhatsAppView: React.FC = () => {
           {/* Speech Bubble */}
           <div className="bg-white rounded-2xl rounded-tl-sm p-4 sm:p-5 shadow-sm text-xs sm:text-sm text-slate-900 space-y-3 border border-slate-200/60 leading-relaxed font-sans">
             <div className="font-bold text-slate-900 text-sm">
-              🚢 *CROSS-HUNT EMBARKATION REMINDER* ⚓
+              🚢 *CRUISE-HUNT EMBARKATION REMINDER* ⚓
             </div>
 
             <p>
@@ -515,13 +515,13 @@ export const AdminWhatsAppView: React.FC = () => {
             </div>
 
             <div className="space-y-1 text-xs pt-1 border-t border-slate-100">
-              <div>📱 *Digital Boarding Pass:* <span className="text-sky-600 underline">https://cross-hunt.in/ticket/verify/TK-B8F12A</span></div>
+              <div>📱 *Digital Boarding Pass:* <span className="text-sky-600 underline">https://cruise-hunt.in/ticket/verify/TK-B8F12A</span></div>
               <div>📞 *Ship Operator Assistance:* +91 98200 12345</div>
             </div>
 
             <p className="text-slate-600 pt-1 text-xs">
               We wish you a wonderful and safe trip across Indian waters!<br />
-              🌊 *Team Cross-Hunt India*
+              🌊 *Team Cruise-Hunt India*
             </p>
 
             <div className="text-right text-[10px] text-slate-400 font-mono">

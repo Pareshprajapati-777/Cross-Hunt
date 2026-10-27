@@ -226,7 +226,7 @@ export const ActivityDetailPage: React.FC = () => {
     const phone = digits.length === 10 ? `91${digits}` : digits;
     const custName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Guest';
     const boatText = activity.requires_boat && activity.host_ship_name ? ` (Host Vessel: ${activity.host_ship_name})` : '';
-    const msg = `Hello ${activity.owner_name},\nMy name is ${custName}.\nI am inquiring about booking "${activity.title}" on Cross Hunt${boatText}.\nLocation: ${activity.location}.\nStarting Price: ${formatINR(activity.starting_price || activity.price)}/person.\nPlease let me know about slot availability. Thank you!`;
+    const msg = `Hello ${activity.owner_name},\nMy name is ${custName}.\nI am inquiring about booking "${activity.title}" on Cruise Hunt${boatText}.\nLocation: ${activity.location}.\nStarting Price: ${formatINR(activity.starting_price || activity.price)}/person.\nPlease let me know about slot availability. Thank you!`;
     return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
   };
 

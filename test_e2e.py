@@ -6,7 +6,7 @@ BASE = 'http://127.0.0.1:8000'
 
 def run_e2e_verification():
     print("=" * 60)
-    print("CROSS-HUNT E2E VERIFICATION SUITE (CRUISE SHIPS + TOURS)")
+    print("CRUISE-HUNT E2E VERIFICATION SUITE (CRUISE SHIPS + TOURS)")
     print("=" * 60)
 
     s = requests.Session()

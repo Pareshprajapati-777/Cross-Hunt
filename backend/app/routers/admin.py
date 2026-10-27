@@ -1940,7 +1940,7 @@ async def create_admin_notification(
     target_audience = data.get('target_audience', 'ALL_USERS').strip()
     action_link = data.get('action_link', '').strip()
     target_user_id = data.get('target_user_id')
-    sender_name = data.get('sender_name', 'Cross Hunt Executive Admin').strip()
+    sender_name = data.get('sender_name', 'Cruise Hunt Executive Admin').strip()
 
     # Coupon & Promo Offer Parameters
     promo_code = data.get('promo_code', '').strip().upper()

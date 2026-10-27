@@ -524,7 +524,7 @@ export const OperatorDashboardPage: React.FC = () => {
     const ships = data?.my_ships || [];
     const shipPerf = ships
       .map((s) => {
-        const sBookings = bookings.filter((b) => (b as any).cross?.id === s.id || b.cruise_id === s.id || (b as any).cross_id === s.id);
+        const sBookings = bookings.filter((b) => (b as any).cruise?.id === s.id || (b as any).cross?.id === s.id || b.cruise_id === s.id || (b as any).cross_id === s.id);
         const sRev = sBookings
           .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
           .reduce((acc, b) => acc + (Number(b.total_price) || 0), 0);
@@ -2459,7 +2459,7 @@ export const OperatorDashboardPage: React.FC = () => {
               <input
                 type="email"
                 required
-                placeholder="operator@crosshunt.com"
+                placeholder="operator@cruisehunt.com"
                 value={profileEmail}
                 onChange={(e) => setProfileEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-[#051833] focus:outline-none focus:border-[#0284c7] focus:ring-2 focus:ring-[#0284c7]/15 transition font-medium"

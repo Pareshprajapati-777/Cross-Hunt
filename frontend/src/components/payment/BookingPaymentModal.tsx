@@ -55,9 +55,9 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'UPI_QR' | 'RAZORPAY'>('UPI_QR');
   const [config, setConfig] = useState<PaymentConfig>({
-    razorpay_key_id: 'rzp_test_CrossHuntMaritime',
-    merchant_name: 'Cross Hunt Maritime',
-    upi_id: 'crosshunt@razorpay',
+    razorpay_key_id: 'rzp_test_CruiseHuntMaritime',
+    merchant_name: 'Cruise Hunt Maritime',
+    upi_id: 'cruisehunt@razorpay',
     currency: 'INR',
     is_test_mode: true,
   });
@@ -105,12 +105,12 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Standard NPCI UPI URI string
-  const upiId = config.upi_id || 'crosshunt@razorpay';
-  const merchantName = config.merchant_name || 'Cross Hunt Maritime';
+  const upiId = config.upi_id || 'cruisehunt@razorpay';
+  const merchantName = config.merchant_name || 'Cruise Hunt Maritime';
   const cleanTitle = bookingSummary.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
   const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
     merchantName
-  )}&am=${bookingSummary.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('CrossHunt ' + cleanTitle)}`;
+  )}&am=${bookingSummary.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('CruiseHunt ' + cleanTitle)}`;
 
   const handleCopyUPI = () => {
     navigator.clipboard.writeText(upiId);
@@ -255,7 +255,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-serif font-black text-base text-white tracking-wide">
-                  Cross Hunt Secure Payment
+                  Cruise Hunt Secure Payment
                 </h3>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" />

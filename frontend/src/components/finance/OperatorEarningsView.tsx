@@ -152,7 +152,7 @@ export const OperatorEarningsView: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `CrossHunt_Owner_Revenue_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `CruiseHunt_Owner_Revenue_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -842,7 +842,7 @@ export const OperatorEarningsView: React.FC = () => {
                 Transparent Revenue Distribution Model
               </h3>
               <p className="text-xs text-[#102B46]/70 mt-1 max-w-2xl">
-                Every booking completed on Cross-Hunt distributes 100% of the customer gross payment into three transparent components with no hidden deductions.
+                Every booking completed on Cruise-Hunt distributes 100% of the customer gross payment into three transparent components with no hidden deductions.
               </p>
             </div>
 
@@ -869,7 +869,7 @@ export const OperatorEarningsView: React.FC = () => {
               <div className="p-6 rounded-3xl bg-[#082F5B] text-white shadow-lg space-y-3 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-sky-200">
-                    Pillar 2 • Cross-Hunt Platform
+                    Pillar 2 • Cruise-Hunt Platform
                   </span>
                   <span className="font-mono text-2xl font-black text-white">15.0%</span>
                 </div>

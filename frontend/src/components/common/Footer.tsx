@@ -65,7 +65,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) =>
                 <Anchor className="w-5 h-5 text-orange-500" />
               </div>
               <span className="font-heading-more text-lg text-[#051833] tracking-wider font-black">
-                CROSS <span className="text-[#0284c7]">HUNT</span>
+                CRUISE <span className="text-[#0284c7]">HUNT</span>
               </span>
             </div>
             <p className="text-[#475569] text-xs leading-relaxed font-medium">
@@ -196,7 +196,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate: propOnNavigate }) =>
 
         {/* Bottom Strip */}
         <div className="pt-8 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 font-medium">
-          <p>© {new Date().getFullYear()} Cross Hunt Inc. · Luxury Coastal Maritime Platform.</p>
+          <p>© {new Date().getFullYear()} Cruise Hunt Inc. · Luxury Coastal Maritime Platform.</p>
           <div className="flex items-center space-x-6 flex-wrap">
             <span className="hover:text-orange-600 cursor-pointer transition-colors">Safety Standards & Certified Crew</span>
             <span className="hover:text-orange-600 cursor-pointer transition-colors">Port Terminal Security</span>

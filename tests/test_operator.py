@@ -154,7 +154,7 @@ def test_staff_and_equipment_and_availability_engine(client):
         "license_number": "PADI-MSDT-771122",
         "certifications": "PADI Deep Diver Specialist, First Aid",
         "phone": "+91 99887 66554",
-        "email": "arjun.dive@crosshunt.com",
+        "email": "arjun.dive@cruisehunt.com",
         "max_supervision_limit": 4,
         "experience_years": 5,
         "status": "ON_DUTY",

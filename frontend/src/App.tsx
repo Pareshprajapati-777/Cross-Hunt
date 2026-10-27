@@ -33,7 +33,7 @@ const AdminDashboardPage = React.lazy(() => import('./pages/AdminDashboardPage')
 const TicketVerifyPage = React.lazy(() => import('./pages/TicketVerifyPage').then((m) => ({ default: m.TicketVerifyPage })));
 const AuthPage = React.lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.AuthPage })));
 
-import { CrossHuntAiWidget } from './components/ai/CrossHuntAiWidget';
+import { CruiseHuntAiWidget } from './components/ai/CrossHuntAiWidget';
 import { Loader2, Lock, ArrowRight } from 'lucide-react';
 
 
@@ -129,7 +129,7 @@ function OperatorRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (!user.is_operator && !user.is_admin && user.role !== 'OWNER' && user.role !== 'CROSS_OWNER') {
+  if (!user.is_operator && !user.is_admin && user.role !== 'OWNER' && user.role !== 'CRUISE_OWNER' && user.role !== 'CROSS_OWNER') {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
@@ -148,7 +148,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
   if (!user.is_admin && user.role !== 'ADMIN') {
-    if (user.is_operator || user.role === 'OWNER' || user.role === 'CROSS_OWNER') {
+    if (user.is_operator || user.role === 'OWNER' || user.role === 'CRUISE_OWNER' || user.role === 'CROSS_OWNER') {
       return <Navigate to="/owner" replace />;
     }
     return <Navigate to="/dashboard" replace />;
@@ -187,6 +187,7 @@ function GuestRoute({ mode }: { mode: 'login' | 'register' }) {
     if (
       loggedUser?.is_operator ||
       loggedUser?.role === 'OWNER' ||
+      loggedUser?.role === 'CRUISE_OWNER' ||
       loggedUser?.role === 'CROSS_OWNER'
     ) {
       return '/owner';
@@ -532,7 +533,7 @@ const AppContent: React.FC = () => {
       <LoginRequiredModal />
 
       {/* Personal AI Cruise Assistant Widget (3D Dolphin 🐬 + Chat Modal) */}
-      <CrossHuntAiWidget />
+      <CruiseHuntAiWidget />
 
       {/* Global Nautical Footer */}
       <Footer onNavigate={handleNavigate} />

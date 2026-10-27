@@ -35,13 +35,15 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { DolphinAvatar3D } from './DolphinAvatar3D';
 
-interface CrossHuntChatModalProps {
+export interface CruiseHuntChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMinimize: () => void;
   onResume?: () => void;
   isMinimized: boolean;
 }
+
+export type CrossHuntChatModalProps = CruiseHuntChatModalProps;
 
 const DEFAULT_SUGGESTIONS: AiSuggestion[] = [
   { id: 'my_ticket', label: '🎫 My Ticket', query: 'Mera ticket code check karo' },
@@ -52,7 +54,7 @@ const DEFAULT_SUGGESTIONS: AiSuggestion[] = [
   { id: 'website_guide', label: '🗺️ Website Guide', query: 'Private ship kaha book karu?' },
 ];
 
-export const CrossHuntChatModal: React.FC<CrossHuntChatModalProps> = ({
+export const CruiseHuntChatModal: React.FC<CruiseHuntChatModalProps> = ({
   isOpen,
   onClose,
   onMinimize,
@@ -65,7 +67,7 @@ export const CrossHuntChatModal: React.FC<CrossHuntChatModalProps> = ({
 
   const [messages, setMessages] = useState<AiChatMessage[]>(() => {
     try {
-      const saved = sessionStorage.getItem('cross_hunt_ai_chat');
+      const saved = sessionStorage.getItem('cruise_hunt_ai_chat') || sessionStorage.getItem('cross_hunt_ai_chat');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       // ignore
@@ -112,7 +114,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
   // Persist conversation in current browser session
   useEffect(() => {
     try {
-      sessionStorage.setItem('cross_hunt_ai_chat', JSON.stringify(messages));
+      sessionStorage.setItem('cruise_hunt_ai_chat', JSON.stringify(messages));
     } catch (e) {
       // ignore
     }
@@ -348,6 +350,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
     if (confirm('Clear current conversation history?')) {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       setActiveSpeakingMsgId(null);
+      sessionStorage.removeItem('cruise_hunt_ai_chat');
       sessionStorage.removeItem('cross_hunt_ai_chat');
       setMessages([
         {
@@ -388,7 +391,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
         </div>
         <div className="text-left pointer-events-none">
           <div className="text-xs font-bold leading-none flex items-center gap-1.5">
-            Cross-Hunt AI 🐬
+            Cruise-Hunt AI 🐬
           </div>
           <div className="text-[10px] text-sky-100 font-medium">Click to resume chat</div>
         </div>
@@ -416,7 +419,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-base tracking-tight leading-tight">Cross-Hunt AI</h3>
+              <h3 className="font-bold text-base tracking-tight leading-tight">Cruise-Hunt AI</h3>
               <span className="text-xs bg-sky-500/40 text-sky-100 px-1.5 py-0.5 rounded-full font-medium border border-sky-400/30">
                 Guide
               </span>
@@ -670,7 +673,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
                     {/* Footer Controls: Speak button & Copy */}
                     {!isUser && (
                       <div className="mt-2 pt-1 flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="text-[10px]">Cross-Hunt AI 🐬</span>
+                        <span className="text-[10px]">Cruise-Hunt AI 🐬</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => speakText(msg.content, msg.id!)}
@@ -721,7 +724,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
                 </div>
                 <div className="bg-white border border-slate-200/90 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-2 text-slate-500 text-xs">
                   <Loader2 className="w-4 h-4 text-sky-600 animate-spin" />
-                  <span>Cross-Hunt AI is thinking & finding cruises...</span>
+                  <span>Cruise-Hunt AI is thinking & finding cruises...</span>
                 </div>
               </div>
             )}
@@ -800,7 +803,7 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
               <span>Enter ↵ to send • Shift+Enter for new line</span>
               <span className="flex items-center gap-1 font-medium text-sky-700">
                 <Sparkles className="w-3 h-3 text-sky-500" />
-                Cross-Hunt Assistant v2.0
+                Cruise-Hunt Assistant v2.0
               </span>
             </div>
           </div>
@@ -809,3 +812,5 @@ How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)
     </div>
   );
 };
+
+export const CrossHuntChatModal = CruiseHuntChatModal;
