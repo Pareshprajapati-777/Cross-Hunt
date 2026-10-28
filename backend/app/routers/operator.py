@@ -12,7 +12,8 @@ import re
 import urllib.parse
 from pydantic import BaseModel, Field
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
+from backend.app.core.cache import cache
 from backend.app.dependencies.auth import get_current_user, require_operator
 from backend.app.models.user import User
 from backend.app.models.cross import Cross, ShipExtra
@@ -56,7 +57,12 @@ def get_operator_dashboard(
         bookings_query = db.query(Booking).order_by(desc(Booking.created_at), desc(Booking.id))
         tours = db.query(PublicTour).options(joinedload(PublicTour.ship), joinedload(PublicTour.operator)).order_by(desc(PublicTour.created_at), desc(PublicTour.id)).all()
     else:
-        vessels = db.query(Cross).options(*vessel_opts).filter(Cross.owner_id == current_user.id).order_by(desc(Cross.created_at), desc(Cross.id)).all()
+        vessels = db.query(Cross).options(*vessel_opts).filter(
+            or_(
+                Cross.owner_id == current_user.id,
+                Cross.operator_id == current_user.id
+            )
+        ).order_by(desc(Cross.created_at), desc(Cross.id)).all()
         vessel_ids = [v.id for v in vessels]
         owned_act_ids = [a.id for a in db.query(Activity.id).filter(Activity.owner_id == current_user.id).all()]
         owned_act_tokens = [f"ACT_{aid}" for aid in owned_act_ids]
@@ -318,7 +324,12 @@ def list_operator_ships(
     if is_admin_mode:
         ships = db.query(Cross).order_by(desc(Cross.created_at), desc(Cross.id)).all()
     else:
-        ships = db.query(Cross).filter(Cross.owner_id == current_user.id).order_by(desc(Cross.created_at), desc(Cross.id)).all()
+        ships = db.query(Cross).filter(
+            or_(
+                Cross.owner_id == current_user.id,
+                Cross.operator_id == current_user.id
+            )
+        ).order_by(desc(Cross.created_at), desc(Cross.id)).all()
     return {'ships': [serialize_cruise(s) for s in ships]}
 
 
@@ -393,6 +404,8 @@ async def create_operator_ship(
     db.add(ship)
     db.commit()
     db.refresh(ship)
+    checkpoint_db()
+    cache.clear()
 
     return {
         'success': True,
@@ -411,7 +424,8 @@ def get_operator_ship_detail(
     ship = db.query(Cross).filter(Cross.id == ship_id).first()
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found.")
-    if ship.owner_id != current_user.id and not current_user.is_superuser and current_user.role != 'ADMIN':
+    is_owner_or_operator = (ship.owner_id == current_user.id or ship.operator_id == current_user.id)
+    if not is_owner_or_operator and not current_user.is_superuser and current_user.role != 'ADMIN':
         raise HTTPException(status_code=403, detail="Forbidden. You do not own this vessel.")
     return {'ship': serialize_cruise(ship)}
 
@@ -427,7 +441,8 @@ async def update_operator_ship(
     ship = db.query(Cross).filter(Cross.id == ship_id).first()
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found.")
-    if ship.owner_id != current_user.id and not current_user.is_superuser and current_user.role != 'ADMIN':
+    is_owner_or_operator = (ship.owner_id == current_user.id or ship.operator_id == current_user.id)
+    if not is_owner_or_operator and not current_user.is_superuser and current_user.role != 'ADMIN':
         raise HTTPException(status_code=403, detail="Forbidden. You do not own this vessel.")
 
     try:
@@ -472,6 +487,8 @@ async def update_operator_ship(
 
     db.commit()
     db.refresh(ship)
+    checkpoint_db()
+    cache.clear()
     return {'success': True, 'message': 'Ship updated successfully.', 'ship': serialize_cruise(ship)}
 
 
@@ -512,11 +529,14 @@ def delete_operator_ship(
     ship = db.query(Cross).filter(Cross.id == ship_id).first()
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found.")
-    if ship.owner_id != current_user.id and not current_user.is_superuser and current_user.role != 'ADMIN':
+    is_owner_or_operator = (ship.owner_id == current_user.id or ship.operator_id == current_user.id)
+    if not is_owner_or_operator and not current_user.is_superuser and current_user.role != 'ADMIN':
         raise HTTPException(status_code=403, detail="Forbidden. You do not own this vessel.")
 
     db.delete(ship)
     db.commit()
+    checkpoint_db()
+    cache.clear()
     return {'success': True, 'message': 'Ship deleted successfully.'}
 
 
@@ -533,7 +553,13 @@ def get_operator_ship_availability(
     if is_admin_mode or current_user.is_superuser:
         ship = db.query(Cross).filter(Cross.id == ship_id).first()
     else:
-        ship = db.query(Cross).filter(Cross.id == ship_id, Cross.owner_id == current_user.id).first()
+        ship = db.query(Cross).filter(
+            Cross.id == ship_id,
+            or_(
+                Cross.owner_id == current_user.id,
+                Cross.operator_id == current_user.id
+            )
+        ).first()
 
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found.")
@@ -872,6 +898,8 @@ async def create_operator_tour(
     db.add(tour)
     db.commit()
     db.refresh(tour)
+    checkpoint_db()
+    cache.clear()
     return {'success': True, 'message': 'Public cruise tour published!', 'tour': serialize_tour(tour)}
 
 

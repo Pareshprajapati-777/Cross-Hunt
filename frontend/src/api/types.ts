@@ -172,6 +172,9 @@ export interface Cruise {
   review_count: number;
   operator_name?: string;
   operator_id?: number;
+  owner_id?: number;
+  owner_name?: string;
+  owner_email?: string;
   operator_phone?: string;
   operator_email?: string;
   operator_website?: string;

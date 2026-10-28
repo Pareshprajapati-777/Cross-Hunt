@@ -302,6 +302,56 @@ function tryGetFallbackData(endpoint: string): any | null {
       return { status: 'ok', framework: 'FastAPI', version: '1.0.0', fallback: true };
     }
 
+    // 12. Operator Dashboard & Ships fallback
+    if (cleanPath === '/api/operator/dashboard' || cleanPath === '/api/operator/ships') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('cruisehunt_operator_dashboard_')) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              try {
+                const parsed = JSON.parse(raw);
+                if (cleanPath === '/api/operator/ships') {
+                  return { ships: parsed.my_ships || parsed.vessels || [] };
+                }
+                return parsed;
+              } catch {}
+            }
+          }
+        }
+      }
+      const deepakShips = (CATALOG_FALLBACK.cruises?.cruises || []).filter(
+        (c: any) => c.operator_id === 24 || c.owner_id === 24 || c.operator_name === 'deepak' || c.management_name === 'deepak'
+      );
+      if (cleanPath === '/api/operator/ships') {
+        return { ships: deepakShips };
+      }
+      return {
+        stats: {
+          total_ships: deepakShips.length,
+          available_ships: deepakShips.length,
+          total_revenue: 0,
+          gross_revenue: 0,
+          owner_payout: 0,
+          platform_commission: 0,
+          active_bookings: 0,
+          completed_trips: 0,
+        },
+        my_ships: deepakShips,
+        vessels: deepakShips,
+        my_tours: [],
+        recent_bookings: [],
+        analytics: {
+          monthly_trend: [],
+          category_split: { private_count: 0, private_revenue: 0, private_percent: 0, tour_count: 0, tour_revenue: 0, tour_percent: 0 },
+          status_breakdown: { confirmed: 0, completed: 0, pending: 0, cancelled: 0, total: 0 },
+          ship_performance: [],
+          top_destinations: [],
+        }
+      };
+    }
+
     return null;
   } catch {
     return null;

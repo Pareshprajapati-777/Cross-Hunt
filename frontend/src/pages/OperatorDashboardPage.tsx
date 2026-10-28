@@ -79,8 +79,16 @@ type OperatorTab =
 export const OperatorDashboardPage: React.FC = () => {
   const { user, refreshUser, updateUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [data, setData] = useState<OperatorDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dashboardStorageKey = `cruisehunt_operator_dashboard_${user?.id || 'current'}`;
+  const [data, setData] = useState<OperatorDashboardData | null>(() => {
+    try {
+      const cached = localStorage.getItem(`cruisehunt_operator_dashboard_${user?.id || 'current'}`) ||
+                     localStorage.getItem('cruisehunt_operator_dashboard_current');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState(!data);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OperatorTab>('overview');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -406,13 +414,17 @@ export const OperatorDashboardPage: React.FC = () => {
           if (aTime !== bTime) return aTime - bTime;
           return (Number(b.id) || 0) - (Number(a.id) || 0);
         });
-        setData({
+        const nextData = {
           ...res,
           my_ships: sortedShips,
           vessels: sortedShips,
           my_tours: sortedTours,
           recent_bookings: sortedBookings,
-        });
+        };
+        setData(nextData);
+        try {
+          localStorage.setItem(dashboardStorageKey, JSON.stringify(nextData));
+        } catch {}
         if (sortedShips.length > 0) {
           if (!tourForm.ship_id) {
             setTourForm((prev) => ({ ...prev, ship_id: sortedShips[0].id.toString() }));
@@ -601,7 +613,43 @@ export const OperatorDashboardPage: React.FC = () => {
         duration_days: shipForm.duration_days ? Number(shipForm.duration_days) : 3,
         facilities: shipForm.facilities ? shipForm.facilities.split(',').map((f) => f.trim()).filter(Boolean) : ['Wi-Fi', 'Fine Dining', 'Sun Deck'],
       };
-      await createOperatorShip(payload as any);
+      const res = await createOperatorShip(payload as any);
+      const createdShip = res.ship || ({
+        id: Date.now(),
+        ...payload,
+        name: payload.name,
+        operational_status: 'AVAILABLE',
+        is_active: true,
+        is_approved: true,
+      } as any);
+
+      setData((prev) => {
+        const existingShips = prev?.my_ships || [];
+        const filtered = existingShips.filter((s: any) => s.id !== createdShip.id && s.name !== createdShip.name);
+        const updatedShips = [createdShip, ...filtered];
+        const nextState: OperatorDashboardData = {
+          ...(prev || ({} as any)),
+          stats: {
+            ...(prev?.stats || {
+              total_ships: 0,
+              active_bookings: 0,
+              completed_trips: 0,
+              total_revenue: 0,
+            }),
+            total_ships: updatedShips.length,
+            available_ships: updatedShips.filter((s: any) => s.operational_status === 'AVAILABLE').length,
+          },
+          my_ships: updatedShips,
+          vessels: updatedShips,
+          my_tours: prev?.my_tours || [],
+          recent_bookings: prev?.recent_bookings || [],
+        };
+        try {
+          localStorage.setItem(dashboardStorageKey, JSON.stringify(nextState));
+        } catch {}
+        return nextState;
+      });
+
       setShowAddShipModal(false);
       setImagePreview('');
       setShipForm(initialShipForm);

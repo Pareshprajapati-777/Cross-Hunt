@@ -7,7 +7,8 @@ from decimal import Decimal
 import json
 import re
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
+from backend.app.core.cache import cache
 from backend.app.dependencies.auth import get_current_user, require_admin
 from backend.app.models.user import User
 from backend.app.models.operator import Operator
@@ -1164,11 +1165,13 @@ async def admin_ship_action(
             image_url=data.get('image_url', ''),
             is_active=bool(data.get('is_active', True)),
             is_approved=True,
-            owner_id=current_user.id if current_user.role in ['OWNER', 'CROSS_OWNER'] else None
+            owner_id=int(data['owner_id']) if data.get('owner_id') else (current_user.id if current_user.role in ['OWNER', 'CROSS_OWNER'] else None)
         )
         db.add(new_ship)
         db.commit()
         db.refresh(new_ship)
+        checkpoint_db()
+        cache.clear()
         return {
             'success': True,
             'message': f'Ship {new_ship.name} registered into platform fleet.',
@@ -1187,15 +1190,21 @@ async def admin_ship_action(
         ship.is_approved = True
         ship.is_active = True
         db.commit()
+        checkpoint_db()
+        cache.clear()
         return {'success': True, 'is_approved': True, 'is_active': True, 'message': f'Ship {ship.name} approved for public booking.'}
     elif action in ['revoke', 'revoke_approval']:
         # Revoke must NOT change is_approved; it should set is_active to False (unactive)
         ship.is_active = False
         db.commit()
+        checkpoint_db()
+        cache.clear()
         return {'success': True, 'is_approved': ship.is_approved, 'is_active': False, 'message': f'Ship {ship.name} revoked and set to inactive.'}
     elif action == 'toggle_active':
         ship.is_active = not ship.is_active
         db.commit()
+        checkpoint_db()
+        cache.clear()
         return {'success': True, 'is_active': ship.is_active, 'message': f"Ship {ship.name} is now {'Active' if ship.is_active else 'Deactivated'}."}
     elif action == 'update_ship':
         if 'name' in data and data['name'].strip():
@@ -1217,16 +1226,22 @@ async def admin_ship_action(
             ship.description = data['description']
         if 'image_url' in data and data['image_url'].strip():
             ship.image_url = data['image_url'].strip()
+        if 'owner_id' in data:
+            ship.owner_id = int(data['owner_id']) if data['owner_id'] else None
         if 'is_active' in data:
             ship.is_active = bool(data['is_active'])
         if 'is_approved' in data:
             ship.is_approved = bool(data['is_approved'])
         db.commit()
+        checkpoint_db()
+        cache.clear()
         return {'success': True, 'message': f'Ship {ship.name} updated successfully.'}
     elif action == 'delete':
         ship_name = ship.name
         db.delete(ship)
         db.commit()
+        checkpoint_db()
+        cache.clear()
         return {'success': True, 'message': f'Ship {ship_name} deleted from database.'}
 
     raise HTTPException(status_code=400, detail="Invalid action requested.")
