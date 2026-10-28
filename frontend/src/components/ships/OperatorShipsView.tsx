@@ -75,7 +75,15 @@ const PRESET_ACTIVITIES_LIST = [
   'Group Boat Trips'
 ];
 
-type OperationalStatus = 'AVAILABLE' | 'BOOKED' | 'UNDER_MAINTENANCE' | 'INACTIVE' | 'PENDING_APPROVAL';
+export type OperationalStatus = 'AVAILABLE' | 'BOOKED' | 'UNDER_MAINTENANCE' | 'INACTIVE';
+
+export const getNormalizedShipStatus = (s: Cruise): OperationalStatus => {
+  const raw = String(s.operational_status || s.availability_status || '').toUpperCase();
+  if (raw === 'BOOKED') return 'BOOKED';
+  if (raw === 'UNDER_MAINTENANCE' || raw === 'MAINTENANCE') return 'UNDER_MAINTENANCE';
+  if (raw === 'INACTIVE' || s.is_active === false) return 'INACTIVE';
+  return 'AVAILABLE';
+};
 
 export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, onRefresh }) => {
   const [search, setSearch] = useState('');
@@ -143,10 +151,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
 
   const handleOpenEditModal = (ship: Cruise) => {
     setEditingShip(ship);
-    const opStatus: OperationalStatus =
-      (ship.operational_status as any) ||
-      (ship.availability_status as any) ||
-      (ship.is_active ? 'AVAILABLE' : 'UNDER_MAINTENANCE');
+    const opStatus = getNormalizedShipStatus(ship);
 
     setForm({
       name: ship.name,
@@ -235,7 +240,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
       description: form.description.trim(),
       facilities: form.facilities,
       is_active: form.operational_status !== 'INACTIVE',
-      is_approved: form.operational_status !== 'PENDING_APPROVAL',
+      is_approved: true,
     };
 
     try {
@@ -260,7 +265,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
       await updateOperatorShip(ship.id, {
         availability_status: newStatus,
         is_active: newStatus !== 'INACTIVE',
-        is_approved: newStatus !== 'PENDING_APPROVAL',
+        is_approved: true,
       } as any);
       onRefresh();
     } catch (err: any) {
@@ -296,10 +301,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
 
   // Filtered ships
   const filteredShips = myShips.filter((s) => {
-    const opStatus =
-      s.operational_status ||
-      (s.availability_status as any) ||
-      (s.is_active ? 'AVAILABLE' : 'UNDER_MAINTENANCE');
+    const opStatus = getNormalizedShipStatus(s);
 
     const matchesStatus = statusFilter === 'ALL' || opStatus === statusFilter;
     const matchesSearch =
@@ -314,7 +316,8 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
   });
 
   const getStatusBadge = (status?: string) => {
-    switch (status) {
+    const norm = status ? status.toUpperCase() : 'AVAILABLE';
+    switch (norm) {
       case 'AVAILABLE':
         return (
           <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase inline-flex items-center gap-1.5 shadow-xs">
@@ -342,13 +345,6 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
           <span className="px-3 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-300 uppercase inline-flex items-center gap-1.5 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             Inactive
-          </span>
-        );
-      case 'PENDING_APPROVAL':
-        return (
-          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-sky-50 text-sky-800 border border-sky-200 uppercase inline-flex items-center gap-1.5 shadow-xs">
-            <Clock className="w-3 h-3 text-sky-600" />
-            Pending Approval
           </span>
         );
       default:
@@ -440,15 +436,14 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
           </span>
         </div>
 
-        {/* 5 Vessel Status Filters */}
+        {/* 4 Vessel Status Filters */}
         <div className="flex flex-wrap items-center gap-2">
           {[
             { id: 'ALL', label: 'All Fleet Ships', count: myShips.length },
-            { id: 'AVAILABLE', label: 'Available', count: myShips.filter((s) => (s.operational_status || s.availability_status) === 'AVAILABLE').length },
-            { id: 'BOOKED', label: 'Booked', count: myShips.filter((s) => (s.operational_status || s.availability_status) === 'BOOKED').length },
-            { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance', count: myShips.filter((s) => (s.operational_status || s.availability_status) === 'UNDER_MAINTENANCE' || s.availability_status === 'MAINTENANCE').length },
-            { id: 'INACTIVE', label: 'Inactive', count: myShips.filter((s) => (s.operational_status || s.availability_status) === 'INACTIVE' || !s.is_active).length },
-            { id: 'PENDING_APPROVAL', label: 'Pending Approval', count: myShips.filter((s) => (s.operational_status || s.availability_status) === 'PENDING_APPROVAL' || !s.is_approved).length },
+            { id: 'AVAILABLE', label: 'Available', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'AVAILABLE').length },
+            { id: 'BOOKED', label: 'Booked', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'BOOKED').length },
+            { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'UNDER_MAINTENANCE').length },
+            { id: 'INACTIVE', label: 'Inactive', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'INACTIVE').length },
           ].map((chip) => {
             const isActive = statusFilter === chip.id;
             return (
@@ -487,10 +482,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredShips.map((ship) => {
-            const opStatus: OperationalStatus =
-              (ship.operational_status as any) ||
-              (ship.availability_status as any) ||
-              (ship.is_active ? 'AVAILABLE' : 'UNDER_MAINTENANCE');
+            const opStatus = getNormalizedShipStatus(ship);
 
             // Find activities hosted on this ship
             const hostedActs = operatorActivities.filter((a) => a.host_ship_id === ship.id);
@@ -618,7 +610,6 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
                       <option value="BOOKED">Booked</option>
                       <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                       <option value="INACTIVE">Inactive</option>
-                      <option value="PENDING_APPROVAL">Pending Approval</option>
                     </select>
                   </div>
 
@@ -883,7 +874,6 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
                       <option value="BOOKED">Booked</option>
                       <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                       <option value="INACTIVE">Inactive</option>
-                      <option value="PENDING_APPROVAL">Pending Approval</option>
                     </select>
                   </div>
 
