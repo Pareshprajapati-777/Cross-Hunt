@@ -55,11 +55,11 @@ const PRESET_ACTIVITIES = [
   // 2. Fishing Experiences
   { id: 'DEEP_SEA_FISHING', label: 'Deep-Sea Fishing', group: 'Fishing Experiences', image: '/static/images/activities/deep_sea_fishing.jpg', defaultPrice: 5500, pricingType: 'PER_PERSON', duration: 180, minParticipants: 2, capacity: 6, instructor: true, equipment: true },
   { id: 'BOAT_FISHING', label: 'Boat Fishing', group: 'Fishing Experiences', image: '/static/images/activities/boat_fishing.jpg', defaultPrice: 3200, pricingType: 'PER_PERSON', duration: 120, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
-  { id: 'FISHING_CHARTER', label: 'Fishing Charter', group: 'Fishing Experiences', image: '/static/images/activities/fishing_charter.jpg', defaultPrice: 15000, pricingType: 'PER_SESSION', duration: 240, minParticipants: 1, capacity: 8, instructor: true, equipment: true },
+  { id: 'FISHING_CHARTER', label: 'Fishing Charter', group: 'Fishing Experiences', image: '/static/images/activities/fishing_charter.jpg', defaultPrice: 15000, pricingType: 'PER_PERSON', duration: 240, minParticipants: 1, capacity: 8, instructor: true, equipment: true },
   // 3. Boat & Ship Experiences
-  { id: 'YACHT_RENTAL', label: 'Yacht Rental', group: 'Boat & Ship Experiences', image: '/static/images/activities/yacht_rental.jpg', defaultPrice: 16500, pricingType: 'PER_SESSION', duration: 120, minParticipants: 1, capacity: 12, instructor: false, equipment: true },
+  { id: 'YACHT_RENTAL', label: 'Yacht Rental', group: 'Boat & Ship Experiences', image: '/static/images/activities/yacht_rental.jpg', defaultPrice: 16500, pricingType: 'PER_PERSON', duration: 120, minParticipants: 1, capacity: 12, instructor: false, equipment: true },
   { id: 'SPEEDBOAT_RIDE', label: 'Speedboat Ride', group: 'Boat & Ship Experiences', image: '/static/images/activities/speedboat_ride.jpg', defaultPrice: 2500, pricingType: 'PER_PERSON', duration: 45, minParticipants: 1, capacity: 6, instructor: true, equipment: true },
-  { id: 'PRIVATE_BOAT_CHARTER', label: 'Private Boat Charter', group: 'Boat & Ship Experiences', image: '/static/images/activities/private_boat_charter.jpg', defaultPrice: 12000, pricingType: 'PER_SESSION', duration: 180, minParticipants: 1, capacity: 10, instructor: true, equipment: true },
+  { id: 'PRIVATE_BOAT_CHARTER', label: 'Private Boat Charter', group: 'Boat & Ship Experiences', image: '/static/images/activities/private_boat_charter.jpg', defaultPrice: 12000, pricingType: 'PER_PERSON', duration: 180, minParticipants: 1, capacity: 10, instructor: true, equipment: true },
   { id: 'SUNSET_CRUISE', label: 'Sunset Cruise', group: 'Boat & Ship Experiences', image: '/static/images/activities/sunset_cruise.jpg', defaultPrice: 1800, pricingType: 'PER_PERSON', duration: 90, minParticipants: 1, capacity: 25, instructor: false, equipment: true },
   { id: 'GROUP_BOAT_TRIPS', label: 'Group Boat Trips', group: 'Boat & Ship Experiences', image: '/static/images/activities/group_boat_trips.jpg', defaultPrice: 1100, pricingType: 'PER_PERSON', duration: 120, minParticipants: 1, capacity: 20, instructor: false, equipment: true },
 ];
@@ -823,35 +823,18 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700">Pricing Model *</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, pricing_type: 'PER_PERSON' })}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                          form.pricing_type === 'PER_PERSON'
-                            ? 'bg-[#0284c7] text-white border-[#0284c7]'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        Per Person (₹/person)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, pricing_type: 'PER_SESSION' })}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                          form.pricing_type === 'PER_SESSION'
-                            ? 'bg-[#0284c7] text-white border-[#0284c7]'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        Per Session (₹/slot)
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, pricing_type: 'PER_PERSON' })}
+                      className="w-full py-2 px-3 rounded-xl text-xs font-bold border border-[#0284c7] bg-[#0284c7] text-white transition cursor-pointer"
+                    >
+                      Per Person (₹/person)
+                    </button>
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700">
-                      Rate Amount (₹ INR {form.pricing_type === 'PER_SESSION' ? 'Per Session' : 'Per Person'}) *
+                      Rate Amount (₹ INR Per Person) *
                     </label>
                     <input
                       type="number"
