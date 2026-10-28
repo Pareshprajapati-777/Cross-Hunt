@@ -119,7 +119,7 @@ def serialize_cruise(cruise) -> Dict[str, Any]:
         operational_status = "UNDER_MAINTENANCE"
     elif is_booked_today or cruise.availability_status == "BOOKED":
         operational_status = "BOOKED"
-    elif is_on_tour_today:
+    elif is_on_tour_today or cruise.availability_status in ("ON_TOUR", "TOUR"):
         operational_status = "ON_TOUR"
     else:
         operational_status = "AVAILABLE"

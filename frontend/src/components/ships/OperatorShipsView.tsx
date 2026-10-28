@@ -75,10 +75,11 @@ const PRESET_ACTIVITIES_LIST = [
   'Group Boat Trips'
 ];
 
-export type OperationalStatus = 'AVAILABLE' | 'BOOKED' | 'UNDER_MAINTENANCE' | 'INACTIVE';
+export type OperationalStatus = 'AVAILABLE' | 'ON_TOUR' | 'BOOKED' | 'UNDER_MAINTENANCE' | 'INACTIVE';
 
 export const getNormalizedShipStatus = (s: Cruise): OperationalStatus => {
   const raw = String(s.operational_status || s.availability_status || '').toUpperCase();
+  if (raw === 'ON_TOUR' || raw === 'TOUR') return 'ON_TOUR';
   if (raw === 'BOOKED') return 'BOOKED';
   if (raw === 'UNDER_MAINTENANCE' || raw === 'MAINTENANCE') return 'UNDER_MAINTENANCE';
   if (raw === 'INACTIVE' || s.is_active === false) return 'INACTIVE';
@@ -264,6 +265,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
     try {
       await updateOperatorShip(ship.id, {
         availability_status: newStatus,
+        operational_status: newStatus,
         is_active: newStatus !== 'INACTIVE',
         is_approved: true,
       } as any);
@@ -318,6 +320,14 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
   const getStatusBadge = (status?: string) => {
     const norm = status ? status.toUpperCase() : 'AVAILABLE';
     switch (norm) {
+      case 'ON_TOUR':
+      case 'TOUR':
+        return (
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200 uppercase inline-flex items-center gap-1.5 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            On Tour
+          </span>
+        );
       case 'AVAILABLE':
         return (
           <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase inline-flex items-center gap-1.5 shadow-xs">
@@ -436,11 +446,12 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
           </span>
         </div>
 
-        {/* 4 Vessel Status Filters */}
+        {/* 5 Vessel Status Filters */}
         <div className="flex flex-wrap items-center gap-2">
           {[
             { id: 'ALL', label: 'All Fleet Ships', count: myShips.length },
             { id: 'AVAILABLE', label: 'Available', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'AVAILABLE').length },
+            { id: 'ON_TOUR', label: 'On Tour', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'ON_TOUR').length },
             { id: 'BOOKED', label: 'Booked', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'BOOKED').length },
             { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'UNDER_MAINTENANCE').length },
             { id: 'INACTIVE', label: 'Inactive', count: myShips.filter((s) => getNormalizedShipStatus(s) === 'INACTIVE').length },
@@ -607,6 +618,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
                       className="px-2.5 py-1 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-[#0284c7]"
                     >
                       <option value="AVAILABLE">Available</option>
+                      <option value="ON_TOUR">On Tour</option>
                       <option value="BOOKED">Booked</option>
                       <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                       <option value="INACTIVE">Inactive</option>
@@ -871,6 +883,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#0284c7] bg-white font-bold"
                     >
                       <option value="AVAILABLE">Available</option>
+                      <option value="ON_TOUR">On Tour</option>
                       <option value="BOOKED">Booked</option>
                       <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                       <option value="INACTIVE">Inactive</option>
