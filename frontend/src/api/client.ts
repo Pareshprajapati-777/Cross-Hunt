@@ -127,6 +127,7 @@ export function getFullApiUrl(endpoint: string): string {
 
 import { apiCache, clearApiCache } from '../utils/apiCache';
 import { CATALOG_FALLBACK } from '../data/catalogFallback';
+import { getCustomShips, getCustomActivities } from '../utils/persistentFleetStore';
 export { clearApiCache };
 
 export interface ApiRequestOptions extends RequestInit {
@@ -269,7 +270,16 @@ function tryGetFallbackData(endpoint: string): any | null {
 
     // 6. Water sports activities (/api/activities)
     if (cleanPath === '/api/activities') {
-      return CATALOG_FALLBACK.activities || { activities: [], total: 0, categories: [] };
+      const fallback = CATALOG_FALLBACK.activities || { activities: [], total: 0, categories: [] };
+      const custom = getCustomActivities();
+      const merged = [...custom, ...(fallback.activities || []).filter((fa: any) => !custom.some((ca) => ca.id === fa.id || ca.title === fa.title))];
+      return { ...fallback, activities: merged, total: merged.length };
+    }
+
+    // 6b. Operator own activities (/api/activities/operator/my-activities)
+    if (cleanPath === '/api/activities/operator/my-activities') {
+      const custom = getCustomActivities();
+      return { activities: custom, total: custom.length };
     }
 
     // 7. Activity detail (/api/activities/:slug)
@@ -321,16 +331,21 @@ function tryGetFallbackData(endpoint: string): any | null {
           }
         }
       }
-      const deepakShips = (CATALOG_FALLBACK.cruises?.cruises || []).filter(
+      const rawDeepakShips = (CATALOG_FALLBACK.cruises?.cruises || []).filter(
         (c: any) => c.operator_id === 24 || c.owner_id === 24 || c.operator_name === 'deepak' || c.management_name === 'deepak'
       );
+      const customShips = getCustomShips();
+      const deepakShips = [
+        ...customShips,
+        ...rawDeepakShips.filter((ds: any) => !customShips.some((cs) => cs.id === ds.id || cs.name.trim().toLowerCase() === ds.name.trim().toLowerCase()))
+      ];
       if (cleanPath === '/api/operator/ships') {
         return { ships: deepakShips };
       }
       return {
         stats: {
           total_ships: deepakShips.length,
-          available_ships: deepakShips.length,
+          available_ships: deepakShips.filter((s: any) => s.operational_status === 'AVAILABLE').length,
           total_revenue: 0,
           gross_revenue: 0,
           owner_payout: 0,

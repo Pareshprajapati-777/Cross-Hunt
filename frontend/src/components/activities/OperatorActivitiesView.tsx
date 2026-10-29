@@ -35,6 +35,12 @@ import {
   deleteActivity
 } from '../../api/activities';
 import { formatINR } from '../../utils/currency';
+import {
+  mergeWithCustomActivities,
+  saveCustomActivity,
+  removeCustomActivity,
+  syncCustomItemsToBackend
+} from '../../utils/persistentFleetStore';
 
 interface OperatorActivitiesViewProps {
   myShips: Array<{ id: number; name: string; location?: string; departure_port?: string; capacity?: number; image?: string }>;
@@ -112,9 +118,12 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
     setLoading(true);
     try {
       const res = await getOperatorActivities();
-      setActivities(res.activities || []);
+      const merged = mergeWithCustomActivities(res.activities || []);
+      setActivities(merged);
     } catch (err) {
       console.error('Failed to load operator activities:', err);
+      // Fallback to local custom activities
+      setActivities(mergeWithCustomActivities([]));
     } finally {
       setLoading(false);
     }
@@ -122,6 +131,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
 
   useEffect(() => {
     fetchActivities();
+    syncCustomItemsToBackend();
   }, []);
 
   const handleOpenAddModal = () => {
@@ -251,10 +261,19 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
 
     try {
       if (editingActivity) {
-        await updateActivity(editingActivity.id, payload as any);
+        const res = await updateActivity(editingActivity.id, payload as any);
+        saveCustomActivity(res || ({ ...editingActivity, ...payload } as any));
         setActionMessage({ text: `Activity "${payload.title}" updated successfully!` });
       } else {
-        await createActivity(payload as any);
+        const res = await createActivity(payload as any);
+        const createdAct: ActivityItem = res || ({
+          id: Date.now(),
+          ...payload,
+          rating: 5,
+          reviews_count: 0,
+          is_active: payload.is_active ?? true,
+        } as any);
+        saveCustomActivity(createdAct);
         setActionMessage({ text: `Activity "${payload.title}" published successfully!` });
       }
       setShowModal(false);
@@ -268,9 +287,11 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
 
   const handleToggleActive = async (act: ActivityItem) => {
     try {
+      const updated = { ...act, is_active: !act.is_active };
+      saveCustomActivity(updated);
       await updateActivity(act.id, { is_active: !act.is_active });
       setActivities((prev) =>
-        prev.map((a) => (a.id === act.id ? { ...a, is_active: !a.is_active } : a))
+        prev.map((a) => (a.id === act.id ? updated : a))
       );
     } catch (err: any) {
       alert(err.message || 'Failed to toggle active status');
@@ -280,6 +301,7 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
   const handleDelete = async (act: ActivityItem) => {
     if (!window.confirm(`Are you sure you wish to delete activity "${act.title}"?`)) return;
     try {
+      removeCustomActivity(act.id);
       await deleteActivity(act.id);
       setActivities((prev) => prev.filter((a) => a.id !== act.id));
     } catch (err: any) {

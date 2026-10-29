@@ -58,6 +58,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
+import { mergeWithCustomShips, saveCustomShip, syncCustomItemsToBackend } from '../utils/persistentFleetStore';
 import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
 import { OperatorStaffEquipmentView } from '../components/staff-equipment/OperatorStaffEquipmentView';
@@ -414,10 +415,25 @@ export const OperatorDashboardPage: React.FC = () => {
           if (aTime !== bTime) return aTime - bTime;
           return (Number(b.id) || 0) - (Number(a.id) || 0);
         });
+        const mergedShips = mergeWithCustomShips(sortedShips);
         const nextData = {
           ...res,
-          my_ships: sortedShips,
-          vessels: sortedShips,
+          stats: {
+            ...(res.stats || {
+              total_ships: 0,
+              available_ships: 0,
+              booked_ships: 0,
+              on_tour_ships: 0,
+              maintenance_ships: 0,
+              active_bookings: 0,
+              completed_trips: 0,
+              total_revenue: 0,
+            }),
+            total_ships: mergedShips.length,
+            available_ships: mergedShips.filter((s: any) => s.operational_status === 'AVAILABLE').length,
+          },
+          my_ships: mergedShips,
+          vessels: mergedShips,
           my_tours: sortedTours,
           recent_bookings: sortedBookings,
         };
@@ -450,6 +466,7 @@ export const OperatorDashboardPage: React.FC = () => {
   useEffect(() => {
     fetchDashboard();
     fetchReviews();
+    syncCustomItemsToBackend();
   }, []);
 
   // Fetch reviews when reviews tab is opened
@@ -622,6 +639,8 @@ export const OperatorDashboardPage: React.FC = () => {
         is_active: true,
         is_approved: true,
       } as any);
+
+      saveCustomShip(createdShip);
 
       setData((prev) => {
         const existingShips = prev?.my_ships || [];

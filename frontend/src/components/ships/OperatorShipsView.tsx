@@ -41,6 +41,7 @@ import {
 } from '../../api/dashboards';
 import { getOperatorActivities } from '../../api/activities';
 import { formatINR } from '../../utils/currency';
+import { saveCustomShip, removeCustomShip } from '../../utils/persistentFleetStore';
 
 interface OperatorShipsViewProps {
   myShips: Cruise[];
@@ -246,10 +247,20 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
 
     try {
       if (editingShip) {
-        await updateOperatorShip(editingShip.id, payload);
+        const res = await updateOperatorShip(editingShip.id, payload);
+        saveCustomShip(res?.ship || ({ ...editingShip, ...payload } as any));
         setActionMessage({ text: `Vessel "${payload.name}" updated successfully!` });
       } else {
-        await createOperatorShip(payload);
+        const res = await createOperatorShip(payload);
+        const created = res?.ship || ({
+          id: Date.now(),
+          ...payload,
+          name: payload.name,
+          operational_status: payload.operational_status || 'AVAILABLE',
+          is_active: true,
+          is_approved: true,
+        } as any);
+        saveCustomShip(created);
         setActionMessage({ text: `New vessel "${payload.name}" registered successfully!` });
       }
       setShowModal(false);
@@ -263,6 +274,13 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
 
   const handleQuickStatusChange = async (ship: Cruise, newStatus: OperationalStatus) => {
     try {
+      saveCustomShip({
+        ...ship,
+        availability_status: newStatus,
+        operational_status: newStatus,
+        is_active: newStatus !== 'INACTIVE',
+        is_approved: true,
+      });
       await updateOperatorShip(ship.id, {
         availability_status: newStatus,
         operational_status: newStatus,
@@ -278,6 +296,7 @@ export const OperatorShipsView: React.FC<OperatorShipsViewProps> = ({ myShips, o
   const handleDeleteShip = async () => {
     if (!shipToDelete) return;
     try {
+      removeCustomShip(shipToDelete.id);
       await deleteOperatorShip(shipToDelete.id);
       setShipToDelete(null);
       setActionMessage({ text: `Vessel "${shipToDelete.name}" decommissioned successfully.` });

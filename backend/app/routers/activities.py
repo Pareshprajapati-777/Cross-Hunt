@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, desc, asc
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
 from backend.app.dependencies.auth import get_current_user, get_optional_user
 from backend.app.models.user import User
 from backend.app.models.cross import Cross
@@ -182,13 +182,14 @@ def get_operator_activities(
     if current_user.is_admin:
         activities = db.query(Activity).order_by(desc(Activity.created_at)).all()
     else:
-        # Match activities owned by user or hosted on user's vessels
-        user_ship_ids = [s.id for s in db.query(Cross).filter(Cross.owner_id == current_user.id).all()]
+        user_ships = db.query(Cross).filter(or_(Cross.owner_id == current_user.id, Cross.operator_id == current_user.id)).all()
+        user_ship_ids = [s.id for s in user_ships]
         activities = (
             db.query(Activity)
             .filter(
                 or_(
                     Activity.owner_id == current_user.id,
+                    Activity.operator_id == current_user.id,
                     Activity.host_ship_id.in_(user_ship_ids) if user_ship_ids else False,
                 )
             )
@@ -519,6 +520,7 @@ def create_activity(
     db.add(act)
     db.commit()
     db.refresh(act)
+    checkpoint_db()
     return act.to_dict()
 
 
@@ -569,6 +571,7 @@ def update_activity(
 
     db.commit()
     db.refresh(act)
+    checkpoint_db()
     return act.to_dict()
 
 
@@ -588,4 +591,5 @@ def delete_activity(
     # Soft delete
     act.is_active = False
     db.commit()
+    checkpoint_db()
     return {"success": True, "message": f"Activity '{act.title}' deactivated successfully."}
