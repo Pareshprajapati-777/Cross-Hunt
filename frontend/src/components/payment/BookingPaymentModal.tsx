@@ -920,51 +920,29 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                     </a>
                   </div>
 
-                  {/* UPI Verification Section */}
-                  <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/30 bg-emerald-50/20 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                      <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>
-                          {effectiveWalletAmount > 0
-                            ? `Step 2: Paid ₹${remainingOnlineAmount.toLocaleString('en-IN')} via QR? Click below to confirm`
-                            : 'Step 2: Paid via QR? Click below to view pass'}
-                        </span>
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-medium">Instant automated pass unlocking</span>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={utrNumber}
-                        onChange={(e) => setUtrNumber(e.target.value)}
-                        placeholder="Enter 12-digit UPI UTR / Ref (Optional)"
-                        className="flex-1 px-3.5 py-3 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyUPIPayment}
-                        disabled={verifying}
-                        className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-md shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 active:scale-98"
-                      >
-                        {verifying ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Verifying &amp; Unlocking Pass...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-5 h-5 text-white" />
-                            <span>
-                              {effectiveWalletAmount > 0
-                                ? `Payment Done • View Pass`
-                                : 'Payment Done • View Pass'}
-                            </span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  {/* Direct "Payment Done" Confirmation Button */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleVerifyUPIPayment}
+                      disabled={verifying}
+                      className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-60"
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-white" />
+                          <span>Verifying Payment &amp; Unlocking Pass...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+                          <span>Payment Done • View Boarding Pass</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-center text-[11px] text-slate-500 mt-2 font-medium">
+                      Click &quot;Payment Done&quot; immediately after making UPI payment to confirm your booking and view boarding pass.
+                    </p>
                   </div>
                 </>
               )}

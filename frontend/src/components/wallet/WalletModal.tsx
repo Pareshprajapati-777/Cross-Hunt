@@ -497,20 +497,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Optional UTR input */}
-                  <div className="max-w-md mx-auto text-left space-y-1">
-                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">
-                      12-Digit UPI Ref / UTR Number (Optional):
-                    </label>
-                    <input
-                      type="text"
-                      value={utrNumber}
-                      onChange={(e) => setUtrNumber(e.target.value)}
-                      placeholder="e.g. 429810398412"
-                      maxLength={20}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
+
 
                   {topupErrorMsg && (
                     <div className="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-400 font-semibold bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-800 animate-fade-in text-left">
