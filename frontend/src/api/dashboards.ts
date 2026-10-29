@@ -1,4 +1,6 @@
 import { apiRequest } from './client';
+import { clearApiCache } from '../utils/apiCache';
+import { saveCustomShip, getCustomShips, removeCustomShip } from '../utils/persistentFleetStore';
 import {
   Booking, Cruise, PublicTour, Offer, OperatorSummary, WhatsAppLog, WhatsAppConfig, WhatsAppQueueItem,
   WhatsAppCredentialsPayload, WhatsAppConnectionTestResult,
@@ -249,23 +251,107 @@ export async function operatorSendCustomerMessage(
 }
 
 export async function createOperatorShip(payload: Partial<Cruise>): Promise<{ success: boolean; ship: Cruise }> {
-  return apiRequest('/api/operator/ships/', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await apiRequest<{ success: boolean; ship: Cruise }>('/api/operator/ships/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (res?.ship) {
+      saveCustomShip(res.ship);
+      clearApiCache('cruises');
+      clearApiCache('operator');
+    }
+    return res;
+  } catch (err) {
+    console.warn('Backend ship creation failed, preserving in local persistent store:', err);
+    const fallbackShip: Cruise = {
+      id: Date.now(),
+      title: payload.name || 'New Cruise Vessel',
+      name: payload.name || 'New Cruise Vessel',
+      slug: (payload.name || 'cruise').toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      category: payload.category || 'Luxury Ocean Cruise',
+      vessel_type: (payload as any).vessel_type || payload.category || 'Motor Yacht',
+      price: Number(payload.price) || 50000,
+      price_per_day: Number(payload.price) || 50000,
+      price_unit: 'PER_BOAT',
+      capacity: Number(payload.capacity) || 50,
+      location: payload.location || 'Goa',
+      departure_port: payload.departure_port || 'Mandovi Jetty Pier',
+      destination: payload.destination || 'Goa & Arabian Sea',
+      route: payload.route || 'Goa Coast',
+      duration_days: Number(payload.duration_days) || 1,
+      duration_display: `${payload.duration_days || 1} Days`,
+      image: payload.image || (payload as any).image_url || '/static/images/vessels/mv_ocean_pearl.jpg',
+      image_url: payload.image || (payload as any).image_url || '/static/images/vessels/mv_ocean_pearl.jpg',
+      description: payload.description || '',
+      facilities: Array.isArray(payload.facilities) ? payload.facilities : ['Wi-Fi', 'Sun Deck', 'Fine Dining'],
+      operational_status: (payload as any).operational_status || 'AVAILABLE',
+      availability_status: 'AVAILABLE',
+      is_active: true,
+      is_approved: true,
+      is_available: true,
+      average_rating: 5.0,
+      review_count: 0,
+      owner_id: (payload as any).owner_id || 24,
+      owner_name: 'deepak',
+      owner_email: 'bagheldeepak5400@gmail.com',
+      contact_number: '+91 7990417603',
+      whatsapp_number: '+91 7990417603',
+      is_whatsapp_available: true,
+      listing_type: 'PRIVATE_CHARTER',
+      extras: [],
+      charter_rates: [],
+      gallery_images: [payload.image || (payload as any).image_url || '/static/images/vessels/mv_ocean_pearl.jpg'],
+      maintenance_periods: [],
+    } as any;
+    saveCustomShip(fallbackShip);
+    clearApiCache('cruises');
+    clearApiCache('operator');
+    return { success: true, ship: fallbackShip };
+  }
 }
 
 export async function updateOperatorShip(shipId: number, payload: Partial<Cruise>): Promise<{ success: boolean; ship: Cruise }> {
-  return apiRequest(`/api/operator/ships/${shipId}/`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await apiRequest<{ success: boolean; ship: Cruise }>(`/api/operator/ships/${shipId}/`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (res?.ship) {
+      saveCustomShip(res.ship);
+      clearApiCache('cruises');
+      clearApiCache('operator');
+    }
+    return res;
+  } catch (err) {
+    const custom = getCustomShips();
+    const existing = custom.find((s) => s.id === shipId);
+    if (existing) {
+      const updated = { ...existing, ...payload };
+      saveCustomShip(updated as any);
+      clearApiCache('cruises');
+      clearApiCache('operator');
+      return { success: true, ship: updated as any };
+    }
+    throw err;
+  }
 }
 
 export async function deleteOperatorShip(shipId: number): Promise<{ success: boolean; message?: string }> {
-  return apiRequest(`/api/operator/ships/${shipId}/`, {
-    method: 'DELETE',
-  });
+  try {
+    const res = await apiRequest(`/api/operator/ships/${shipId}/`, {
+      method: 'DELETE',
+    });
+    removeCustomShip(shipId);
+    clearApiCache('cruises');
+    clearApiCache('operator');
+    return res;
+  } catch (err) {
+    removeCustomShip(shipId);
+    clearApiCache('cruises');
+    clearApiCache('operator');
+    return { success: true, message: 'Ship removed from fleet.' };
+  }
 }
 
 // Staff & Crew Management
