@@ -183,13 +183,78 @@ export async function submitReview(
 }
 
 export async function verifyTicket(code: string): Promise<any> {
-  return apiRequest(`/api/tickets/verify/${encodeURIComponent(code)}/`);
+  const clean = code.trim();
+  try {
+    return await apiRequest(`/api/tickets/verify/${encodeURIComponent(clean)}/`);
+  } catch (err: any) {
+    const custom = getCustomBookings();
+    const match = custom.find(
+      (b) =>
+        b.ticket_code?.toLowerCase() === clean.toLowerCase() ||
+        b.qr_code_hash?.toLowerCase() === clean.toLowerCase() ||
+        b.booking_id?.toLowerCase() === clean.toLowerCase()
+    );
+    if (match) {
+      const isValid = match.status === 'CONFIRMED' || match.status === 'COMPLETED';
+      const isUsed = match.ticket_status === 'USED' || (match as any).tracking_status === 'COMPLETED';
+      return {
+        valid: isValid && !isUsed,
+        is_valid: isValid && !isUsed,
+        status: isUsed ? 'USED' : isValid ? 'VALID' : match.status,
+        status_display: isUsed ? 'BOARDING PASS ALREADY USED' : isValid ? 'VALID BOARDING PASS' : 'INVALID TICKET',
+        booking_id: match.booking_id,
+        ticket_id: match.ticket_code || `TK-${match.booking_id}`,
+        verification_code: match.qr_code_hash || clean,
+        passenger_name: match.customer_name || 'Passenger',
+        passengers_count: match.number_of_people || match.passengers_count || 1,
+        adults_count: match.adults_count || 1,
+        children_count: match.children_count || 0,
+        ship_name: match.cruise_name || match.cruise_title || 'Luxury Cruise Vessel',
+        route: `${match.departure_port || 'Mumbai'} → ${match.destination || 'Goa'}`,
+        departure_port: match.departure_port || 'Mumbai',
+        destination: match.destination || 'Goa',
+        departure_date: match.booking_date,
+        departure_time: match.start_time || '10:00',
+        cabin_seat: match.cabin_type || match.cabin_name || 'General Seating',
+        booking_type: match.booking_type === 'EVENT' ? 'Private Charter' : 'Public Cruise Tour Ticket',
+        total_price: Number(match.total_price) || 0,
+        can_mark_used: isValid && !isUsed,
+        booking: match,
+      };
+    }
+    throw err;
+  }
 }
 
 export async function markTicketUsed(code: string): Promise<{ success: boolean; message: string; ticket_status?: string }> {
-  return apiRequest(`/api/tickets/verify/${encodeURIComponent(code)}/mark-used/`, {
-    method: 'POST',
-  });
+  const clean = code.trim();
+  try {
+    return await apiRequest(`/api/tickets/verify/${encodeURIComponent(clean)}/mark-used/`, {
+      method: 'POST',
+    });
+  } catch (err: any) {
+    const custom = getCustomBookings();
+    const match = custom.find(
+      (b) =>
+        b.ticket_code?.toLowerCase() === clean.toLowerCase() ||
+        b.qr_code_hash?.toLowerCase() === clean.toLowerCase() ||
+        b.booking_id?.toLowerCase() === clean.toLowerCase()
+    );
+    if (match) {
+      match.ticket_status = 'USED';
+      match.tracking_status = 'COMPLETED';
+      saveCustomBooking(match);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('booking-updated'));
+      }
+      return {
+        success: true,
+        message: `Boarding pass #${match.ticket_code || match.booking_id} marked as USED / Boarded successfully.`,
+        ticket_status: 'USED',
+      };
+    }
+    throw err;
+  }
 }
 
 export async function updateBookingWhatsAppOpt(

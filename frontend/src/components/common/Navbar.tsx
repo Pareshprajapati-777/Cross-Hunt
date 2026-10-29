@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles, Zap, Wallet } from 'lucide-react';
+import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles, Zap, Wallet, QrCode } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/dashboards';
 import { getWalletSummary } from '../../api/wallet';
 import { WalletModal } from '../wallet/WalletModal';
+import { BoardingPassScannerModal } from '../ticket/BoardingPassScannerModal';
 
 interface NavbarProps {
   currentTab?: string;
@@ -42,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
 
   const isStaffOrOwner = Boolean(
     user?.is_admin ||
@@ -303,6 +305,20 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             </button>
             {user ? (
               <>
+                {/* Top Boarding Pass Scanner for Vessel Owners & Operators */}
+                {isStaffOrOwner && (
+                  <button
+                    type="button"
+                    onClick={() => setScannerModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-md shadow-emerald-700/25 transition cursor-pointer"
+                    title="Scan Customer Boarding Pass for Ship Entry"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-emerald-200" />
+                    <span className="hidden sm:inline">Scan Boarding Pass</span>
+                    <span className="sm:hidden">Scan</span>
+                  </button>
+                )}
+
                 {/* Direct Notifications Bell */}
                 <div className="relative">
                   <button
@@ -542,6 +558,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                           >
                             <Ship className="w-3.5 h-3.5 text-slate-500" />
                             Customer View
+                          </button>
+                        </>
+                      )}
+
+                      {/* Ship Entry Scanner Trigger - Owners & Admins */}
+                      {isStaffOrOwner && (
+                        <>
+                          <div className="border-t border-slate-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setScannerModalOpen(true);
+                              setUserDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 flex items-center gap-2 transition cursor-pointer font-bold"
+                          >
+                            <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                            Scan Boarding Pass (Ship Entry)
                           </button>
                         </>
                       )}
@@ -884,6 +917,25 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                     Customer Dashboard
                   </button>
                 )}
+
+                {/* Mobile Boarding Pass Scan Button for Owners */}
+                {isStaffOrOwner && (
+                  <button
+                    onClick={() => {
+                      setScannerModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between font-bold text-xs shadow-md"
+                  >
+                    <span className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-emerald-200" />
+                      Scan Boarding Pass (Ship Entry)
+                    </span>
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">
+                      Gate Entry
+                    </span>
+                  </button>
+                )}
                 <button
                   onClick={async () => {
                     await logout();
@@ -926,6 +978,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
       <WalletModal
         isOpen={walletModalOpen && !isStaffOrOwner}
         onClose={() => setWalletModalOpen(false)}
+      />
+
+      {/* Boarding Pass Scanner Modal - Vessel Owners & Operators */}
+      <BoardingPassScannerModal
+        isOpen={scannerModalOpen && isStaffOrOwner}
+        onClose={() => setScannerModalOpen(false)}
       />
     </nav>
   );

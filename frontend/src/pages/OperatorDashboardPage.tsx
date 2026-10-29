@@ -49,7 +49,8 @@ import {
   Star,
   AlertTriangle,
   ShieldAlert,
-  MessageSquare
+  MessageSquare,
+  QrCode
 } from 'lucide-react';
 import { InvoiceModal } from '../components/ticket/InvoiceModal';
 import { formatINR } from '../utils/currency';
@@ -63,6 +64,7 @@ import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
 import { OperatorStaffEquipmentView } from '../components/staff-equipment/OperatorStaffEquipmentView';
 import { OperatorEarningsView } from '../components/finance/OperatorEarningsView';
+import { BoardingPassScannerModal } from '../components/ticket/BoardingPassScannerModal';
 
 type OperatorTab =
   | 'overview'
@@ -93,6 +95,7 @@ export const OperatorDashboardPage: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OperatorTab>('overview');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
 
   // Smart Dual-View inside Merged "Fleet Overview & Earnings" tab
   const [overviewViewMode, setOverviewViewMode] = useState<'analytics' | 'earnings'>(() => {
@@ -878,6 +881,14 @@ export const OperatorDashboardPage: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2.5">
+          <button
+            onClick={() => setScannerModalOpen(true)}
+            className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-700/25 transform hover:-translate-y-0.5 active:translate-y-0"
+            title="Scan Customer Boarding Pass QR for Ship Gate Entry"
+          >
+            <QrCode className="w-4 h-4 text-emerald-200" />
+            <span>Scan Boarding Pass (Ship Entry)</span>
+          </button>
           <button
             onClick={handleOpenAddShipModal}
             className="px-5 py-2.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-[#051833]/20"
@@ -3422,6 +3433,16 @@ export const OperatorDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Ship Boarding Pass Scanner & Entry Verification Modal */}
+      <BoardingPassScannerModal
+        isOpen={scannerModalOpen}
+        onClose={() => setScannerModalOpen(false)}
+        recentBookings={data?.recent_bookings || []}
+        onBoardingSuccess={() => {
+          fetchDashboard();
+        }}
+      />
     </div>
   );
 };
