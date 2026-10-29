@@ -20,6 +20,15 @@ class WalletTopupPayload(BaseModel):
     reference_id: Optional[str] = None
 
 
+def is_admin_or_owner(user: User) -> bool:
+    role = (getattr(user, "role", "") or "").upper()
+    return bool(
+        getattr(user, "is_admin", False)
+        or role in ("ADMIN", "OWNER", "CRUISE_OWNER", "CROSS_OWNER")
+        or getattr(user, "is_operator", False)
+    )
+
+
 @router.get("/")
 @router.get("/summary")
 async def get_wallet_summary(
@@ -29,6 +38,20 @@ async def get_wallet_summary(
     """
     Returns the user's current wallet balance and comprehensive financial summary.
     """
+    if is_admin_or_owner(user):
+        return {
+            "success": False,
+            "wallet_balance": 0.0,
+            "currency": "INR",
+            "currency_symbol": "₹",
+            "total_credits": 0.0,
+            "total_debits": 0.0,
+            "total_refunds_received": 0.0,
+            "transactions_count": 0,
+            "transactions": [],
+            "message": "Wallet is reserved exclusively for passenger accounts. Operators and Administrators do not have a customer wallet."
+        }
+
     db.refresh(user)
     transactions = db.query(WalletTransaction).filter(
         WalletTransaction.user_id == user.id
@@ -64,6 +87,14 @@ async def get_wallet_transactions(
     """
     Returns paginated list of user's wallet transactions.
     """
+    if is_admin_or_owner(user):
+        return {
+            "success": True,
+            "total": 0,
+            "wallet_balance": 0.0,
+            "transactions": []
+        }
+
     query = db.query(WalletTransaction).filter(
         WalletTransaction.user_id == user.id
     ).order_by(desc(WalletTransaction.created_at))
@@ -88,6 +119,12 @@ async def topup_wallet(
     """
     Add funds into user's wallet balance.
     """
+    if is_admin_or_owner(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Wallet is reserved exclusively for passenger accounts. Operators and Administrators do not have a customer wallet."
+        )
+
     if payload.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -23,6 +23,7 @@ import {
 import { formatINR } from '../../utils/currency';
 import { getPaymentConfig, createPaymentOrder, verifyPayment, PaymentConfig } from '../../api/payments';
 import { getWalletSummary } from '../../api/wallet';
+import { useAuth } from '../../context/AuthContext';
 
 interface BookingPaymentModalProps {
   isOpen: boolean;
@@ -58,6 +59,16 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   customerInfo,
   onPaymentSuccess,
 }) => {
+  const { user } = useAuth();
+  const isStaffOrOwner = Boolean(
+    user?.is_admin ||
+    user?.role === 'ADMIN' ||
+    user?.is_operator ||
+    user?.role === 'OWNER' ||
+    user?.role === 'CRUISE_OWNER' ||
+    user?.role === 'CROSS_OWNER'
+  );
+
   const [activeTab, setActiveTab] = useState<'UPI_QR' | 'WALLET' | 'RAZORPAY'>('UPI_QR');
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [useWallet, setUseWallet] = useState<boolean>(false);
@@ -101,6 +112,10 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
     getPaymentConfig().then(setConfig).catch(() => {});
 
     const loadWallet = () => {
+      if (isStaffOrOwner) {
+        setWalletBalance(0);
+        return;
+      }
       getWalletSummary()
         .then((res) => {
           if (res && typeof res.wallet_balance === 'number') {
@@ -115,8 +130,12 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
         .catch(() => {});
     };
 
-    loadWallet();
-    window.addEventListener('wallet-updated', loadWallet);
+    if (!isStaffOrOwner) {
+      loadWallet();
+      window.addEventListener('wallet-updated', loadWallet);
+    } else {
+      setWalletBalance(0);
+    }
 
     setActiveTab('UPI_QR');
     setTimeLeft(600);
@@ -388,7 +407,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                Official NPCI UPI &amp; Ship Wallet Payment Gateway
+                {!isStaffOrOwner ? 'Official NPCI UPI & Ship Wallet Payment Gateway' : 'Official NPCI UPI & Direct Payment Gateway'}
               </p>
             </div>
           </div>
@@ -448,27 +467,28 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
             </div>
           </div>
 
-          {/* CRUISE-HUNT SHIP WALLET & SPLIT PAYMENT CONTROLLER CARD */}
-          <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/40 shadow-sm space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
-                  <Wallet className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs uppercase font-black tracking-wider text-emerald-900">
-                      Cruise-Hunt Ship Wallet
-                    </span>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      Available: ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+          {/* CRUISE-HUNT SHIP WALLET & SPLIT PAYMENT CONTROLLER CARD - Passengers only */}
+          {!isStaffOrOwner && (
+            <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/40 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                    <Wallet className="w-5 h-5" />
                   </div>
-                  <p className="text-[11px] text-slate-600">
-                    Use your wallet balance to pay fully or split payment with Online UPI QR.
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs uppercase font-black tracking-wider text-emerald-900">
+                        Cruise-Hunt Ship Wallet
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Available: ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Use your wallet balance to pay fully or split payment with Online UPI QR.
+                    </p>
+                  </div>
                 </div>
-              </div>
 
               {walletBalance > 0 && (
                 <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs hover:border-emerald-500 transition select-none self-start sm:self-auto">
@@ -593,9 +613,10 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               </div>
             )}
           </div>
+          )}
 
           {/* Payment Method Selector Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+          <div className={`grid grid-cols-1 ${!isStaffOrOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200`}>
             <button
               type="button"
               onClick={() => setActiveTab('UPI_QR')}
@@ -613,20 +634,22 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('WALLET')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'WALLET'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">
-                Wallet (₹{Math.floor(walletBalance).toLocaleString('en-IN')})
-              </span>
-            </button>
+            {!isStaffOrOwner && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('WALLET')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'WALLET'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50'
+                }`}
+              >
+                <Wallet className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
+                  Wallet (₹{Math.floor(walletBalance).toLocaleString('en-IN')})
+                </span>
+              </button>
+            )}
 
             <button
               type="button"

@@ -111,8 +111,20 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [walletModalTab, setWalletModalTab] = useState<'TRANSACTIONS' | 'ADD_FUNDS'>('TRANSACTIONS');
 
+  const isStaffOrOwner = Boolean(
+    user?.is_admin ||
+    user?.role === 'ADMIN' ||
+    user?.is_operator ||
+    user?.role === 'OWNER' ||
+    user?.role === 'CRUISE_OWNER' ||
+    user?.role === 'CROSS_OWNER'
+  );
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || isStaffOrOwner) {
+      setWalletBalance(0);
+      return;
+    }
     const fetchWallet = () => {
       getWalletSummary()
         .then((res) => {
@@ -127,7 +139,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
     return () => {
       window.removeEventListener('wallet-updated', fetchWallet);
     };
-  }, [user?.id]);
+  }, [user?.id, isStaffOrOwner]);
 
   // Review modal
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
@@ -168,7 +180,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       } else if (tabParam === 'reviews' || tabParam === 'complaints') {
         setActiveSubTab('feedback');
       } else if (tabParam === 'wallet') {
-        setIsWalletModalOpen(true);
+        if (!isStaffOrOwner) {
+          setIsWalletModalOpen(true);
+        }
       } else if (['home', 'bookings', 'feedback', 'favorites', 'offers', 'profile'].includes(tabParam)) {
         setActiveSubTab(tabParam as UserSubTab);
       }
@@ -554,55 +568,57 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
       )}
 
-      {/* PROMINENT TOP WALLET BANNER - 100% Instant Ride Refund */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 rounded-3xl p-6 text-white shadow-xl shadow-emerald-950/10 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-400/30">
-        <div className="flex items-start sm:items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
-            <Wallet className="w-7 h-7 text-emerald-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-extrabold tracking-wider text-emerald-200">
-                Cruise-Hunt Digital Wallet
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 text-[10px] font-bold border border-emerald-400/30">
-                100% Instant Ride Refund
-              </span>
+      {/* PROMINENT TOP WALLET BANNER - Passengers Only */}
+      {!isStaffOrOwner && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 rounded-3xl p-6 text-white shadow-xl shadow-emerald-950/10 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-400/30">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
+              <Wallet className="w-7 h-7 text-emerald-300" />
             </div>
-            <div className="text-3xl font-black tracking-tight mt-1 flex items-baseline gap-1">
-              <span className="text-xl text-emerald-200">₹</span>
-              <span>{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase font-extrabold tracking-wider text-emerald-200">
+                  Cruise-Hunt Digital Wallet
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 text-[10px] font-bold border border-emerald-400/30">
+                  100% Instant Ride Refund
+                </span>
+              </div>
+              <div className="text-3xl font-black tracking-tight mt-1 flex items-baseline gap-1">
+                <span className="text-xl text-emerald-200">₹</span>
+                <span>{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <p className="text-xs text-emerald-100/90 mt-1">
+                Automatic Refund Guarantee: Whenever any ride, yacht charter, or tour is cancelled, the money is credited directly to this wallet with 0 deduction.
+              </p>
             </div>
-            <p className="text-xs text-emerald-100/90 mt-1">
-              Automatic Refund Guarantee: Whenever any ride, yacht charter, or tour is cancelled, the money is credited directly to this wallet with 0 deduction.
-            </p>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              setWalletModalTab('TRANSACTIONS');
-              setIsWalletModalOpen(true);
-            }}
-            className="px-5 py-2.5 rounded-2xl bg-white text-emerald-900 font-extrabold text-xs hover:bg-emerald-50 shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <Wallet className="w-4 h-4 text-emerald-700" />
-            <span>View Transaction</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setWalletModalTab('ADD_FUNDS');
-              setIsWalletModalOpen(true);
-            }}
-            className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs border border-white/30 shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-          >
-            <span>+ Add Funds</span>
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setWalletModalTab('TRANSACTIONS');
+                setIsWalletModalOpen(true);
+              }}
+              className="px-5 py-2.5 rounded-2xl bg-white text-emerald-900 font-extrabold text-xs hover:bg-emerald-50 shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Wallet className="w-4 h-4 text-emerald-700" />
+              <span>View Transaction</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setWalletModalTab('ADD_FUNDS');
+                setIsWalletModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs border border-white/30 shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <span>+ Add Funds</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 1. CUSTOMER IDENTITY & WELCOME HEADER (OD Studio Luxury Style) */}
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-[#0284c7]/20 shadow-xl shadow-[#051833]/5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -2083,9 +2099,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         </div>
       )}
 
-      {/* Wallet Management Modal */}
+      {/* Wallet Management Modal - Passengers Only */}
       <WalletModal
-        isOpen={isWalletModalOpen}
+        isOpen={isWalletModalOpen && !isStaffOrOwner}
         onClose={() => setIsWalletModalOpen(false)}
         initialTab={walletModalTab}
       />
