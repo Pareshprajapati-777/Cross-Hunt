@@ -1332,8 +1332,8 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                           <span>Invoice</span>
                         </button>
 
-                        {/* 3. Review / Complaint */}
-                        {(b.can_review || ((b.status === 'CONFIRMED' || b.status === 'COMPLETED') && !b.review)) && (
+                        {/* 3. Review / Complaint - Strictly only for COMPLETED voyages, never for upcoming bookings */}
+                        {isCompletedBooking(b) && !b.review && (
                           <button
                             type="button"
                             onClick={() => {

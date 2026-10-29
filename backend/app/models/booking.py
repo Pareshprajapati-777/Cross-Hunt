@@ -117,7 +117,9 @@ class Booking(Base):
 
     @property
     def can_be_reviewed(self) -> bool:
-        # Can review during voyage (CONFIRMED) or after voyage (COMPLETED)
+        # Reviews and complaints are strictly only allowed after voyage completion, never for upcoming bookings
+        if self.is_upcoming or self.status == "CANCELLED":
+            return False
         return self.status in ("CONFIRMED", "COMPLETED") and self.review is None
 
 

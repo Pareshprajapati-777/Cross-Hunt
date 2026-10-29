@@ -598,10 +598,10 @@ async def api_review_booking(
             detail="Booking not found."
         )
 
-    if booking.status not in ("CONFIRMED", "COMPLETED"):
+    if booking.status not in ("CONFIRMED", "COMPLETED") or booking.is_upcoming:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reviews and complaints can only be submitted during travel or after voyage completion."
+            detail="Reviews and complaints can only be submitted after voyage completion."
         )
 
     existing = db.query(CrossReview).filter(CrossReview.booking_id == booking.id).first()
