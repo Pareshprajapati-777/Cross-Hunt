@@ -581,7 +581,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
             className="px-5 py-2.5 rounded-2xl bg-white text-emerald-900 font-extrabold text-xs hover:bg-emerald-50 shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
           >
             <Wallet className="w-4 h-4 text-emerald-700" />
-            <span>View Wallet &amp; Refunds</span>
+            <span>View Transaction</span>
           </button>
           <button
             type="button"
