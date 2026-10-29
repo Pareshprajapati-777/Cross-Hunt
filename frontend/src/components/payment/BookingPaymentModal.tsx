@@ -33,7 +33,7 @@ interface BookingPaymentModalProps {
     passengers: number;
     cabin: string;
     amount: number;
-    bookingType: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT';
+    bookingType: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT' | 'ACTIVITY';
     promoDiscount?: number;
   };
   customerInfo?: {
@@ -81,12 +81,10 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
       .then((res) => {
         if (res && typeof res.wallet_balance === 'number') {
           setWalletBalance(res.wallet_balance);
-          if (res.wallet_balance >= bookingSummary.amount) {
-            setActiveTab('WALLET');
-          }
         }
       })
       .catch(() => {});
+    setActiveTab('UPI_QR');
     setTimeLeft(600);
     setVerifySuccess(false);
     setVerifying(false);
@@ -320,7 +318,13 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-semibold text-sky-700">
                 <Sparkles className="w-3.5 h-3.5 text-sky-500" />
-                <span>{bookingSummary.bookingType === 'TOUR' ? 'PUBLIC TOUR CRUISE' : 'PRIVATE CHARTER'}</span>
+                <span>
+                  {bookingSummary.bookingType === 'TOUR'
+                    ? 'PUBLIC TOUR CRUISE'
+                    : bookingSummary.bookingType === 'ACTIVITY'
+                    ? 'MARITIME ADVENTURE / ACTIVITY'
+                    : 'PRIVATE CHARTER'}
+                </span>
                 <span>•</span>
                 <span>{bookingSummary.date}</span>
                 {bookingSummary.time && <span>({bookingSummary.time})</span>}
@@ -329,7 +333,11 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                 {bookingSummary.title}
               </h4>
               <p className="text-xs text-slate-500">
-                Cabin: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Passengers: <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span>
+                {bookingSummary.bookingType === 'ACTIVITY' ? (
+                  <>Slot: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Participants: <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span></>
+                ) : (
+                  <>Cabin: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Passengers: <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span></>
+                )}
               </p>
             </div>
 
@@ -580,12 +588,13 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               </div>
 
               {/* UPI Verification Section */}
-              <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">
-                    Already paid? Confirm your transaction:
+              <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/30 bg-emerald-50/20 shadow-sm space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                  <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Step 2: Paid via QR? Click below to view pass</span>
                   </span>
-                  <span className="text-[11px] text-slate-400 font-medium">Auto or UTR verification</span>
+                  <span className="text-[11px] text-slate-500 font-medium">Instant automated pass unlocking</span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -593,24 +602,24 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                     type="text"
                     value={utrNumber}
                     onChange={(e) => setUtrNumber(e.target.value)}
-                    placeholder="Enter 12-digit UTR / Ref (Optional)"
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-slate-50"
+                    placeholder="Enter 12-digit UPI UTR / Ref (Optional)"
+                    className="flex-1 px-3.5 py-3 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={handleVerifyUPIPayment}
                     disabled={verifying}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-md shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 active:scale-98"
                   >
                     {verifying ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Verifying Payment...</span>
+                        <span>Verifying &amp; Unlocking Pass...</span>
                       </>
                     ) : (
                       <>
-                        <Check className="w-4 h-4" />
-                        <span>I Have Completed Payment</span>
+                        <Check className="w-5 h-5 text-white" />
+                        <span>Payment Done • View Pass</span>
                       </>
                     )}
                   </button>

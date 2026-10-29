@@ -24,6 +24,7 @@ import { validateCoupon, CouponValidationResult } from '../../api/offers';
 import { formatINR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
+import { BookingPaymentModal } from '../payment/BookingPaymentModal';
 
 interface ActivityBookingModalProps {
   activity: ActivityItem;
@@ -79,6 +80,7 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<any | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   // Payment method selection
   const [paymentMethod, setPaymentMethod] = useState<'UPI_QR' | 'RAZORPAY'>('UPI_QR');
@@ -128,8 +130,18 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
     }
   };
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
+  const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleExecuteBooking = async (paymentDetails: {
+    payment_method: string;
+    payment_gateway_ref: string;
+    payment_status: string;
+  }) => {
+    setIsPaymentModalOpen(false);
     setLoading(true);
     setErrorMsg(null);
 
@@ -143,7 +155,7 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
         customer_whatsapp: whatsappMobile,
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_request: specialRequest.trim() || undefined,
-        payment_method: paymentMethod === 'UPI_QR' ? 'Instant UPI QR (Razorpay)' : 'Razorpay Secure Checkout',
+        payment_method: paymentDetails.payment_method,
       });
 
       if (res.success && res.booking) {
@@ -584,8 +596,8 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
                   <span>Locking Slot &amp; Generating Pass...</span>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-sky-300" />
-                    <span>CONFIRM &amp; BOOK ADVENTURE ({formatINR(finalTotal)})</span>
+                    <QrCode className="w-4 h-4 text-sky-300" />
+                    <span>PAY VIA QR &amp; GET PASS • {formatINR(finalTotal)}</span>
                   </>
                 )}
               </button>
@@ -598,6 +610,29 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
           )}
         </div>
       </div>
+
+      {activity && (
+        <BookingPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          bookingSummary={{
+            title: activity.title,
+            date: bookingDate,
+            time: selectedSlot,
+            passengers: participants,
+            cabin: selectedSlot,
+            amount: finalTotal,
+            bookingType: 'ACTIVITY',
+            promoDiscount: discountAmount,
+          }}
+          customerInfo={{
+            name: user?.full_name,
+            email: user?.email,
+            phone: whatsappMobile || user?.phone,
+          }}
+          onPaymentSuccess={handleExecuteBooking}
+        />
+      )}
     </div>
   );
 };

@@ -1220,39 +1220,6 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                               <span className="text-[#1677C8] font-bold uppercase tracking-wider">{b.tracking_status}</span>
                             </div>
                           )}
-
-                          {/* Dedicated Boarding Port & Live Route Banner */}
-                          {isUpcomingOrActive && (
-                            <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-sky-50 via-blue-50/50 to-white border border-sky-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-xl bg-sky-600/10 border border-sky-500/20 text-sky-600 flex items-center justify-center shrink-0">
-                                  <MapPin className="w-4 h-4 text-sky-600" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-extrabold text-[#082F5B] text-xs uppercase tracking-wide">
-                                      Boarding Port / Jetty:
-                                    </span>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      Live GPS Route Ready
-                                    </span>
-                                  </div>
-                                  <p className="text-slate-800 font-bold truncate text-xs mt-0.5">
-                                    {b.departure_port || 'Departure Cruise Terminal'}
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedMapBooking(b)}
-                                className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm transition inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer self-start sm:self-auto"
-                                title="Open live route from your location to the port"
-                              >
-                                <Navigation className="w-3.5 h-3.5 text-sky-200" />
-                                <span>Open Port Map</span>
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </div>
 

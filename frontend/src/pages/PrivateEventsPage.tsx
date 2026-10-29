@@ -9,6 +9,7 @@ import { formatINR } from '../utils/currency';
 import { useNavigate } from 'react-router-dom';
 import { TicketPass } from '../components/ticket/TicketPass';
 import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
+import { BookingPaymentModal } from '../components/payment/BookingPaymentModal';
 import {
   Sparkles,
   Anchor,
@@ -79,6 +80,7 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     getEventPackages()
@@ -244,7 +246,7 @@ Thank you!
     return `/static/images/vessels/${slug}.jpg`;
   };
 
-  const handleBookEvent = async (e: React.FormEvent) => {
+  const handleBookEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       if (onNeedLogin) {
@@ -260,6 +262,16 @@ Thank you!
       return;
     }
 
+    setErrorMessage(null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleExecuteBooking = async (paymentDetails: {
+    payment_method: string;
+    payment_gateway_ref: string;
+    payment_status: string;
+  }) => {
+    setIsPaymentModalOpen(false);
     setSubmitting(true);
     setErrorMessage(null);
 
@@ -275,6 +287,7 @@ Thank you!
         event_package: selectedPackageId,
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_requests: specialRequests,
+        payment_method: paymentDetails.payment_method,
       });
 
       confetti({
@@ -1059,6 +1072,29 @@ Thank you!
           </div>
         </div>
       </div>
+
+      {selectedShip && (
+        <BookingPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          bookingSummary={{
+            title: selectedShip.name,
+            date: eventDate,
+            time: `${startTime} – ${endTime}`,
+            passengers: guestCount,
+            cabin: selectedPackage ? selectedPackage.tier : 'Whole Vessel Exclusive Charter',
+            amount: finalTotal,
+            bookingType: 'PRIVATE_EVENT',
+            promoDiscount: discountAmount,
+          }}
+          customerInfo={{
+            name: user?.full_name,
+            email: user?.email,
+            phone: user?.phone,
+          }}
+          onPaymentSuccess={handleExecuteBooking}
+        />
+      )}
     </div>
   );
 };

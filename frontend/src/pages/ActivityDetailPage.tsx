@@ -27,6 +27,7 @@ import { formatINR } from '../utils/currency';
 import { validateCoupon, CouponValidationResult } from '../api/offers';
 import { PortRouteMapModal } from '../components/navigation/PortRouteMapModal';
 import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
+import { BookingPaymentModal } from '../components/payment/BookingPaymentModal';
 import { useAuth } from '../context/AuthContext';
 import { useAuthModal } from '../context/AuthModalContext';
 import confetti from 'canvas-confetti';
@@ -61,6 +62,7 @@ export const ActivityDetailPage: React.FC = () => {
   // Submission & modals
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [mapBookingMock, setMapBookingMock] = useState<any | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -158,7 +160,7 @@ export const ActivityDetailPage: React.FC = () => {
     }
   };
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
+  const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       openLoginModal({
@@ -169,6 +171,16 @@ export const ActivityDetailPage: React.FC = () => {
       return;
     }
 
+    setSubmitError(null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleExecuteBooking = async (paymentDetails: {
+    payment_method: string;
+    payment_gateway_ref: string;
+    payment_status: string;
+  }) => {
+    setIsPaymentModalOpen(false);
     setSubmitting(true);
     setSubmitError(null);
 
@@ -179,10 +191,10 @@ export const ActivityDetailPage: React.FC = () => {
         time_slot: selectedSlot || (activity.time_slots[0] || '10:00 AM'),
         participants,
         selected_addons: selectedAddons.length > 0 ? selectedAddons : undefined,
-        customer_whatsapp: whatsappMobile || user.phone || undefined,
+        customer_whatsapp: whatsappMobile || user?.phone || undefined,
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_request: specialRequest.trim() || undefined,
-        payment_method: 'Instant UPI QR (Razorpay)',
+        payment_method: paymentDetails.payment_method,
       });
 
       if (res.success && res.booking) {
@@ -751,6 +763,29 @@ export const ActivityDetailPage: React.FC = () => {
           isOpen={!!mapBookingMock}
           onClose={() => setMapBookingMock(null)}
           booking={mapBookingMock}
+        />
+      )}
+
+      {activity && (
+        <BookingPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          bookingSummary={{
+            title: activity.title,
+            date: bookingDate,
+            time: selectedSlot || (activity.time_slots?.[0] || '10:00 AM'),
+            passengers: participants,
+            cabin: selectedSlot || 'Adventure Slot',
+            amount: finalTotal,
+            bookingType: 'ACTIVITY',
+            promoDiscount: discountAmount,
+          }}
+          customerInfo={{
+            name: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : undefined,
+            email: user?.email,
+            phone: whatsappMobile || user?.phone,
+          }}
+          onPaymentSuccess={handleExecuteBooking}
         />
       )}
     </div>
