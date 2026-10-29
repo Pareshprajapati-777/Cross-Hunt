@@ -13,7 +13,7 @@ The platform unites two premier maritime offerings:
      - *Deluxe Oceanview Stateroom* (Oversized ocean view portal)
      - *Signature Interior Stateroom* (Spacious, ambient soundproof retreat)
    - Passenger party configuration (Adults, Children).
-   - Real-time server-side fare calculation and authenticated digital ticket issuance with verifiable pass barcodes/QR hashes.
+   - Real-time server-side fare calculation and authenticated digital ticket issuance with verifiable pass QR codes/security hashes.
 
 2. **Private Maritime Events at Sea**:
    - Chartering and private venue bookings for extraordinary milestones:

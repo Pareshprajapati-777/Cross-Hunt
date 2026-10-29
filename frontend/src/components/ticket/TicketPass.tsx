@@ -272,7 +272,7 @@ export const TicketPass: React.FC<TicketPassProps> = ({
             </div>
           </div>
 
-          {/* Barcode / QR Code Strip */}
+          {/* QR Code Pass Strip */}
           <div className="p-5 rounded-2xl bg-[#F8FCFF] border-2 border-dashed border-[#63B8F0]/50 flex flex-col sm:flex-row items-center justify-between gap-5">
             {/* Real High-Resolution Scannable QR Matrix */}
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -392,18 +392,19 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               </div>
             </div>
 
-            {/* Visual Barcode Pattern */}
-            <div className="flex flex-col items-center sm:items-end space-y-1">
-              <span className="text-[9px] font-mono text-[#102B46]/50 uppercase tracking-widest">
-                BOARDING PASS BARCODE
+            {/* Booking Reference Stamp */}
+            <div className="flex flex-col items-center sm:items-end space-y-1 text-center sm:text-right">
+              <span className="text-[9px] font-mono text-[#102B46]/60 uppercase tracking-widest">
+                BOOKING REFERENCE
               </span>
-              <div className="h-10 flex items-center justify-center space-x-0.5 shrink-0 bg-white p-1.5 rounded-lg border border-[#082F5B]/15">
-                {[4, 2, 6, 3, 5, 2, 4, 6, 2, 4, 3, 5, 2, 6, 3, 4, 2, 5, 3, 4, 3, 5, 2, 4].map((w, idx) => (
-                  <div key={idx} className="bg-[#082F5B] h-full" style={{ width: `${w}px` }} />
-                ))}
+              <div className="px-3.5 py-1.5 rounded-xl bg-white border border-[#082F5B]/15 shadow-xs">
+                <span className="font-mono text-xs sm:text-sm font-black text-[#082F5B] tracking-wide block">
+                  {booking.booking_id}
+                </span>
               </div>
-              <span className="font-mono text-[10px] text-[#102B46] font-bold">
-                *{booking.booking_id}*
+              <span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                Verified Digital Pass
               </span>
             </div>
           </div>
