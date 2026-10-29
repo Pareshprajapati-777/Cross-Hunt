@@ -249,12 +249,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
         scrolled ? 'py-1.5 sm:py-2' : 'py-2 sm:py-3.5'
       }`}
     >
-      <div className="w-full max-w-[1440px] mx-auto px-2 sm:px-6 lg:px-8 box-border">
-        <div className="w-full max-w-full box-border bg-white/95 backdrop-blur-xl rounded-2xl px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.25),0_4px_16px_rgba(2,132,199,0.1)] ring-1 ring-sky-300/40 min-w-0">
+      <div className="w-full max-w-[1440px] mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 box-border">
+        <div className="w-full max-w-full box-border bg-white/95 backdrop-blur-xl rounded-2xl px-3 sm:px-4 lg:px-4 xl:px-6 py-2 sm:py-2.5 flex items-center justify-between border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.25),0_4px_16px_rgba(2,132,199,0.1)] ring-1 ring-sky-300/40 min-w-0">
           {/* Logo & Brand */}
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center space-x-2 sm:space-x-3 text-left group cursor-pointer min-w-0 flex-shrink"
+            className="flex items-center space-x-2 sm:space-x-3 text-left group cursor-pointer min-w-0 flex-shrink-0"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0369a1] to-[#fff8dc] p-[2px] shadow-sm flex items-center justify-center flex-shrink-0">
               <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
@@ -269,7 +269,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </button>
 
           {/* Desktop Nav Links (Clean Pearl Light & Deep Navy Style) */}
-          <div className="hidden lg:flex items-center space-x-1.5 bg-[#f1f5f9]/90 border border-[#0284c7]/15 rounded-full p-1 backdrop-blur-md">
+          <div className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 bg-[#f1f5f9]/90 border border-[#0284c7]/15 rounded-full p-1 backdrop-blur-md flex-shrink-0">
             {[
               { id: 'home', label: 'Home' },
               { id: 'explore', label: 'Fleet & Ships' },
@@ -282,7 +282,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                 <button
                   key={tab.id}
                   onClick={() => onNavigate(tab.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  className={`px-2.5 xl:px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap ${
                     isActive
                       ? 'bg-[#051833] text-[#fff8dc] shadow-md shadow-[#051833]/25 font-black'
                       : 'text-[#334155] hover:text-[#051833] hover:bg-white'
@@ -295,10 +295,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </div>
 
           {/* User Controls & Navy CTA */}
-          <div className="hidden md:flex items-center space-x-3">
+          <div className="hidden lg:flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
             <button
               onClick={() => onNavigate('explore')}
-              className="px-4 py-1.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-[#051833]/20 cursor-pointer"
+              className="hidden xl:flex px-3.5 py-1.5 rounded-full bg-[#051833] hover:bg-[#0a2548] text-[#fff8dc] text-xs font-black transition items-center gap-1.5 shadow-md shadow-[#051833]/20 cursor-pointer whitespace-nowrap"
             >
               <span>Charter a Ship</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#fff8dc]" />
@@ -646,8 +646,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
             )}
           </div>
 
-          {/* Mobile controls */}
-          <div className="md:hidden flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0 min-w-0">
+          {/* Mobile and Tablet controls */}
+          <div className="lg:hidden flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0 min-w-0">
             {user && isStaffOrOwner && (
               <button
                 type="button"
@@ -811,9 +811,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </div>
         </div>
 
-        {/* Mobile dropdown drawer (Clean White & Navy) */}
+        {/* Mobile and Tablet dropdown drawer (Clean White & Navy) */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-2 p-3 sm:p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833] max-h-[85dvh] overflow-y-auto no-scrollbar w-full max-w-full box-border animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="lg:hidden mt-2 p-3 sm:p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833] max-h-[85dvh] overflow-y-auto no-scrollbar w-full max-w-full box-border animate-in fade-in slide-in-from-top-2 duration-150">
             <button
               onClick={() => {
                 onNavigate('home');
