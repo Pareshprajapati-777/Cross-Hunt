@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
 from backend.app.models.user import User
 from backend.app.models.cross import Cross
 from backend.app.models.tour import PublicTour
@@ -440,6 +440,8 @@ async def api_create_booking(
         wallet_txn.booking_id = new_booking.id
         db.commit()
 
+    checkpoint_db()
+
     msg = f"Inquiry registered successfully! Reference: {new_booking.booking_id}. Operator will provide quotation." if is_quote else f"Reservation confirmed successfully! Reference: {new_booking.booking_id}"
 
     return {
@@ -568,6 +570,7 @@ async def api_cancel_booking(
     db.commit()
     db.refresh(booking)
     db.refresh(user)
+    checkpoint_db()
 
     refund_msg = f" ₹{float(refund_amount):,.2f} has been refunded immediately to your wallet." if refund_amount > Decimal("0.00") else ""
 
@@ -634,6 +637,7 @@ async def api_review_booking(
     )
     db.add(review)
     db.commit()
+    checkpoint_db()
 
     msg = "Review & Complaint submitted successfully. Platform administration will review your report." if has_complaint else "Review published successfully!"
     return {"success": True, "message": msg, "review": review.to_dict()}

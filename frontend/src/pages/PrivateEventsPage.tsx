@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { TicketPass } from '../components/ticket/TicketPass';
 import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
 import { BookingPaymentModal } from '../components/payment/BookingPaymentModal';
+import { mergeWithCustomCharterShips } from '../utils/persistentFleetStore';
 import {
   Sparkles,
   Anchor,
@@ -85,12 +86,21 @@ export const PrivateEventsPage: React.FC<PrivateEventsPageProps> = ({
   useEffect(() => {
     getEventPackages()
       .then((res) => {
-        setData(res);
-        if (res.charter_ships && res.charter_ships.length > 0) {
-          setSelectedShipId(res.charter_ships[0].id);
+        const mergedShips = mergeWithCustomCharterShips(res.charter_ships || []);
+        setData({ ...res, charter_ships: mergedShips });
+        if (mergedShips.length > 0) {
+          setSelectedShipId((prev) => (prev && mergedShips.some((s) => s.id === prev) ? prev : mergedShips[0].id));
         }
       })
-      .catch((err) => console.error('Failed to load event packages:', err))
+      .catch((err) => {
+        console.error('Failed to load event packages:', err);
+        const fallback = { event_types: [], packages: [], charter_ships: [] };
+        const mergedShips = mergeWithCustomCharterShips(fallback.charter_ships);
+        setData({ ...fallback, charter_ships: mergedShips });
+        if (mergedShips.length > 0) {
+          setSelectedShipId((prev) => (prev && mergedShips.some((s) => s.id === prev) ? prev : mergedShips[0].id));
+        }
+      })
       .finally(() => setLoading(false));
 
     getActiveOffers()

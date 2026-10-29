@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from backend.app.database.session import get_db
+from backend.app.database.session import get_db, checkpoint_db
 from backend.app.models.user import User
 from backend.app.models.wallet import WalletTransaction
 from backend.app.dependencies.auth import get_current_user
@@ -112,6 +112,7 @@ async def topup_wallet(
 
     db.commit()
     db.refresh(user)
+    checkpoint_db()
 
     return {
         "success": True,

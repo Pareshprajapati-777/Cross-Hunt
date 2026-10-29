@@ -127,7 +127,13 @@ export function getFullApiUrl(endpoint: string): string {
 
 import { apiCache, clearApiCache } from '../utils/apiCache';
 import { CATALOG_FALLBACK } from '../data/catalogFallback';
-import { getCustomShips, getCustomActivities } from '../utils/persistentFleetStore';
+import {
+  getCustomShips,
+  getCustomActivities,
+  getCustomBookings,
+  mergeWithCustomShips,
+  mergeWithCustomCharterShips,
+} from '../utils/persistentFleetStore';
 export { clearApiCache };
 
 export interface ApiRequestOptions extends RequestInit {
@@ -173,7 +179,8 @@ function tryGetFallbackData(endpoint: string): any | null {
 
     // 1. Cruises list (/api/cruises or /api/cruises/)
     if (cleanPath === '/api/cruises') {
-      let cruises = [...(CATALOG_FALLBACK.cruises?.cruises || [])];
+      const baseCruises = CATALOG_FALLBACK.cruises?.cruises || [];
+      let cruises = mergeWithCustomShips([...baseCruises]);
       const q = query.get('q')?.toLowerCase();
       const city = query.get('city') || query.get('destination');
       const cat = query.get('category') || query.get('vessel_category');
@@ -214,7 +221,8 @@ function tryGetFallbackData(endpoint: string): any | null {
     const cruiseDetailMatch = cleanPath.match(/^\/api\/cruises\/([^/]+)$/);
     if (cruiseDetailMatch && cruiseDetailMatch[1] !== 'match') {
       const slugOrId = decodeURIComponent(cruiseDetailMatch[1]);
-      const found = (CATALOG_FALLBACK.cruises?.cruises || []).find(
+      const allCruises = mergeWithCustomShips([...(CATALOG_FALLBACK.cruises?.cruises || [])]);
+      const found = allCruises.find(
         (c: any) => String(c.id) === slugOrId || c.slug === slugOrId
       );
       if (found) {
@@ -299,7 +307,17 @@ function tryGetFallbackData(endpoint: string): any | null {
 
     // 9. Event packages (/api/events/packages)
     if (cleanPath === '/api/events/packages') {
-      return CATALOG_FALLBACK.events || { event_types: [], packages: [], charter_ships: [] };
+      const fallback = CATALOG_FALLBACK.events || { event_types: [], packages: [], charter_ships: [] };
+      return {
+        ...fallback,
+        charter_ships: mergeWithCustomCharterShips(fallback.charter_ships || []),
+      };
+    }
+
+    // 9b. User bookings fallback (/api/bookings/my-bookings or /api/bookings/my-bookings/)
+    if (cleanPath === '/api/bookings/my-bookings') {
+      const custom = getCustomBookings();
+      return { total: custom.length, bookings: custom };
     }
 
     // 10. Offers (/api/offers)

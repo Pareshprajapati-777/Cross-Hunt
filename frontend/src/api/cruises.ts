@@ -1,5 +1,6 @@
 import { apiRequest } from './client';
 import { Cruise } from './types';
+import { mergeWithCustomShips } from '../utils/persistentFleetStore';
 
 export interface CruiseFilterParams {
   q?: string;
@@ -76,12 +77,28 @@ export async function getCruises(params: CruiseFilterParams = {}): Promise<Cruis
 
   const qs = query.toString();
   const url = qs ? `/api/cruises/?${qs}` : '/api/cruises/';
-  return apiRequest<CruiseListResponse>(url);
+  const res = await apiRequest<CruiseListResponse>(url);
+  if (res && res.cruises) {
+    const merged = mergeWithCustomShips(res.cruises);
+    return {
+      ...res,
+      cruises: merged,
+      total: merged.length,
+    };
+  }
+  return res;
 }
 
 export async function getCruiseDetail(slug: string): Promise<Cruise> {
-  const res = await apiRequest<any>(`/api/cruises/${slug}/`);
-  return res.cruise || res;
+  try {
+    const res = await apiRequest<any>(`/api/cruises/${slug}/`);
+    return res.cruise || res;
+  } catch {
+    const custom = mergeWithCustomShips([]);
+    const found = custom.find((c) => String(c.id) === slug || c.slug === slug);
+    if (found) return found;
+    throw new Error('Vessel not found.');
+  }
 }
 
 export async function matchShips(params: MatchEngineParams): Promise<MatchEngineResponse> {

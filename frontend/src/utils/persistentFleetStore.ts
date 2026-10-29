@@ -1,8 +1,13 @@
-import { Cruise, ActivityItem } from '../api/types';
+import { Cruise, ActivityItem, Booking, CharterShip } from '../api/types';
 import { apiRequest } from '../api/client';
 
 const SHIPS_STORAGE_KEY = 'cruisehunt_custom_ships_v1';
 const ACTIVITIES_STORAGE_KEY = 'cruisehunt_custom_activities_v1';
+const BOOKINGS_STORAGE_KEY = 'cruisehunt_custom_bookings_v1';
+
+// ============================================================================
+// 1. SHIPS / VESSELS PERSISTENCE
+// ============================================================================
 
 /**
  * Get custom ships saved in localStorage
@@ -25,7 +30,9 @@ export function saveCustomShip(ship: Cruise): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     const existing = getCustomShips();
-    const filtered = existing.filter((s) => s.id !== ship.id && s.name.trim().toLowerCase() !== ship.name.trim().toLowerCase());
+    const filtered = existing.filter(
+      (s) => s.id !== ship.id && s.name.trim().toLowerCase() !== ship.name.trim().toLowerCase()
+    );
     const updated = [ship, ...filtered];
     localStorage.setItem(SHIPS_STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
@@ -69,6 +76,45 @@ export function mergeWithCustomShips(apiShips: Cruise[]): Cruise[] {
 }
 
 /**
+ * Merges API charter ships for Private Events page with locally persisted ships
+ */
+export function mergeWithCustomCharterShips(apiCharterShips: CharterShip[]): CharterShip[] {
+  const customShips = getCustomShips();
+  if (!customShips.length) return apiCharterShips;
+
+  const result: CharterShip[] = [...apiCharterShips];
+  for (const cs of customShips) {
+    const formatted: CharterShip = {
+      id: Number(cs.id) || Date.now(),
+      name: cs.name,
+      slug: cs.slug || cs.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      category: (cs as any).vessel_type || cs.category || 'Motor Yacht',
+      capacity: cs.capacity || 20,
+      price: String(cs.price || 50000),
+      location: cs.location || 'Goa',
+      image: cs.image || (cs as any).image_url || '',
+      departure_port: cs.departure_port || cs.location || 'Harbor Terminal',
+      whatsapp_number: cs.whatsapp_number || '+919820012345',
+      contact_number: cs.contact_number || '+919820012345',
+      owner_name: cs.owner_name || (cs as any).management_name || 'Vessel Operator',
+    };
+    const index = result.findIndex(
+      (s) => s.id === formatted.id || s.name.trim().toLowerCase() === formatted.name.trim().toLowerCase()
+    );
+    if (index >= 0) {
+      result[index] = { ...result[index], ...formatted };
+    } else {
+      result.unshift(formatted);
+    }
+  }
+  return result;
+}
+
+// ============================================================================
+// 2. ACTIVITIES PERSISTENCE
+// ============================================================================
+
+/**
  * Get custom activities saved in localStorage
  */
 export function getCustomActivities(): ActivityItem[] {
@@ -89,7 +135,9 @@ export function saveCustomActivity(act: ActivityItem): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     const existing = getCustomActivities();
-    const filtered = existing.filter((a) => a.id !== act.id && a.title.trim().toLowerCase() !== act.title.trim().toLowerCase());
+    const filtered = existing.filter(
+      (a) => a.id !== act.id && a.title.trim().toLowerCase() !== act.title.trim().toLowerCase()
+    );
     const updated = [act, ...filtered];
     localStorage.setItem(ACTIVITIES_STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
@@ -132,9 +180,82 @@ export function mergeWithCustomActivities(apiActivities: ActivityItem[]): Activi
   return result;
 }
 
+// ============================================================================
+// 3. BOOKINGS & TICKETS PERSISTENCE
+// ============================================================================
+
 /**
- * Background sync: Re-sync custom items to backend if backend was cold or restarted
+ * Get custom bookings saved in localStorage
  */
+export function getCustomBookings(): Booking[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.warn('Failed to read custom bookings from localStorage:', err);
+    return [];
+  }
+}
+
+/**
+ * Save or update a booking in localStorage
+ */
+export function saveCustomBooking(booking: Booking): void {
+  if (typeof window === 'undefined' || !window.localStorage || !booking) return;
+  try {
+    const existing = getCustomBookings();
+    const filtered = existing.filter(
+      (b) => b.booking_id !== booking.booking_id && String(b.id) !== String(booking.id)
+    );
+    const updated = [booking, ...filtered];
+    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to save custom booking to localStorage:', err);
+  }
+}
+
+/**
+ * Remove a booking from localStorage
+ */
+export function removeCustomBooking(bookingId: string | number): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const existing = getCustomBookings();
+    const updated = existing.filter(
+      (b) => b.booking_id !== String(bookingId) && String(b.id) !== String(bookingId)
+    );
+    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to remove custom booking from localStorage:', err);
+  }
+}
+
+/**
+ * Merges API bookings with locally persisted bookings, guaranteeing zero loss
+ */
+export function mergeWithCustomBookings(apiBookings: Booking[]): Booking[] {
+  const custom = getCustomBookings();
+  if (!custom.length) return apiBookings;
+
+  const result = [...apiBookings];
+  for (const c of custom) {
+    const index = result.findIndex(
+      (b) => b.booking_id === c.booking_id || String(b.id) === String(c.id)
+    );
+    if (index >= 0) {
+      result[index] = { ...result[index], ...c };
+    } else {
+      result.unshift(c);
+    }
+  }
+  return result;
+}
+
+// ============================================================================
+// 4. BACKGROUND RE-SYNC WITH BACKEND
+// ============================================================================
+
 let isSyncing = false;
 export async function syncCustomItemsToBackend(): Promise<void> {
   if (isSyncing || typeof window === 'undefined' || !navigator.onLine) return;

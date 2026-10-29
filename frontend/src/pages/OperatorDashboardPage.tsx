@@ -58,7 +58,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { updateUserProfile } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { OperatorActivitiesView } from '../components/activities/OperatorActivitiesView';
-import { mergeWithCustomShips, saveCustomShip, syncCustomItemsToBackend } from '../utils/persistentFleetStore';
+import { mergeWithCustomShips, mergeWithCustomBookings, saveCustomShip, syncCustomItemsToBackend } from '../utils/persistentFleetStore';
 import { OperatorShipsView } from '../components/ships/OperatorShipsView';
 import { OperatorBookingsView } from '../components/bookings/OperatorBookingsView';
 import { OperatorStaffEquipmentView } from '../components/staff-equipment/OperatorStaffEquipmentView';
@@ -416,6 +416,7 @@ export const OperatorDashboardPage: React.FC = () => {
           return (Number(b.id) || 0) - (Number(a.id) || 0);
         });
         const mergedShips = mergeWithCustomShips(sortedShips);
+        const mergedBookings = mergeWithCustomBookings(sortedBookings);
         const nextData = {
           ...res,
           stats: {
@@ -430,12 +431,15 @@ export const OperatorDashboardPage: React.FC = () => {
               total_revenue: 0,
             }),
             total_ships: mergedShips.length,
-            available_ships: mergedShips.filter((s: any) => s.operational_status === 'AVAILABLE').length,
+            available_ships: mergedShips.filter((s: any) => (s.operational_status || 'AVAILABLE') === 'AVAILABLE').length,
+            booked_ships: mergedShips.filter((s: any) => s.operational_status === 'BOOKED').length,
+            on_tour_ships: mergedShips.filter((s: any) => s.operational_status === 'ON_TOUR').length,
+            maintenance_ships: mergedShips.filter((s: any) => s.operational_status === 'UNDER_MAINTENANCE' || s.operational_status === 'MAINTENANCE').length,
           },
           my_ships: mergedShips,
           vessels: mergedShips,
           my_tours: sortedTours,
-          recent_bookings: sortedBookings,
+          recent_bookings: mergedBookings,
         };
         setData(nextData);
         try {

@@ -16,6 +16,7 @@ import { WhatsAppIcon } from '../components/common/WhatsAppIcon';
 import { PortRouteMapModal } from '../components/navigation/PortRouteMapModal';
 import { getWalletSummary } from '../api/wallet';
 import { WalletModal } from '../components/wallet/WalletModal';
+import { getCustomBookings } from '../utils/persistentFleetStore';
 import {
   Ship,
   Calendar,
@@ -176,8 +177,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
 
   // Auto-open boarding pass modal with confetti when redirected after booking
   useEffect(() => {
-    if (targetBookingId && bookings.length > 0) {
-      const match = bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
+    if (targetBookingId) {
+      const match =
+        bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId) ||
+        getCustomBookings().find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
       if (match) {
         if (autoOpenPass) {
           setSelectedTicketBooking(match);
@@ -525,7 +528,9 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
             <button
               onClick={() => {
-                const found = bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
+                const found =
+                  bookings.find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId) ||
+                  getCustomBookings().find((b) => b.booking_id === targetBookingId || String(b.id) === targetBookingId);
                 if (found) setSelectedTicketBooking(found);
               }}
               className="px-5 py-2.5 rounded-full bg-[#F8FCFF] text-[#082F5B] text-xs font-bold hover:bg-[#EAF4FB] shadow-md transition flex items-center gap-1.5 cursor-pointer"

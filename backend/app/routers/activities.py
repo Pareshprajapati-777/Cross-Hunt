@@ -448,6 +448,7 @@ def book_activity(
     act.reviews_count = (act.reviews_count or 0) + 1
     db.commit()
     db.refresh(booking)
+    checkpoint_db()
 
     confirm_status_text = "confirmed" if getattr(act, "auto_confirm", True) else "pending owner approval"
     return {
