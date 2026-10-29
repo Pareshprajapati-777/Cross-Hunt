@@ -19,6 +19,7 @@ from backend.app.models.booking import Booking
 from backend.app.dependencies.auth import get_optional_user, get_current_user
 from backend.app.schemas.booking import CreateBookingPayload, CancelBookingPayload, ReviewPayload, WhatsAppOptPayload
 from backend.app.services.serializers import serialize_booking, serialize_invoice
+from backend.app.services.wallet_service import refund_booking_to_wallet, debit_wallet
 from backend.app.services.whatsapp_service import (
     normalize_whatsapp_number, mask_whatsapp_number, build_tour_reminder_text, send_whatsapp_api_message
 )
@@ -357,6 +358,34 @@ async def api_create_booking(
     pay_ref = payload.payment_gateway_ref or f"PAY-{booking_id}"
     pay_status = payload.payment_status or ("PAID" if not is_quote else "PENDING")
 
+    wallet_txn = None
+    if getattr(payload, "use_wallet", False) and not is_quote and final_total > Decimal("0.00"):
+        user_bal = Decimal(str(round(float(user.wallet_balance or 0.0), 2)))
+        if user_bal > Decimal("0.00"):
+            wallet_paid = min(user_bal, final_total)
+            if payload.wallet_amount_to_use is not None:
+                req_w = Decimal(str(round(float(payload.wallet_amount_to_use), 2)))
+                if req_w > Decimal("0.00"):
+                    wallet_paid = min(wallet_paid, req_w)
+            
+            if wallet_paid > Decimal("0.00"):
+                wallet_txn = debit_wallet(
+                    db=db,
+                    user=user,
+                    amount=wallet_paid,
+                    source="BOOKING_PAYMENT",
+                    description=f"Payment for booking #{booking_id}",
+                    booking=None,
+                    reference_id=f"WLT-{booking_id}"
+                )
+                if wallet_paid >= final_total:
+                    pay_method = "Cruise-Hunt Wallet"
+                    pay_status = "PAID"
+                    b_status = "CONFIRMED"
+                    t_status = "CONFIRMED"
+                else:
+                    pay_method = f"Wallet (₹{float(wallet_paid):,.2f}) + {payload.payment_method or 'UPI'}"
+
     new_booking = Booking(
         booking_id=booking_id,
         invoice_number=invoice_number,
@@ -402,6 +431,10 @@ async def api_create_booking(
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
+    if wallet_txn:
+        wallet_txn.booking_id = new_booking.id
+        db.commit()
 
     msg = f"Inquiry registered successfully! Reference: {new_booking.booking_id}. Operator will provide quotation." if is_quote else f"Reservation confirmed successfully! Reference: {new_booking.booking_id}"
 
@@ -520,13 +553,26 @@ async def api_cancel_booking(
     if booking.booking_type == "TOUR" and booking.public_tour:
         booking.public_tour.booked_capacity = max(0, booking.public_tour.booked_capacity - booking.number_of_people)
 
+    # Automatically credit refund amount directly into the user's wallet
+    refund_amount, wallet_tx = refund_booking_to_wallet(
+        db=db,
+        booking=booking,
+        reason=reason,
+        source="CANCELLATION_REFUND"
+    )
+
     db.commit()
     db.refresh(booking)
+    db.refresh(user)
+
+    refund_msg = f" ₹{float(refund_amount):,.2f} has been refunded immediately to your wallet." if refund_amount > Decimal("0.00") else ""
 
     return {
         "success": True,
-        "message": "Reservation cancelled successfully.",
+        "message": f"Reservation cancelled successfully.{refund_msg}",
         "status": "CANCELLED",
+        "refund_amount": float(refund_amount),
+        "wallet_balance": float(user.wallet_balance or 0.0),
         "booking": serialize_booking(booking)
     }
 

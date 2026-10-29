@@ -10,9 +10,11 @@ from backend.app.models.favorite import FavoriteShip
 from backend.app.models.activity import Activity
 from backend.app.models.staff_equipment import StaffMember, EquipmentItem
 from backend.app.models.payout import OwnerPayout
+from backend.app.models.wallet import WalletTransaction
 
 __all__ = [
     "User",
+    "WalletTransaction",
     "Operator",
     "Cross",
     "Cruise",

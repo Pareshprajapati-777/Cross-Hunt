@@ -1,6 +1,7 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, Dict, Any
-from sqlalchemy import Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Integer, String, Boolean, DateTime, Text, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.database.base import Base
 
@@ -27,6 +28,7 @@ class User(Base):
     is_approved_owner: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     block_reason: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    wallet_balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
 
     # Relationships
     crosses = relationship("Cross", back_populates="owner", cascade="all, delete-orphan", foreign_keys="Cross.owner_id")
@@ -34,6 +36,7 @@ class User(Base):
     reviews = relationship("CrossReview", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("PlatformNotification", back_populates="target_user", cascade="all, delete-orphan")
     favorites = relationship("FavoriteShip", back_populates="user", cascade="all, delete-orphan")
+    wallet_transactions = relationship("WalletTransaction", back_populates="user", cascade="all, delete-orphan", foreign_keys="WalletTransaction.user_id", order_by="desc(WalletTransaction.created_at)")
 
     @property
     def is_owner(self) -> bool:
@@ -75,4 +78,5 @@ class User(Base):
             "is_admin": self.is_admin,
             "is_approved_owner": self.is_approved_owner,
             "is_verified": self.is_verified,
+            "wallet_balance": float(self.wallet_balance or 0.0),
         }

@@ -26,6 +26,7 @@ from backend.app.models.payout import OwnerPayout
 from backend.app.services.availability_engine import check_comprehensive_availability
 from backend.app.services.serializers import serialize_cruise, serialize_tour, serialize_booking, serialize_extra
 from backend.app.services.trip_lifecycle_service import run_lifecycle_check_throttled
+from backend.app.services.wallet_service import credit_wallet, refund_booking_to_wallet
 
 router = APIRouter(prefix="/operator", tags=["operator"])
 
@@ -1311,10 +1312,23 @@ def operator_process_refund(
         booking.ticket_status = "CANCELLED"
         booking.cancellation_reason = f"Refunded ₹{req.refund_amount:,.2f}: {req.refund_reason}"
 
+    # Credit refund to user's wallet
     if booking.user_id:
+        booking_user = booking.user or db.query(User).filter(User.id == booking.user_id).first()
+        if booking_user:
+            credit_wallet(
+                db=db,
+                user=booking_user,
+                amount=req.refund_amount,
+                source="OPERATOR_REFUND",
+                description=f"Operator refund for booking #{booking.booking_id}: {req.refund_reason}",
+                booking=booking,
+                reference_id=f"OP-REF-{booking.booking_id}"
+            )
+
         notif = PlatformNotification(
-            title=f"Refund Processed: ₹{req.refund_amount:,.2f}",
-            message=f"A refund of ₹{req.refund_amount:,.2f} has been processed for booking #{booking.booking_id}. Reason: {req.refund_reason}.",
+            title=f"Refund Credited to Wallet: ₹{req.refund_amount:,.2f}",
+            message=f"A refund of ₹{req.refund_amount:,.2f} has been added to your wallet for booking #{booking.booking_id}. Reason: {req.refund_reason}.",
             notification_type="REFUND_PROCESSED",
             target_audience="SINGLE_USER",
             target_user_id=booking.user_id,
@@ -1419,14 +1433,19 @@ def operator_booking_action(
         booking.status = 'COMPLETED'
         booking.tracking_status = 'COMPLETED'
         booking.ticket_status = 'USED'
-    elif action_lower == 'reject':
-        booking.status = 'REJECTED'
-        booking.tracking_status = 'REJECTED'
+    elif action_lower in ['reject', 'cancel']:
+        booking.status = 'REJECTED' if action_lower == 'reject' else 'CANCELLED'
+        booking.tracking_status = booking.status
         booking.ticket_status = 'CANCELLED'
-    elif action_lower == 'cancel':
-        booking.status = 'CANCELLED'
-        booking.tracking_status = 'CANCELLED'
-        booking.ticket_status = 'CANCELLED'
+        booking.cancellation_reason = f"Ride {action_lower}ed by vessel operator."
+        if booking.booking_type == "TOUR" and booking.public_tour:
+            booking.public_tour.booked_capacity = max(0, booking.public_tour.booked_capacity - booking.number_of_people)
+        refund_booking_to_wallet(
+            db=db,
+            booking=booking,
+            reason=f"Ride {action_lower}ed by vessel operator.",
+            source="OPERATOR_REFUND"
+        )
     elif action_lower == 'board':
         booking.tracking_status = 'BOARDING'
     elif action_lower == 'depart':

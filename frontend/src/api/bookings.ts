@@ -27,13 +27,19 @@ export interface CreateBookingPayload {
   payment_method?: string;
   payment_gateway_ref?: string;
   payment_status?: string;
+  use_wallet?: boolean;
+  wallet_amount_to_use?: number;
 }
 
 export async function createBooking(payload: CreateBookingPayload): Promise<{ success: boolean; message?: string; booking: Booking }> {
-  return apiRequest('/api/bookings/create/', {
+  const res = await apiRequest<{ success: boolean; message?: string; booking: Booking }>('/api/bookings/create/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  if (typeof window !== 'undefined' && payload.use_wallet) {
+    window.dispatchEvent(new CustomEvent('wallet-updated'));
+  }
+  return res;
 }
 
 export async function getMyBookings(): Promise<{ total: number; bookings: Booking[] }> {
@@ -48,11 +54,22 @@ export async function getBookingInvoice(bookingId: string): Promise<{ invoice: I
   return apiRequest(`/api/bookings/${bookingId}/invoice/`);
 }
 
-export async function cancelBooking(bookingId: string, reason?: string): Promise<{ success: boolean; message: string; booking?: Booking }> {
-  return apiRequest(`/api/bookings/${bookingId}/cancel/`, {
-    method: 'POST',
-    body: JSON.stringify({ reason: reason || 'Cancelled by customer' }),
-  });
+export async function cancelBooking(
+  bookingId: string,
+  reason?: string
+): Promise<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; booking?: Booking }> {
+  const res = await apiRequest<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; booking?: Booking }>(
+    `/api/bookings/${bookingId}/cancel/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || 'Cancelled by customer' }),
+    }
+  );
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('wallet-updated', { detail: res }));
+    window.dispatchEvent(new CustomEvent('notification-updated'));
+  }
+  return res;
 }
 
 export async function submitReview(

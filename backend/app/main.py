@@ -34,6 +34,7 @@ from backend.app.routers import (
     favorites,
     payments,
     activities,
+    wallet,
 )
 
 # Ensure tables exist (e.g. user_favorites)
@@ -74,6 +75,16 @@ def ensure_db_migrations():
                     if col_name not in act_cols:
                         conn.execute(text(f"ALTER TABLE crosses_activity ADD COLUMN {col_name} {col_type}"))
                 conn.commit()
+
+        if "accounts_user" in inspector.get_table_names():
+            user_cols = [c["name"] for c in inspector.get_columns("accounts_user")]
+            if "wallet_balance" not in user_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE accounts_user ADD COLUMN wallet_balance NUMERIC(12, 2) DEFAULT 0.00 NOT NULL"))
+                    conn.commit()
+
+        from backend.app.models.wallet import WalletTransaction
+        WalletTransaction.__table__.create(bind=engine, checkfirst=True)
     except Exception as e:
         pass
 
@@ -140,6 +151,7 @@ app.include_router(ai.router, prefix=api_prefix)
 app.include_router(favorites.router, prefix=api_prefix)
 app.include_router(payments.router, prefix=api_prefix)
 app.include_router(activities.router, prefix=api_prefix)
+app.include_router(wallet.router, prefix=api_prefix)
 
 
 @app.get("/")

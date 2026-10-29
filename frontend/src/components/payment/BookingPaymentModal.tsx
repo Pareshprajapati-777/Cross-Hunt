@@ -17,9 +17,11 @@ import {
   ExternalLink,
   ChevronRight,
   Zap,
+  Wallet,
 } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 import { getPaymentConfig, createPaymentOrder, verifyPayment, PaymentConfig } from '../../api/payments';
+import { getWalletSummary } from '../../api/wallet';
 
 interface BookingPaymentModalProps {
   isOpen: boolean;
@@ -53,7 +55,8 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   customerInfo,
   onPaymentSuccess,
 }) => {
-  const [activeTab, setActiveTab] = useState<'UPI_QR' | 'RAZORPAY'>('UPI_QR');
+  const [activeTab, setActiveTab] = useState<'WALLET' | 'UPI_QR' | 'RAZORPAY'>('UPI_QR');
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   const [config, setConfig] = useState<PaymentConfig>({
     razorpay_key_id: 'rzp_test_CruiseHuntMaritime',
     merchant_name: 'Cruise Hunt Maritime',
@@ -74,11 +77,21 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     getPaymentConfig().then(setConfig).catch(() => {});
+    getWalletSummary()
+      .then((res) => {
+        if (res && typeof res.wallet_balance === 'number') {
+          setWalletBalance(res.wallet_balance);
+          if (res.wallet_balance >= bookingSummary.amount) {
+            setActiveTab('WALLET');
+          }
+        }
+      })
+      .catch(() => {});
     setTimeLeft(600);
     setVerifySuccess(false);
     setVerifying(false);
     setErrorMessage(null);
-  }, [isOpen]);
+  }, [isOpen, bookingSummary.amount]);
 
   useEffect(() => {
     if (!isOpen || timeLeft <= 0) return;
@@ -145,6 +158,29 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Unable to confirm UPI verification. Please check reference.');
+      setVerifying(false);
+    }
+  };
+
+  // Cruise-Hunt Wallet Instant Checkout Action
+  const handlePayViaWallet = async () => {
+    if (walletBalance < bookingSummary.amount) {
+      setErrorMessage(`Insufficient wallet balance. You need ₹${(bookingSummary.amount - walletBalance).toLocaleString('en-IN')} more.`);
+      return;
+    }
+    setVerifying(true);
+    setErrorMessage(null);
+    try {
+      setVerifySuccess(true);
+      setTimeout(() => {
+        onPaymentSuccess({
+          payment_method: 'Cruise-Hunt Wallet',
+          payment_gateway_ref: `WLT-${Date.now()}`,
+          payment_status: 'PAID',
+        });
+      }, 1200);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to process payment from wallet.');
       setVerifying(false);
     }
   };
@@ -308,31 +344,44 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
           </div>
 
           {/* Payment Method Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setActiveTab('WALLET')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeTab === 'WALLET'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              <Wallet className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Wallet (₹{Math.floor(walletBalance).toLocaleString('en-IN')})</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('UPI_QR')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === 'UPI_QR'
                   ? 'bg-white text-sky-700 shadow-sm border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
-              <Smartphone className="w-4 h-4 text-sky-500" />
-              <span>Dynamic UPI QR (Scan &amp; Pay)</span>
+              <Smartphone className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span>UPI QR Code</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('RAZORPAY')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === 'RAZORPAY'
                   ? 'bg-white text-sky-700 shadow-sm border border-slate-200/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
-              <CreditCard className="w-4 h-4 text-sky-500" />
-              <span>Razorpay (Cards / NetBanking)</span>
+              <CreditCard className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span>Cards / NetBanking</span>
             </button>
           </div>
 
@@ -360,6 +409,82 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                 <Lock className="w-3.5 h-3.5" />
                 <span>Anti-Double Booking Lock Finalized</span>
               </div>
+            </div>
+          ) : activeTab === 'WALLET' ? (
+            /* TAB: Cruise-Hunt Wallet Payment */
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200 shadow-sm space-y-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
+                    <Wallet className="w-6 h-6 text-emerald-200" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-200 block">
+                      Cruise-Hunt Wallet Balance
+                    </span>
+                    <div className="text-2xl font-black">
+                      ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-white/20 font-bold border border-white/20">
+                  Instant 1-Click
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Ride / Charter Subtotal:</span>
+                  <span className="font-bold text-slate-800">{formatINR(bookingSummary.amount)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Deduction from Wallet:</span>
+                  <span className="font-bold text-emerald-700">-{formatINR(Math.min(walletBalance, bookingSummary.amount))}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-sm text-slate-900">
+                  <span>Balance After Payment:</span>
+                  <span className="text-emerald-700 font-mono">
+                    ₹{Math.max(0, walletBalance - bookingSummary.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {walletBalance >= bookingSummary.amount ? (
+                <button
+                  type="button"
+                  onClick={handlePayViaWallet}
+                  disabled={verifying}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98"
+                >
+                  {verifying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Processing Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirm &amp; Pay {formatINR(bookingSummary.amount)} from Wallet</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Insufficient wallet balance (Short by {formatINR(bookingSummary.amount - walletBalance)}). Please use UPI or Cards below.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('UPI_QR')}
+                    className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                  >
+                    Pay via UPI QR Instead →
+                  </button>
+                </div>
+              )}
             </div>
           ) : activeTab === 'UPI_QR' ? (
             /* TAB 1: Dynamic UPI QR Code */

@@ -28,6 +28,8 @@ class CreateBookingPayload(BaseModel):
     payment_method: Optional[str] = "UPI"
     payment_gateway_ref: Optional[str] = None
     payment_status: Optional[str] = "PAID"
+    use_wallet: Optional[bool] = False
+    wallet_amount_to_use: Optional[float] = None
 
 
 class CancelBookingPayload(BaseModel):

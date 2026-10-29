@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles, Zap } from 'lucide-react';
+import { Anchor, Compass, Calendar, LogOut, Menu, X, Shield, Ship, Waves, Search, Heart, ArrowRight, Bell, AlertTriangle, Tag, Megaphone, Check, Sparkles, Zap, Wallet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/dashboards';
+import { getWalletSummary } from '../../api/wallet';
+import { WalletModal } from '../wallet/WalletModal';
 
 interface NavbarProps {
   currentTab?: string;
@@ -38,6 +40,33 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [copiedPromo, setCopiedPromo] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setWalletBalance(0);
+      return;
+    }
+
+    const refreshWallet = () => {
+      getWalletSummary()
+        .then((res) => {
+          if (res && typeof res.wallet_balance === 'number') {
+            setWalletBalance(res.wallet_balance);
+          }
+        })
+        .catch(() => {});
+    };
+
+    refreshWallet();
+    window.addEventListener('wallet-updated', refreshWallet);
+    const interval = setInterval(refreshWallet, 30000);
+    return () => {
+      window.removeEventListener('wallet-updated', refreshWallet);
+      clearInterval(interval);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -407,6 +436,28 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                   )}
                 </div>
 
+                {/* Wallet Balance Pill - Prominent Top Placement */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWalletModalOpen(true);
+                    setUserDropdownOpen(false);
+                    setNotificationsOpen(false);
+                  }}
+                  title="Cruise-Hunt Wallet - Click to view balance, add funds, or check ride refunds"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100 hover:from-emerald-100 hover:to-teal-200 border border-emerald-300 text-emerald-900 text-sm font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                    <Wallet className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col text-left leading-tight">
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-700">Wallet</span>
+                    <span className="text-xs font-black text-emerald-950 font-mono">
+                      ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </button>
+
                 <div className="relative">
                   <button
                     onClick={() => {
@@ -509,6 +560,25 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
 
                       <div className="border-t border-slate-100 my-1"></div>
 
+                      {/* Wallet Balance & Refunds Drawer Trigger */}
+                      <button
+                        onClick={() => {
+                          setWalletModalOpen(true);
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 flex items-center justify-between transition cursor-pointer font-bold"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                          My Wallet &amp; Refunds
+                        </span>
+                        <span className="font-mono text-emerald-700 font-extrabold">
+                          ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </button>
+
+                      <div className="border-t border-slate-100 my-1"></div>
+
                       <button
                         onClick={async () => {
                           await logout();
@@ -555,14 +625,29 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           {/* Mobile controls */}
           <div className="md:hidden flex items-center space-x-2">
             {user && (
-              <div className="relative">
+              <>
+                {/* Mobile Top Wallet Button - Prominent Top Placement */}
                 <button
                   type="button"
-                  onClick={handleOpenNotifications}
-                  className="relative p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
-                  title="Platform Notifications"
-                  aria-label="Platform Notifications"
+                  onClick={() => {
+                    setWalletModalOpen(true);
+                    setNotificationsOpen(false);
+                  }}
+                  title="My Wallet Balance & Instant Refunds"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-900 font-extrabold text-xs shadow-2xs active:scale-95 transition cursor-pointer"
                 >
+                  <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="font-mono font-bold">₹{walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                </button>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={handleOpenNotifications}
+                    className="relative p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+                    title="Platform Notifications"
+                    aria-label="Platform Notifications"
+                  >
                   <Bell className="w-5 h-5 text-slate-700" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
@@ -689,7 +774,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                   </div>
                 )}
               </div>
-            )}
+            </>
+          )}
             <button
               onClick={() => {
                 setMobileMenuOpen(!mobileMenuOpen);
@@ -758,6 +844,32 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
 
             {user ? (
               <div className="border-t border-slate-100 pt-2 space-y-2">
+                {/* Mobile Drawer Wallet Hero Card */}
+                <div
+                  onClick={() => {
+                    setWalletModalOpen(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 text-white cursor-pointer shadow-md flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-emerald-200" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-200">
+                        Cruise-Hunt Wallet
+                      </div>
+                      <div className="text-base font-black">
+                        ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl border border-white/25">
+                    View &amp; Top-up →
+                  </span>
+                </div>
+
                 {user.is_admin ? (
                   <button
                     onClick={() => {
@@ -829,6 +941,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </div>
         )}
       </div>
+
+      {/* Global Wallet Modal */}
+      <WalletModal
+        isOpen={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
     </nav>
   );
 };
