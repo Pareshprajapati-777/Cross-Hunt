@@ -180,7 +180,7 @@ function tryGetFallbackData(endpoint: string): any | null {
     // 1. Cruises list (/api/cruises or /api/cruises/)
     if (cleanPath === '/api/cruises') {
       const baseCruises = CATALOG_FALLBACK.cruises?.cruises || [];
-      let cruises = mergeWithCustomShips([...baseCruises]);
+      let cruises = mergeWithCustomShips([...(baseCruises as any)]);
       const q = query.get('q')?.toLowerCase();
       const city = query.get('city') || query.get('destination');
       const cat = query.get('category') || query.get('vessel_category');
@@ -221,7 +221,7 @@ function tryGetFallbackData(endpoint: string): any | null {
     const cruiseDetailMatch = cleanPath.match(/^\/api\/cruises\/([^/]+)$/);
     if (cruiseDetailMatch && cruiseDetailMatch[1] !== 'match') {
       const slugOrId = decodeURIComponent(cruiseDetailMatch[1]);
-      const allCruises = mergeWithCustomShips([...(CATALOG_FALLBACK.cruises?.cruises || [])]);
+      const allCruises = mergeWithCustomShips([...((CATALOG_FALLBACK.cruises?.cruises as any) || [])]);
       const found = allCruises.find(
         (c: any) => String(c.id) === slugOrId || c.slug === slugOrId
       );
@@ -310,7 +310,7 @@ function tryGetFallbackData(endpoint: string): any | null {
       const fallback = CATALOG_FALLBACK.events || { event_types: [], packages: [], charter_ships: [] };
       return {
         ...fallback,
-        charter_ships: mergeWithCustomCharterShips(fallback.charter_ships || []),
+        charter_ships: mergeWithCustomCharterShips((fallback.charter_ships as any) || []),
       };
     }
 
