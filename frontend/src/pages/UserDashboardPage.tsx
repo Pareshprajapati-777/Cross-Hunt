@@ -109,6 +109,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
+  const [walletModalTab, setWalletModalTab] = useState<'TRANSACTIONS' | 'ADD_FUNDS'>('TRANSACTIONS');
 
   useEffect(() => {
     if (!user) return;
@@ -577,7 +578,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
-            onClick={() => setIsWalletModalOpen(true)}
+            onClick={() => {
+              setWalletModalTab('TRANSACTIONS');
+              setIsWalletModalOpen(true);
+            }}
             className="px-5 py-2.5 rounded-2xl bg-white text-emerald-900 font-extrabold text-xs hover:bg-emerald-50 shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
           >
             <Wallet className="w-4 h-4 text-emerald-700" />
@@ -585,7 +589,10 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setIsWalletModalOpen(true)}
+            onClick={() => {
+              setWalletModalTab('ADD_FUNDS');
+              setIsWalletModalOpen(true);
+            }}
             className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs border border-white/30 shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <span>+ Add Funds</span>
@@ -2083,6 +2090,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       <WalletModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
+        initialTab={walletModalTab}
       />
     </div>
   );
