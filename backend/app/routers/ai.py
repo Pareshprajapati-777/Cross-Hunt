@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 from backend.app.database.session import get_db
 from backend.app.dependencies.auth import get_optional_user
 from backend.app.models.user import User
-from backend.app.services.ai_service import generate_ai_chat_response, lookup_user_ticket
+from backend.app.services.ai_service import generate_ai_chat_response, lookup_user_ticket, get_ai_suggestions_list
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -72,14 +72,7 @@ def ai_suggestions(
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     is_auth = current_user is not None
-    suggestions = [
-        {'id': 'my_ticket', 'label': '🎫 My Ticket', 'query': 'Mera ticket code check karo'},
-        {'id': 'my_trips', 'label': '🚢 Upcoming Trips', 'query': 'Mera upcoming cruise kab hai?'},
-        {'id': 'find_cruise', 'label': '🔎 Find Cruise', 'query': 'Mumbai se Goa public cruise dikhao'},
-        {'id': 'private_yacht', 'label': '⚓ Private Charter', 'query': 'Goa me 20 guests ke liye private yacht chahiye'},
-        {'id': 'cancel_policy', 'label': '❓ Cancel Policy', 'query': 'Booking cancellation aur refund policy kya hai?'},
-        {'id': 'website_guide', 'label': '🗺️ Website Guide', 'query': 'Private ship kaha book karu?'},
-    ]
+    suggestions = get_ai_suggestions_list(current_user)
 
     return {
         'success': True,

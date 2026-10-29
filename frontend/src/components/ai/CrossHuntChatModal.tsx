@@ -46,12 +46,13 @@ export interface CruiseHuntChatModalProps {
 export type CrossHuntChatModalProps = CruiseHuntChatModalProps;
 
 const DEFAULT_SUGGESTIONS: AiSuggestion[] = [
-  { id: 'my_ticket', label: '🎫 My Ticket', query: 'Mera ticket code check karo' },
-  { id: 'my_trips', label: '🚢 Upcoming Trips', query: 'Mera upcoming cruise kab hai?' },
-  { id: 'find_cruise', label: '🔎 Find Cruise', query: 'Mumbai se Goa public cruise dikhao' },
-  { id: 'private_yacht', label: '⚓ Private Charter', query: 'Goa me 20 guests ke liye private yacht chahiye' },
-  { id: 'cancel_policy', label: '❓ Cancel Policy', query: 'Booking cancellation aur refund policy kya hai?' },
-  { id: 'website_guide', label: '🗺️ Website Guide', query: 'Private ship kaha book karu?' },
+  { id: 'my_ticket', label: '🎫 My Ticket', query: 'Mera ticket code aur pass check karo' },
+  { id: 'my_wallet', label: '💳 Wallet & UPI Top-up', query: 'Wallet me UPI QR se paise kaise add karein?' },
+  { id: 'find_cruise', label: '🌊 Mumbai to Goa Cruise', query: 'Mumbai se Goa public cruise dikhao' },
+  { id: 'private_yacht', label: '⚓ Private Yacht', query: 'Goa me 20 guests ke liye private yacht chahiye' },
+  { id: 'water_sports', label: '🏄 Scuba & Water Sports', query: 'Scuba diving aur jet ski ke packages dikhaiye' },
+  { id: 'gate_scan', label: '📸 Ship Gate Scan', query: 'Ship boarding gate par ticket scan kaise hota hai?' },
+  { id: 'cancel_policy', label: '❓ Cancel & Refund', query: 'Booking cancellation aur wallet refund policy kya hai?' },
 ];
 
 export const CruiseHuntChatModal: React.FC<CruiseHuntChatModalProps> = ({
@@ -76,23 +77,21 @@ export const CruiseHuntChatModal: React.FC<CruiseHuntChatModalProps> = ({
       {
         id: 'welcome',
         role: 'assistant',
-        content: `Hi! 👋 I'm your personal Cruise AI Assistant.
+        content: `Namaste! 👋 Welcome to Cruise-Hunt Maritime AI Concierge.
 
-You can ask me about:
-• 🎫 My Booking / Ticket Details
-• 🚢 Public & Private Cruises
-• 📍 Routes, Timings & Prices
-• ⚓ Ship Facilities
-• 📞 Contact Support
-• 🗺️ Website Guide
-• ❓ General Questions
+Aap mujhse in cheezon ke baare me pooch sakte hain:
+• 🎫 **My Bookings & Passes:** Ticket status, route details & QR boarding pass
+• 🚢 **Cruises & Yachts:** Cordelia ocean liners, sunset tours & private yacht charters
+• 🏄 **Water Sports:** PADI Scuba diving, jet ski safaris & parasailing
+• 💳 **Wallet & Gate Entry:** Fast UPI QR top-ups & live ship boarding gate scan
 
-How can I help you today? *(Aap Hindi, Hinglish ya English me pooch sakte hain!)*`,
+Aap Hindi, Hinglish ya English me pooch sakte hain! How can I help you? 🐬`,
         timestamp: Date.now(),
         actions: [
-          { label: 'Browse Public Cruises', url: '/tours', type: 'navigate', variant: 'primary' },
-          { label: 'Explore Private Yachts', url: '/explore', type: 'navigate', variant: 'outline' },
-          { label: 'Check My Trips', url: '/dashboard', type: 'navigate', variant: 'ghost' },
+          { label: '🚢 Browse Public Cruises', url: '/tours', type: 'navigate', variant: 'primary' },
+          { label: '⚓ Private Yachts', url: '/explore', type: 'navigate', variant: 'outline' },
+          { label: '🏄 Water Sports', url: '/activities', type: 'navigate', variant: 'outline' },
+          { label: '💳 Open Wallet', url: '/dashboard', type: 'navigate', variant: 'ghost' },
         ],
       },
     ];
