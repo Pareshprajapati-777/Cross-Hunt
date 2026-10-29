@@ -64,7 +64,11 @@ class PublicTour(Base):
 
     @property
     def is_bookable(self) -> bool:
-        return self.is_published and self.status in ("SCHEDULED", "AVAILABLE") and self.remaining_capacity > 0
+        return (
+            self.is_published
+            and self.status in ("SCHEDULED", "AVAILABLE", "BOARDING")
+            and self.remaining_capacity > 0
+        )
 
 
 class TourFare(Base):

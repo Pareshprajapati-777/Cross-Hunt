@@ -107,6 +107,13 @@ export const ToursPage: React.FC<ToursPageProps> = ({ onSelectTour, onBookTour }
         </span>
       );
     }
+    if (status === 'COMPLETED') {
+      return (
+        <span className="px-2.5 py-1 rounded-full bg-slate-500 text-white text-[10px] font-black uppercase tracking-wider">
+          Completed
+        </span>
+      );
+    }
     if (remaining <= 20) {
       return (
         <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">

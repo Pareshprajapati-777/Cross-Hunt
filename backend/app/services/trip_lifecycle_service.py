@@ -37,6 +37,7 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
     today = now_ist.date()
 
     completed_tours_count = 0
+    rescheduled_tours_count = 0
     completed_bookings_count = 0
     on_tour_count = 0
 
@@ -44,7 +45,7 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
     # 1. PUBLIC TOURS & LINKED PASSENGER BOOKINGS
     # =========================================================================
     tours = db.query(PublicTour).filter(
-        PublicTour.status.notin_(["COMPLETED", "CANCELLED"])
+        PublicTour.status != "CANCELLED"
     ).all()
 
     for t in tours:
@@ -65,10 +66,7 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
         ).all()
 
         if now_ist >= tour_end_dt:
-            # TOUR FINISHED -> Auto-complete tour
-            t.status = "COMPLETED"
-            completed_tours_count += 1
-
+            # Past voyage completed: mark passenger bookings completed
             for b in linked_bookings:
                 if b.status in ("CONFIRMED", "PENDING"):
                     b.status = "COMPLETED"
@@ -76,6 +74,35 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
                     completed_bookings_count += 1
                 elif b.status == "COMPLETED" and b.tracking_status != "COMPLETED":
                     b.tracking_status = "COMPLETED"
+
+            if t.is_published:
+                # Active public catalog cruise: auto roll forward to next scheduled departure
+                # so catalog tours never get permanently disabled or unbookable
+                tour_days = max(1, t.duration_days or ((ret_date - dep_date).days if ret_date else 1))
+                if tour_days <= 1:
+                    # Daily recurring tour: roll to today (if departure time still ahead) or tomorrow
+                    if now_ist.time() < dep_time and dep_time > dt_time(0, 0, 0):
+                        next_dep = today
+                    else:
+                        next_dep = today + timedelta(days=1)
+                    t.departure_date = next_dep
+                    t.return_date = next_dep
+                else:
+                    # Multi-day cruise: roll forward by weekly cycle until departure >= today
+                    next_dep = t.departure_date
+                    while next_dep < today:
+                        next_dep += timedelta(days=7)
+                    t.departure_date = next_dep
+                    t.return_date = next_dep + timedelta(days=(tour_days - 1)) if tour_days > 1 else next_dep
+
+                t.status = "SCHEDULED"
+                # Refresh capacity if exhausted
+                if t.remaining_capacity <= 0:
+                    t.booked_capacity = 0
+                rescheduled_tours_count += 1
+            else:
+                t.status = "COMPLETED"
+                completed_tours_count += 1
 
         elif tour_start_dt <= now_ist < tour_end_dt:
             # TOUR CURRENTLY IN PROGRESS
@@ -85,6 +112,13 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
                 if b.status == "CONFIRMED" and b.tracking_status not in ("COMPLETED", "CANCELLED"):
                     b.tracking_status = "ON_CRUISE"
                     on_tour_count += 1
+        else:
+            # Upcoming voyage: ensure published catalog tour is active and bookable
+            if t.is_published and t.status in ("COMPLETED", "DEPARTED"):
+                t.status = "SCHEDULED"
+                if t.remaining_capacity <= 0:
+                    t.booked_capacity = 0
+                rescheduled_tours_count += 1
 
     # =========================================================================
     # 2. PRIVATE CHARTERS & EVENT BOOKINGS
@@ -150,7 +184,7 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
             completed_bookings_count += 1
 
     # Commit any changes to database and invalidate cache so UI gets fresh data
-    if completed_tours_count > 0 or completed_bookings_count > 0 or on_tour_count > 0:
+    if completed_tours_count > 0 or rescheduled_tours_count > 0 or completed_bookings_count > 0 or on_tour_count > 0:
         try:
             db.commit()
             cache.clear()
@@ -160,6 +194,7 @@ def auto_complete_trips(db: Session, force: bool = False) -> Dict[str, Any]:
     return {
         "current_time_ist": now_ist.strftime("%Y-%m-%d %H:%M:%S"),
         "completed_tours": completed_tours_count,
+        "rescheduled_tours": rescheduled_tours_count,
         "completed_bookings": completed_bookings_count,
         "on_tour": on_tour_count,
     }

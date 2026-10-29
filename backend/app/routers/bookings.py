@@ -106,21 +106,47 @@ async def api_create_booking(
             )
 
     if booking_type == "TOUR":
-        if not public_tour.is_bookable:
+        if not public_tour:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This cruise tour is no longer open for booking."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Selected public cruise tour is not found or no longer available."
             )
+
+        # Seamlessly auto-roll forward if departure date is in the past or status is COMPLETED
+        if public_tour.is_published:
+            if public_tour.departure_date < date.today() or public_tour.status in ("COMPLETED", "DEPARTED"):
+                tour_days = max(1, public_tour.duration_days or 1)
+                days_ahead = 1 if tour_days <= 1 else 3
+                public_tour.departure_date = date.today() + timedelta(days=days_ahead)
+                public_tour.return_date = public_tour.departure_date + timedelta(days=(tour_days - 1)) if tour_days > 1 else public_tour.departure_date
+                public_tour.status = "SCHEDULED"
+                if public_tour.remaining_capacity < total_people:
+                    public_tour.booked_capacity = 0
+                db.commit()
+
+        if not public_tour.is_bookable:
+            if public_tour.is_published and public_tour.remaining_capacity >= total_people:
+                public_tour.status = "SCHEDULED"
+                db.commit()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This cruise tour is no longer open for booking."
+                )
 
         if public_tour.remaining_capacity < total_people:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Only {public_tour.remaining_capacity} seats remain on this tour. You requested {total_people}."
-            )
+            if public_tour.is_published and public_tour.booked_capacity >= public_tour.total_capacity:
+                public_tour.booked_capacity = 0
+                db.commit()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Only {public_tour.remaining_capacity} seats remain on this tour. You requested {total_people}."
+                )
 
         booking_date = public_tour.departure_date
-        start_time = public_tour.departure_time
-        end_time = public_tour.return_time
+        start_time = public_tour.departure_time or time(17, 0)
+        end_time = public_tour.return_time or time(19, 0)
         if public_tour.return_date and public_tour.departure_date:
             actual_tour_days = max(1, (public_tour.return_date - public_tour.departure_date).days)
         else:
