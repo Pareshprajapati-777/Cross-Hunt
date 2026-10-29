@@ -959,60 +959,6 @@ Thank you!
                   </div>
                 )}
 
-                {/* Promo Code Input in Sidebar */}
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                      <Tag className="w-3 h-3 text-orange-500" />
-                      Promo Code / Voucher
-                    </span>
-                    {couponResult?.valid && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveCoupon}
-                        className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value.toUpperCase());
-                        if (couponError) setCouponError(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleApplyCoupon();
-                        }
-                      }}
-                      placeholder="e.g. ROYAL5000"
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold uppercase text-slate-900 focus:outline-none focus:border-orange-500"
-                    />
-                    <button
-                      type="button"
-                      disabled={couponLoading || !couponCode.trim()}
-                      onClick={() => handleApplyCoupon()}
-                      className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
-                    >
-                      {couponLoading ? '...' : 'Apply'}
-                    </button>
-                  </div>
-                  {couponError && (
-                    <p className="text-[10px] text-rose-600 font-semibold">{couponError}</p>
-                  )}
-                  {couponResult?.valid && (
-                    <p className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      Saved {formatINR(couponResult.discount_amount)} with code {couponResult.code}!
-                    </p>
-                  )}
-                </div>
-
                 <div className="pt-3 border-t border-slate-100">
                   <div className="flex items-baseline justify-between">
                     <div>
