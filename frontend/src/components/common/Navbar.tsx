@@ -245,24 +245,24 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'py-2' : 'py-3.5'
+      className={`fixed top-0 left-0 right-0 w-full max-w-full z-50 transition-all duration-300 box-border overflow-x-clip ${
+        scrolled ? 'py-1.5 sm:py-2' : 'py-2 sm:py-3.5'
       }`}
     >
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl px-5 sm:px-6 py-2.5 flex items-center justify-between border-2 border-sky-400 shadow-[0_0_25px_rgba(14,165,233,0.35),0_0_50px_rgba(56,189,248,0.18),0_10px_30px_rgba(2,132,199,0.1)] ring-1 ring-sky-300/40">
+      <div className="w-full max-w-[1440px] mx-auto px-2 sm:px-6 lg:px-8 box-border">
+        <div className="w-full max-w-full box-border bg-white/95 backdrop-blur-xl rounded-2xl px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between border-2 border-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.25),0_4px_16px_rgba(2,132,199,0.1)] ring-1 ring-sky-300/40 min-w-0">
           {/* Logo & Brand */}
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center space-x-3 text-left group cursor-pointer"
+            className="flex items-center space-x-2 sm:space-x-3 text-left group cursor-pointer min-w-0 flex-shrink"
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0369a1] to-[#fff8dc] p-[2px] shadow-sm flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#0369a1] to-[#fff8dc] p-[2px] shadow-sm flex items-center justify-center flex-shrink-0">
               <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
-                <Ship className="w-5 h-5 text-[#0284c7]" />
+                <Ship className="w-4 h-4 sm:w-5 sm:h-5 text-[#0284c7]" />
               </div>
             </div>
-            <div>
-              <span className="font-heading-more text-lg tracking-wider text-[#051833] flex items-center gap-1.5 leading-none">
+            <div className="min-w-0">
+              <span className="font-heading-more text-base sm:text-lg tracking-wider text-[#051833] flex items-center gap-1 sm:gap-1.5 leading-none whitespace-nowrap">
                 CRUISE <span className="text-[#0284c7]">HUNT</span>
               </span>
             </div>
@@ -647,12 +647,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </div>
 
           {/* Mobile controls */}
-          <div className="md:hidden flex items-center space-x-1.5 sm:space-x-2">
+          <div className="md:hidden flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0 min-w-0">
             {user && isStaffOrOwner && (
               <button
                 type="button"
                 onClick={() => setScannerModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-sm flex items-center gap-1 cursor-pointer"
+                className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[11px] sm:text-xs shadow-sm flex items-center gap-1 cursor-pointer flex-shrink-0"
                 title="Scan Customer Boarding Pass for Ship Entry"
               >
                 <QrCode className="w-3.5 h-3.5 text-emerald-200" />
@@ -666,20 +666,20 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                   <button
                     type="button"
                     onClick={handleOpenNotifications}
-                    className="relative p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+                    className="relative p-1.5 sm:p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition cursor-pointer flex-shrink-0"
                     title="Platform Notifications"
                     aria-label="Platform Notifications"
                   >
-                  <Bell className="w-5 h-5 text-slate-700" />
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] sm:text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
                 {notificationsOpen && (
                   <div
-                    className="fixed inset-x-4 top-20 max-w-sm mx-auto rounded-2xl bg-white p-3 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150 text-left"
+                    className="fixed inset-x-2 sm:inset-x-4 top-16 sm:top-20 max-w-sm mx-auto rounded-2xl bg-white p-3 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150 text-left box-border"
                   >
                     <div className="flex items-center justify-between px-2 pb-2.5 mb-2 border-b border-slate-100">
                       <div className="flex items-center gap-2">
@@ -803,7 +803,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                 setMobileMenuOpen(!mobileMenuOpen);
                 setNotificationsOpen(false);
               }}
-              className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-[#051833] hover:text-[#0284c7]"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 border border-slate-200 text-[#051833] hover:text-[#0284c7] flex-shrink-0"
+              aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -812,7 +813,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
 
         {/* Mobile dropdown drawer (Clean White & Navy) */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-2 p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833] max-h-[85dvh] overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="md:hidden mt-2 p-3 sm:p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833] max-h-[85dvh] overflow-y-auto no-scrollbar w-full max-w-full box-border animate-in fade-in slide-in-from-top-2 duration-150">
             <button
               onClick={() => {
                 onNavigate('home');
@@ -873,22 +874,22 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                       setWalletModalOpen(true);
                       setMobileMenuOpen(false);
                     }}
-                    className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 text-white cursor-pointer shadow-md flex items-center justify-between"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 text-white cursor-pointer shadow-md flex items-center justify-between gap-2 w-full max-w-full box-border min-w-0"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <Wallet className="w-5 h-5 text-emerald-200" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-200" />
                       </div>
-                      <div>
-                        <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-200">
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-200 truncate">
                           Cruise-Hunt Wallet
                         </div>
-                        <div className="text-base font-black">
+                        <div className="text-sm sm:text-base font-black truncate">
                           ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
-                    <span className="text-[11px] font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl border border-white/25">
+                    <span className="text-[10px] sm:text-[11px] font-bold bg-white/20 hover:bg-white/30 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-white/25 flex-shrink-0 whitespace-nowrap">
                       View &amp; Top-up →
                     </span>
                   </div>
@@ -936,13 +937,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                       setScannerModalOpen(true);
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between font-bold text-xs shadow-md"
+                    className="w-full text-left px-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between gap-2 font-bold text-xs shadow-md cursor-pointer box-border min-w-0"
                   >
-                    <span className="flex items-center gap-2">
-                      <QrCode className="w-4 h-4 text-emerald-200" />
-                      Scan Boarding Pass (Ship Entry)
+                    <span className="flex items-center gap-2 min-w-0 truncate">
+                      <QrCode className="w-4 h-4 text-emerald-200 flex-shrink-0" />
+                      <span className="truncate">Scan Boarding Pass (Gate Entry)</span>
                     </span>
-                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md flex-shrink-0">
                       Gate Entry
                     </span>
                   </button>
