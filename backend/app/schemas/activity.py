@@ -34,6 +34,7 @@ class ActivityBase(BaseModel):
     image: str = ""
     gallery: List[str] = []
     host_ship_id: Optional[int] = None
+    host_ship_name: Optional[str] = None
     auto_confirm: bool = True
     required_equipment_category: Optional[str] = None
     equipment_units_per_participant: int = 1
@@ -77,6 +78,7 @@ class ActivityUpdate(BaseModel):
     image: Optional[str] = None
     gallery: Optional[List[str]] = None
     host_ship_id: Optional[int] = None
+    host_ship_name: Optional[str] = None
     auto_confirm: Optional[bool] = None
     required_equipment_category: Optional[str] = None
     equipment_units_per_participant: Optional[int] = None

@@ -338,6 +338,18 @@ def serialize_booking(b) -> Dict[str, Any]:
         tour_route = f"{tour_departure_port} → {tour_destination}" if tour_departure_port and tour_destination else (b.cross.route if b.cross else "")
         tour_return_date = tour.return_date.strftime("%Y-%m-%d") if tour.return_date else None
         tour_return_date_formatted = tour.return_date.strftime("%A, %B %d, %Y") if tour.return_date else None
+    elif b.booking_type == "ACTIVITY":
+        # Specific duration, port and route for water sports activities
+        tour_duration_days = 1
+        dur_hrs = float(b.duration_hours) if b.duration_hours else 1.0
+        dur_mins = int(dur_hrs * 60)
+        tour_duration_display = f"{dur_mins} Mins" if dur_mins < 120 else f"{dur_hrs:g} Hours"
+        tour_departure_port = b.cross.departure_port if b.cross else "Mumbai"
+        tour_destination = b.cross.location if (b.cross and getattr(b.cross, 'location', None)) else (b.cross.destination if b.cross else "Mumbai")
+        tour_title = b.cross.name if b.cross else "Water Sports Vessel"
+        tour_route = f"{tour_departure_port} • {tour_destination}" if tour_departure_port and tour_destination and tour_departure_port != tour_destination else (tour_departure_port or tour_destination or "Mumbai")
+        tour_return_date = None
+        tour_return_date_formatted = None
     else:
         tour_duration_days = b.cross.duration_days if b.cross else 1
         tour_duration_display = f"{float(b.duration_hours):g} Hours" if (b.booking_type == "EVENT" and float(b.duration_hours) > 0) else (f"{tour_duration_days} Days" if tour_duration_days > 1 else "1 Day")
@@ -350,24 +362,97 @@ def serialize_booking(b) -> Dict[str, Any]:
 
     activity_title = ""
     activity_id = None
+    activity_image = ""
+    host_vessel_name = ""
+    host_vessel_id = 0
+
     if b.booking_type == "ACTIVITY":
         if b.event_type and b.event_type.startswith("ACT_"):
             try:
                 activity_id = int(b.event_type.split("_")[1])
             except Exception:
                 pass
-        if b.special_request and "Water Sports Ride Booking: " in b.special_request:
+        if not activity_id and b.cabin_type and b.cabin_type.startswith("ACT:"):
+            try:
+                activity_id = int(b.cabin_type.split(":")[1])
+            except Exception:
+                pass
+
+        # Query database Activity entity for canonical details
+        if activity_id:
+            try:
+                from sqlalchemy.orm import object_session, joinedload
+                from backend.app.models.activity import Activity
+                from backend.app.database.session import SessionLocal
+
+                db_sess = object_session(b)
+                local_sess = None
+                if not db_sess:
+                    local_sess = SessionLocal()
+                    db_sess = local_sess
+
+                try:
+                    act_obj = db_sess.query(Activity).options(joinedload(Activity.host_ship)).filter(Activity.id == activity_id).first()
+                    if act_obj:
+                        activity_title = act_obj.title
+                        activity_image = act_obj.image
+                        if act_obj.host_ship:
+                            host_vessel_name = act_obj.host_ship.name
+                            host_vessel_id = act_obj.host_ship.id
+                        elif act_obj.host_ship_id:
+                            host_vessel_id = act_obj.host_ship_id
+                        if act_obj.duration_minutes:
+                            tour_duration_display = f"{act_obj.duration_minutes} Mins" if act_obj.duration_minutes < 120 else f"{act_obj.duration_minutes // 60} Hours"
+                        if act_obj.departure_port:
+                            tour_departure_port = act_obj.departure_port
+                        if act_obj.location:
+                            tour_destination = act_obj.location
+                        tour_route = f"{tour_departure_port} • {tour_destination}" if tour_departure_port and tour_destination and tour_departure_port != tour_destination else (tour_departure_port or tour_destination or "Mumbai")
+                finally:
+                    if local_sess:
+                        local_sess.close()
+            except Exception:
+                pass
+
+        if not activity_title and b.special_request and "Water Sports Ride Booking: " in b.special_request:
             try:
                 part = b.special_request.split("Water Sports Ride Booking: ")[1]
                 activity_title = part.split(" at ")[0].strip()
             except Exception:
                 pass
-        if not activity_title and b.cabin_type and b.cabin_type.startswith("ACT:"):
+
+        if not activity_title:
+            activity_title = "Scuba Diving" if (b.event_package and "SCUBA" in b.event_package) else "Water Sports Ride"
+
+        # Sanitize legacy title if Lion Ship was prepended
+        if "Lion Ship Deep-Sea Scuba Diving" in activity_title:
+            activity_title = "Scuba Diving"
+
+        if not host_vessel_name:
+            if b.cross and b.cross.name and b.cross.name != "Lion Ship":
+                host_vessel_name = b.cross.name
+                host_vessel_id = b.cross.id
+            else:
+                host_vessel_name = "Best boat" if (b.cross and b.cross.owner_id == 24) else (b.cross.name if b.cross else "Best boat")
+
+        if not activity_image:
+            activity_image = "/static/images/activities/scuba_diving.jpg"
+
+    # Clean slot string
+    clean_cabin_slot = b.cabin_type or ""
+    if b.booking_type == "ACTIVITY" and b.cabin_type:
+        if b.cabin_type.startswith("ACT:"):
             parts = b.cabin_type.split(":")
             if len(parts) >= 3:
-                activity_title = f"Activity #{parts[1]} ({parts[2]})"
+                clean_cabin_slot = f"Slot: {':'.join(parts[2:])}"
+            else:
+                clean_cabin_slot = b.cabin_type
+        elif b.cabin_type.startswith("Slot:"):
+            clean_cabin_slot = b.cabin_type
+        else:
+            clean_cabin_slot = f"Slot: {b.cabin_type}"
 
-    time_slot_display = f"{b.start_time.strftime('%I:%M %p')} - {b.end_time.strftime('%I:%M %p')}" if (b.start_time and b.end_time) else ""
+    time_slot_display = f"{b.start_time.strftime('%I:%M %p')} - {b.end_time.strftime('%I:%M %p')}" if (b.start_time and b.end_time) else (clean_cabin_slot.replace("Slot: ", "") if clean_cabin_slot.startswith("Slot: ") else "")
 
     return {
         "id": b.id,
@@ -377,16 +462,16 @@ def serialize_booking(b) -> Dict[str, Any]:
         "activity_id": activity_id,
         "activity_title": activity_title,
         "time_slot_display": time_slot_display,
-        "cabin_type": b.cabin_type,
-        "cabin_name": b.cabin_type,
+        "cabin_type": clean_cabin_slot if b.booking_type == "ACTIVITY" else b.cabin_type,
+        "cabin_name": clean_cabin_slot if b.booking_type == "ACTIVITY" else b.cabin_type,
         "event_type": b.event_type or "",
         "event_package": b.event_package or "",
         "qr_code_hash": b.qr_code_hash or b.booking_id,
-        "cruise_id": b.cross.id if b.cross else 0,
-        "cruise_name": b.cross.name if b.cross else (activity_title or "Charter Vessel"),
-        "cruise_title": activity_title or tour_title,
+        "cruise_id": (host_vessel_id or (b.cross.id if b.cross else 0)),
+        "cruise_name": host_vessel_name if b.booking_type == "ACTIVITY" else (b.cross.name if b.cross else (activity_title or "Charter Vessel")),
+        "cruise_title": activity_title if b.booking_type == "ACTIVITY" else (tour_title or (b.cross.name if b.cross else "Voyage")),
         "cruise_slug": b.cross.slug if b.cross else "",
-        "cruise_image": (tour.image_url.strip() if tour and getattr(tour, 'image_url', None) and tour.image_url.strip() else None) or (b.cross.display_image_url if b.cross else ""),
+        "cruise_image": (activity_image if b.booking_type == "ACTIVITY" else ((tour.image_url.strip() if tour and getattr(tour, 'image_url', None) and tour.image_url.strip() else None) or (b.cross.display_image_url if b.cross else ""))),
         "destination": tour_destination,
         "departure_port": tour_departure_port,
         "route": tour_route,
@@ -405,12 +490,12 @@ def serialize_booking(b) -> Dict[str, Any]:
         "children_count": b.children_count,
         "selected_extras": b.extras_list,
         "promo_code": b.promo_code or "",
-        "base_price": float(b.base_price),
-        "subtotal": float(b.subtotal),
-        "extras_amount": float(b.extras_amount),
-        "discount_amount": float(b.discount_amount),
-        "tax_amount": float(b.tax_amount),
-        "total_price": float(b.total_price),
+        "base_price": float(b.base_price or 0),
+        "subtotal": float(b.subtotal or 0),
+        "extras_amount": float(b.extras_amount or 0),
+        "discount_amount": float(b.discount_amount or 0),
+        "tax_amount": float(b.tax_amount or 0),
+        "total_price": float(b.total_price or 0),
         "status": b.status,
         "tracking_status": b.tracking_status,
         "special_request": b.special_request or "",

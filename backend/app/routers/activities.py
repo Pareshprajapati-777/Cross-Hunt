@@ -411,7 +411,7 @@ def book_activity(
         start_time=start_t,
         end_time=end_t,
         booking_type="ACTIVITY",
-        cabin_type=f"ACT:{act.id}:{req.time_slot}",
+        cabin_type=f"Slot: {req.time_slot}",
         event_type=f"ACT_{act.id}",
         event_package=f"{act.activity_type}:{req.time_slot}",
         number_of_people=req.participants,
@@ -450,6 +450,8 @@ def book_activity(
     db.refresh(booking)
     checkpoint_db()
 
+    host_vessel_name = act.host_ship.name if act.host_ship else ("Best boat" if (act.owner_id == 24) else "Host Vessel")
+    activity_img = act.image or "/static/images/activities/scuba_diving.jpg"
     confirm_status_text = "confirmed" if getattr(act, "auto_confirm", True) else "pending owner approval"
     return {
         "success": True,
@@ -460,16 +462,31 @@ def book_activity(
             "ticket_code": booking.ticket_code,
             "invoice_number": booking.invoice_number,
             "status": booking.status,
+            "tracking_status": booking.tracking_status,
             "total_price": float(booking.total_price),
             "booking_date": booking.booking_date.strftime("%Y-%m-%d"),
             "time_slot": req.time_slot,
+            "time_slot_display": req.time_slot,
             "participants": booking.number_of_people,
+            "passengers_count": booking.number_of_people,
             "activity_title": act.title,
             "activity_type": act.activity_type,
-            "host_ship_name": act.host_ship.name if act.host_ship else "Host Vessel",
+            "host_ship_name": host_vessel_name,
+            "cruise_title": act.title,
+            "cruise_name": host_vessel_name,
+            "cruise_image": activity_img,
+            "duration_display": f"{act.duration_minutes} Mins",
+            "duration_hours": float(dur_hrs),
+            "duration_days": 1,
+            "cabin_type": f"Slot: {req.time_slot}",
+            "cabin_name": f"Slot: {req.time_slot}",
             "departure_port": act.departure_port,
+            "destination": act.location,
             "location": act.location,
+            "route": f"{act.departure_port} • {act.location}" if act.departure_port != act.location else act.departure_port,
             "customer_whatsapp": booking.customer_whatsapp,
+            "booking_type": "ACTIVITY",
+            "payment_status": "PAID",
         },
     }
 
@@ -486,14 +503,46 @@ def create_activity(
     if current_user.role not in ["OWNER", "OPERATOR", "ADMIN"]:
         raise HTTPException(status_code=403, detail="Only verified vessel owners or operators can list activities.")
 
+    # Target vessel resolution
+    target_vessel_name = (data.host_ship_name or "").strip()
+    if not target_vessel_name and data.vessel_requirement_note and "(" in data.vessel_requirement_note:
+        match = re.search(r"\((.*?)\)", data.vessel_requirement_note)
+        if match:
+            target_vessel_name = match.group(1).strip()
+
     # Validate host ship if provided
     host_ship = None
     if data.host_ship_id and data.host_ship_id > 0:
         host_ship = db.query(Cross).filter(Cross.id == data.host_ship_id).first()
+
+    if not host_ship and target_vessel_name and target_vessel_name.lower() not in ["vessel", "boat transport included", "none", "beach"]:
+        host_ship = db.query(Cross).filter(Cross.owner_id == current_user.id, Cross.name.ilike(target_vessel_name)).first()
         if not host_ship:
-            raise HTTPException(status_code=404, detail="Selected host vessel does not exist.")
-        if not current_user.is_admin and host_ship.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You can only associate activities with vessels you own.")
+            host_ship = db.query(Cross).filter(Cross.name.ilike(target_vessel_name)).first()
+        if not host_ship:
+            import uuid
+            from backend.app.core.security import slugify
+            slug_cand = f"{slugify(target_vessel_name)}-{uuid.uuid4().hex[:6]}"
+            host_ship = Cross(
+                owner_id=current_user.id,
+                name=target_vessel_name,
+                slug=slug_cand,
+                category="Motor Yacht",
+                vessel_type="Motor Yacht",
+                price=Decimal("15000"),
+                capacity=data.capacity_per_slot or 10,
+                location=data.location or "Mumbai",
+                departure_port=data.departure_port or "Mumbai",
+                destination=data.location or "Mumbai Coastal Waters",
+                route=f"{data.departure_port or 'Mumbai'} Coast",
+                duration_days=1,
+                image_url=data.image or "/static/images/activities/scuba_diving.jpg",
+                is_active=True,
+                is_approved=True
+            )
+            db.add(host_ship)
+            db.commit()
+            db.refresh(host_ship)
 
     # Generate slug
     base_slug = re.sub(r"[^a-zA-Z0-9]+", "-", data.title.lower()).strip("-")
@@ -578,25 +627,62 @@ def update_activity(
     if "gallery" in update_dict:
         act.gallery_json = json.dumps(update_dict.pop("gallery"))
 
+    # Target vessel resolution
+    target_vessel_name = (update_dict.get("host_ship_name") or data.host_ship_name or "").strip()
+    if not target_vessel_name and update_dict.get("vessel_requirement_note") and "(" in update_dict["vessel_requirement_note"]:
+        match = re.search(r"\((.*?)\)", update_dict["vessel_requirement_note"])
+        if match:
+            target_vessel_name = match.group(1).strip()
+
     # If host_ship_id is updated, verify authorization
-    if "host_ship_id" in update_dict:
+    if "host_ship_id" in update_dict or target_vessel_name:
         new_ship_id = update_dict.get("host_ship_id")
+        ship = None
         if new_ship_id and new_ship_id > 0:
             ship = db.query(Cross).filter(Cross.id == new_ship_id).first()
+        
+        if not ship and target_vessel_name and target_vessel_name.lower() not in ["vessel", "boat transport included", "none", "beach"]:
+            ship = db.query(Cross).filter(Cross.owner_id == current_user.id, Cross.name.ilike(target_vessel_name)).first()
             if not ship:
-                raise HTTPException(status_code=404, detail="Host ship not found.")
-            if not current_user.is_admin and ship.owner_id != current_user.id:
-                raise HTTPException(status_code=403, detail="Cannot assign activity to another owner's ship.")
+                ship = db.query(Cross).filter(Cross.name.ilike(target_vessel_name)).first()
+            if not ship:
+                import uuid
+                from backend.app.core.security import slugify
+                slug_cand = f"{slugify(target_vessel_name)}-{uuid.uuid4().hex[:6]}"
+                ship = Cross(
+                    owner_id=current_user.id,
+                    name=target_vessel_name,
+                    slug=slug_cand,
+                    category="Motor Yacht",
+                    vessel_type="Motor Yacht",
+                    price=Decimal("15000"),
+                    capacity=act.capacity_per_slot or 10,
+                    location=act.location or "Mumbai",
+                    departure_port=act.departure_port or "Mumbai",
+                    destination=act.location or "Mumbai Coastal Waters",
+                    route=f"{act.departure_port or 'Mumbai'} Coast",
+                    duration_days=1,
+                    image_url=act.image or "/static/images/activities/scuba_diving.jpg",
+                    is_active=True,
+                    is_approved=True
+                )
+                db.add(ship)
+                db.commit()
+                db.refresh(ship)
+
+        if ship:
             act.host_ship_id = ship.id
             act.operator_id = ship.operator_id
             act.requires_boat = True
-        else:
+            act.vessel_requirement_note = f"Boat Included ({ship.name})"
+        elif new_ship_id == 0 or (new_ship_id is None and not target_vessel_name):
             act.host_ship_id = None
             act.operator_id = None
             act.requires_boat = False
+            act.vessel_requirement_note = "Beach & Shore-Based (No Boat Needed)"
 
     for k, v in update_dict.items():
-        if k != "host_ship_id" and hasattr(act, k):
+        if k not in ["host_ship_id", "host_ship_name"] and hasattr(act, k):
             setattr(act, k, v)
 
     db.commit()

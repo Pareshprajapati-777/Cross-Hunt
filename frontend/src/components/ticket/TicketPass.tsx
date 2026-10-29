@@ -190,15 +190,27 @@ export const TicketPass: React.FC<TicketPassProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#082F5B]/10 pb-6">
             <div>
               <span className="text-[10px] text-[#102B46]/60 font-bold uppercase tracking-wider block">
-                Ship / Boat
+                {booking.booking_type === 'ACTIVITY' ? 'Activity / Water Sports' : 'Ship / Boat'}
               </span>
               <h3 className="text-2xl font-display font-extrabold text-[#102B46] mt-0.5">
-                {booking.cruise_title || booking.cruise_name}
+                {booking.activity_title || booking.cruise_title || booking.cruise_name}
               </h3>
+              {booking.booking_type === 'ACTIVITY' && (booking.cruise_name || (booking as any).host_ship_name) && (
+                <p className="text-xs font-semibold text-[#0284c7] mt-0.5 flex items-center gap-1">
+                  <Ship className="w-3.5 h-3.5 shrink-0" />
+                  <span>Host Vessel: {booking.cruise_name || (booking as any).host_ship_name}</span>
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <p className="text-xs text-[#1677C8] font-bold flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
-                  <span>{booking.departure_port || 'Departure Port'} → {booking.destination}</span>
+                  <span>
+                    {booking.booking_type === 'ACTIVITY'
+                      ? (booking.departure_port && booking.destination && booking.departure_port !== booking.destination
+                          ? `${booking.departure_port} • ${booking.destination}`
+                          : (booking.departure_port || booking.destination || 'Mumbai'))
+                      : `${booking.departure_port || 'Departure Port'} → ${booking.destination}`}
+                  </span>
                 </p>
                 {onOpenPortMap && (
                   <button
@@ -216,10 +228,14 @@ export const TicketPass: React.FC<TicketPassProps> = ({
 
             <div className="sm:text-right">
               <span className="text-[10px] text-[#102B46]/60 font-bold uppercase tracking-wider block">
-                Accommodations / Cabin
+                {booking.booking_type === 'ACTIVITY' ? 'Activity Time Slot' : 'Accommodations / Cabin'}
               </span>
               <span className="text-base font-bold text-[#102B46] block mt-0.5">
-                {booking.cabin_name || booking.cabin_type || 'Standard Ocean Cabin'}
+                {booking.booking_type === 'ACTIVITY'
+                  ? (booking.cabin_type?.startsWith('ACT:')
+                      ? `Slot: ${booking.cabin_type.split(':').slice(2).join(':') || '11:00 AM'}`
+                      : (booking.cabin_type?.startsWith('Slot:') ? booking.cabin_type : `Slot: ${booking.cabin_type || '11:00 AM'}`))
+                  : (booking.cabin_name || booking.cabin_type || 'Standard Ocean Cabin')}
               </span>
               <span className="text-xs text-[#102B46]/70 font-medium">
                 {booking.passengers_count || booking.number_of_people} Passenger(s) ({(booking.adults_count || 1)} Adults{booking.children_count ? `, ${booking.children_count} Kids` : ''})
@@ -258,7 +274,12 @@ export const TicketPass: React.FC<TicketPassProps> = ({
               </span>
               <span className="font-bold text-[#102B46] text-sm flex items-center justify-center gap-1 mt-0.5">
                 <Anchor className="w-3.5 h-3.5 text-[#1677C8]" />
-                {booking.duration_display || (booking.duration_days ? `${booking.duration_days} Days` : `${booking.duration_hours || 4} Hours`)}
+                <span>
+                  {booking.duration_display ||
+                    (booking.booking_type === 'ACTIVITY'
+                      ? `${(booking as any).duration_minutes || 60} Mins`
+                      : (booking.duration_days ? `${booking.duration_days} Days` : `${booking.duration_hours || 4} Hours`))}
+                </span>
               </span>
             </div>
             <div>

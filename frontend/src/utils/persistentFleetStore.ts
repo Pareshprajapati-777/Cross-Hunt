@@ -236,20 +236,75 @@ export function removeCustomBooking(bookingId: string | number): void {
  */
 export function mergeWithCustomBookings(apiBookings: Booking[]): Booking[] {
   const custom = getCustomBookings();
-  if (!custom.length) return apiBookings;
-
-  const result = [...apiBookings];
-  for (const c of custom) {
-    const index = result.findIndex(
-      (b) => b.booking_id === c.booking_id || String(b.id) === String(c.id)
-    );
-    if (index >= 0) {
-      result[index] = { ...result[index], ...c };
-    } else {
-      result.unshift(c);
+  const rawList = !custom.length ? [...apiBookings] : [...apiBookings];
+  if (custom.length) {
+    for (const c of custom) {
+      const index = rawList.findIndex(
+        (b) => b.booking_id === c.booking_id || String(b.id) === String(c.id)
+      );
+      if (index >= 0) {
+        rawList[index] = { ...rawList[index], ...c };
+      } else {
+        rawList.unshift(c);
+      }
     }
   }
-  return result;
+
+  // Normalize all activity bookings so they never show generic cruise ship details or 3-day durations
+  return rawList.map((b) => {
+    if (b.booking_type === 'ACTIVITY') {
+      let actTitle = b.activity_title || b.cruise_title || 'Scuba Diving';
+      if (actTitle.includes('Lion Ship Deep-Sea Scuba Diving')) {
+        actTitle = 'Scuba Diving';
+      }
+
+      let hostShip = (b as any).host_ship_name || b.cruise_name || 'Best boat';
+      if (hostShip === 'Lion Ship' || !hostShip || hostShip === 'Host Vessel' || hostShip === 'Water Sports Vessel') {
+        hostShip = 'Best boat';
+      }
+
+      let actImg = b.cruise_image;
+      if (!actImg || actImg.includes('cruisedeckplans') || actImg.includes('cordelia_empress') || actImg.includes('placeholder')) {
+        actImg = '/static/images/activities/scuba_diving.jpg';
+      }
+
+      let slotStr = b.cabin_type || 'Slot: 11:00 AM';
+      if (slotStr.startsWith('ACT:')) {
+        const parts = slotStr.split(':');
+        slotStr = parts.length >= 3 ? `Slot: ${parts.slice(2).join(':')}` : 'Slot: 11:00 AM';
+      } else if (!slotStr.startsWith('Slot:')) {
+        slotStr = `Slot: ${slotStr}`;
+      }
+
+      let durDisplay = b.duration_display;
+      if (!durDisplay || durDisplay.includes('Days') || durDisplay.includes('3 Days')) {
+        durDisplay = '60 Mins';
+      }
+
+      let depPort = b.departure_port || 'Mumbai';
+      if (depPort.includes('Goa')) depPort = 'Mumbai';
+      let dest = b.destination || 'Mumbai';
+      if (dest.includes('Goa')) dest = 'Mumbai';
+
+      return {
+        ...b,
+        cruise_title: actTitle,
+        activity_title: actTitle,
+        cruise_name: hostShip,
+        host_ship_name: hostShip,
+        cruise_image: actImg,
+        duration_display: durDisplay,
+        duration_days: 1,
+        departure_port: depPort,
+        destination: dest,
+        route: depPort !== dest ? `${depPort} • ${dest}` : depPort,
+        cabin_type: slotStr,
+        cabin_name: slotStr,
+        time_slot_display: slotStr.replace('Slot: ', ''),
+      };
+    }
+    return b;
+  });
 }
 
 // ============================================================================

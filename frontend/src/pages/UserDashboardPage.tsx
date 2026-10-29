@@ -1179,13 +1179,13 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                       <div className="flex gap-4 sm:gap-5 items-center min-w-0">
                         <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 border border-[#082F5B]/10 bg-[#EAF4FB]">
                           <img
-                            src={b.cruise_image || '/static/images/vessels/cordelia_empress.jpg'}
-                            alt={b.cruise_name}
+                            src={b.cruise_image || (b.booking_type === 'ACTIVITY' ? '/static/images/activities/scuba_diving.jpg' : '/static/images/vessels/cordelia_empress.jpg')}
+                            alt={b.cruise_title || b.cruise_name}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                             onError={(e) => {
                               const target = e.currentTarget;
-                              if (!target.src.includes('placeholder.png')) {
-                                target.src = '/static/images/placeholder.png';
+                              if (!target.src.includes('scuba_diving.jpg') && !target.src.includes('placeholder.png')) {
+                                target.src = b.booking_type === 'ACTIVITY' ? '/static/images/activities/scuba_diving.jpg' : '/static/images/placeholder.png';
                               }
                             }}
                           />
@@ -1234,16 +1234,26 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             )}
                           </div>
 
-                          <h3 className="text-lg font-bold text-[#102B46] truncate">
-                            {b.booking_type === 'ACTIVITY' && b.cabin_type?.startsWith('Slot:')
-                              ? `${b.cabin_type.replace('Slot: ', '')} (aboard ${b.cruise_title || b.cruise_name})`
-                              : (b.cruise_title || b.cruise_name)}
-                          </h3>
+                          <div className="min-w-0">
+                            <h3 className="text-lg font-bold text-[#102B46] truncate">
+                              {b.activity_title || b.cruise_title || b.cruise_name}
+                            </h3>
+                            {b.booking_type === 'ACTIVITY' && (
+                              <p className="text-xs font-semibold text-[#0284c7] flex items-center gap-1.5 mt-0.5">
+                                <Ship className="w-3.5 h-3.5 shrink-0" />
+                                <span>{b.cruise_name ? `Host Vessel: ${b.cruise_name}` : 'Shore-Based Activity'}</span>
+                              </p>
+                            )}
+                          </div>
 
                           <div className="flex flex-wrap items-center gap-3 text-xs text-[#102B46]/60 pt-0.5">
                             <span className="flex items-center gap-1 whitespace-nowrap">
                               <MapPin className="w-3.5 h-3.5 text-[#1677C8]" />
-                              {b.departure_port} → {b.destination}
+                              {b.booking_type === 'ACTIVITY'
+                                ? (b.departure_port && b.destination && b.departure_port !== b.destination
+                                    ? `${b.departure_port} • ${b.destination}`
+                                    : (b.departure_port || b.destination || 'Mumbai'))
+                                : `${b.departure_port} → ${b.destination}`}
                             </span>
                             <span className="flex items-center gap-1 whitespace-nowrap">
                               <Calendar className="w-3.5 h-3.5 text-[#1677C8]" />
@@ -1254,10 +1264,19 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             </span>
                             <span className="flex items-center gap-1 font-semibold text-[#1677C8] whitespace-nowrap">
                               <Anchor className="w-3.5 h-3.5 text-[#1677C8]" />
-                              <span>{b.duration_display || (b.duration_days ? `${b.duration_days} Days` : `${b.duration_hours || 4}h`)}</span>
+                              <span>
+                                {b.duration_display ||
+                                  (b.booking_type === 'ACTIVITY'
+                                    ? `${(b as any).duration_minutes || (b.duration_hours ? Math.round(b.duration_hours * 60) : 60)} Mins`
+                                    : (b.duration_days ? `${b.duration_days} Days` : `${b.duration_hours || 4}h`))}
+                              </span>
                             </span>
                             <span className="font-semibold text-[#102B46] whitespace-nowrap">
-                              {b.cabin_name || b.cabin_type || 'Cabin'} • {b.passengers_count || b.number_of_people} Guests
+                              {b.booking_type === 'ACTIVITY'
+                                ? (b.cabin_type?.startsWith('ACT:')
+                                    ? `Slot: ${b.cabin_type.split(':').slice(2).join(':') || '11:00 AM'}`
+                                    : (b.cabin_type?.startsWith('Slot:') ? b.cabin_type : `Slot: ${b.cabin_type || '11:00 AM'}`))
+                                : (b.cabin_name || b.cabin_type || 'Cabin')} • {b.passengers_count || b.number_of_people} Guests
                             </span>
                           </div>
 

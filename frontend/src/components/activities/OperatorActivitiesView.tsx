@@ -223,6 +223,8 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
       category_label: form.category_label,
       category_group: form.category_group,
       host_ship_id: hasShip ? Number(form.host_ship_id) : null,
+      host_ship_name: chosenShip?.name || '',
+      host_ship_image: chosenShip?.image || (chosenShip as any)?.image_url || '',
       requires_boat: hasShip,
       vessel_requirement_note: hasShip
         ? `Boat Included (${chosenShip?.name || 'Vessel'})`
@@ -262,17 +264,27 @@ export const OperatorActivitiesView: React.FC<OperatorActivitiesViewProps> = ({ 
     try {
       if (editingActivity) {
         const res = await updateActivity(editingActivity.id, payload as any);
-        saveCustomActivity(res || ({ ...editingActivity, ...payload } as any));
+        const updatedAct: ActivityItem = {
+          ...editingActivity,
+          ...payload,
+          ...(res || {}),
+          host_ship_name: chosenShip?.name || (res as any)?.host_ship_name || editingActivity.host_ship_name || '',
+          host_ship_image: chosenShip?.image || (chosenShip as any)?.image_url || (res as any)?.host_ship_image || '',
+        };
+        saveCustomActivity(updatedAct);
         setActionMessage({ text: `Activity "${payload.title}" updated successfully!` });
       } else {
         const res = await createActivity(payload as any);
-        const createdAct: ActivityItem = res || ({
-          id: Date.now(),
+        const createdAct: ActivityItem = {
           ...payload,
-          rating: 5,
-          reviews_count: 0,
-          is_active: payload.is_active ?? true,
-        } as any);
+          ...(res || {}),
+          id: (res as any)?.id || Date.now(),
+          rating: (res as any)?.rating ?? 5,
+          reviews_count: (res as any)?.reviews_count ?? 0,
+          is_active: (res as any)?.is_active ?? (payload.is_active ?? true),
+          host_ship_name: chosenShip?.name || (res as any)?.host_ship_name || '',
+          host_ship_image: chosenShip?.image || (chosenShip as any)?.image_url || (res as any)?.host_ship_image || '',
+        };
         saveCustomActivity(createdAct);
         setActionMessage({ text: `Activity "${payload.title}" published successfully!` });
       }

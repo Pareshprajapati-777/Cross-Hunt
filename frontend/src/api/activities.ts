@@ -99,38 +99,52 @@ export async function bookActivity(payload: ActivityBookingPayload): Promise<Act
     console.warn('Backend activity booking failed, saving to local persistent store:', err);
     const year = new Date().getFullYear();
     const hex = Math.random().toString(16).substring(2, 8).toUpperCase();
+    const customActs = getCustomActivities();
+    const act = customActs.find((a) => a.id === payload.activity_id || String(a.id) === String(payload.activity_id));
+    const actTitle = act?.title || 'Scuba Diving';
+    const hostBoat = act?.host_ship_name || 'Best boat';
+    const actImg = act?.image || '/static/images/activities/scuba_diving.jpg';
+    const actMins = act?.duration_minutes || 60;
+    const durDisplay = `${actMins} Mins`;
+    const port = act?.departure_port || 'Mumbai';
+    const loc = act?.location || 'Mumbai';
+
     const fallbackBooking: any = {
       id: Date.now(),
-      booking_id: `CRS-${year}-${hex}`,
-      invoice_number: `INV-${year}-${hex}`,
+      booking_id: `ACT-${year.toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoice_number: `INV-ACT-${year}-${hex}`,
       booking_type: 'ACTIVITY',
-      cross_id: 1,
-      cross_name: 'Water Sports Vessel',
-      cruise_name: 'Water Sports Vessel',
-      cruise_title: 'Water Sports Ride',
-      cruise_slug: 'water-sports',
-      destination: 'Goa Coast',
-      departure_port: 'Mandovi Jetty Pier',
+      cross_id: act?.host_ship_id || 132,
+      cross_name: hostBoat,
+      cruise_name: hostBoat,
+      host_ship_name: hostBoat,
+      cruise_title: actTitle,
+      activity_title: actTitle,
+      cruise_image: actImg,
+      cruise_slug: (act?.slug || actTitle).toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      destination: loc,
+      departure_port: port,
+      route: port !== loc ? `${port} • ${loc}` : port,
       booking_date: payload.booking_date || new Date().toISOString().split('T')[0],
-      start_time: (payload.time_slot || '10:00 AM').split(' - ')[0] || '10:00',
+      start_time: (payload.time_slot || '11:00 AM').split(' - ')[0] || '11:00',
       end_time: '12:00',
       duration_days: 1,
-      duration_hours: 2,
-      duration_display: '2 Hours Activity Slot',
+      duration_hours: actMins / 60,
+      duration_display: durDisplay,
       number_of_people: payload.participants || 1,
       passengers_count: payload.participants || 1,
-      cabin_type: `Slot: ${payload.time_slot || 'Morning Slot'}`,
-      activity_title: 'Water Sports Activity',
-      time_slot_display: payload.time_slot || 'Morning Slot',
-      total_price: 2500 * (payload.participants || 1),
-      subtotal: 2500 * (payload.participants || 1),
-      base_price: 2500,
+      cabin_type: `Slot: ${payload.time_slot || '11:00 AM'}`,
+      cabin_name: `Slot: ${payload.time_slot || '11:00 AM'}`,
+      time_slot_display: payload.time_slot || '11:00 AM',
+      total_price: (act?.price ? Number(act.price) : 3499) * (payload.participants || 1),
+      subtotal: (act?.price ? Number(act.price) : 3499) * (payload.participants || 1),
+      base_price: act?.price ? Number(act.price) : 3499,
       status: 'CONFIRMED',
-      tracking_status: 'CONFIRMED',
-      ticket_code: `TK-${hex}`,
+      tracking_status: 'BOOKED',
+      ticket_code: `ACT-PASS-${hex}`,
       ticket_status: 'VALID',
       qr_code_hash: hex,
-      special_request: payload.special_request || `Water Sports Ride Booking at ${payload.time_slot}`,
+      special_request: payload.special_request || `Water Sports Ride Booking: ${actTitle} at ${payload.time_slot}`,
       payment_method: payload.payment_method || 'UPI',
       payment_status: 'PAID',
       created_at: new Date().toISOString(),
@@ -141,7 +155,7 @@ export async function bookActivity(payload: ActivityBookingPayload): Promise<Act
     }
     return {
       success: true,
-      message: `Successfully reserved slot for Water Sports Activity on ${payload.booking_date}!`,
+      message: `Successfully reserved slot for ${actTitle} on ${payload.booking_date}!`,
       booking: fallbackBooking,
     };
   }
