@@ -5,7 +5,6 @@ import {
   X,
   Camera,
   Upload,
-  Search,
   CheckCircle2,
   AlertCircle,
   AlertTriangle,
@@ -19,14 +18,11 @@ import {
   Sparkles,
   QrCode,
   FlipHorizontal,
-  ChevronRight,
   ShieldCheck,
-  Check,
-  Ticket
+  Check
 } from 'lucide-react';
 import { verifyTicket, markTicketUsed } from '../../api/bookings';
 import { Booking } from '../../api/types';
-import { getCustomBookings } from '../../utils/persistentFleetStore';
 
 interface BoardingPassScannerModalProps {
   isOpen: boolean;
@@ -35,7 +31,7 @@ interface BoardingPassScannerModalProps {
   onBoardingSuccess?: () => void;
 }
 
-type ScanMode = 'camera' | 'upload' | 'manual';
+type ScanMode = 'camera' | 'upload';
 
 export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> = ({
   isOpen,
@@ -49,7 +45,6 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [ticketData, setTicketData] = useState<any | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [manualCode, setManualCode] = useState<string>('');
   const [admitting, setAdmitting] = useState<boolean>(false);
   const [admittedSuccess, setAdmittedSuccess] = useState<boolean>(false);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
@@ -246,13 +241,6 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
     e.target.value = '';
   };
 
-  // Handle manual code submit
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualCode.trim()) return;
-    handleProcessCode(manualCode.trim());
-  };
-
   // Mark ticket as used and admit passenger
   const handleAdmitPassenger = async () => {
     if (!ticketData) return;
@@ -305,16 +293,10 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
     setVerifyError(null);
     setAdmittedSuccess(false);
     setLastScannedCode(null);
-    setManualCode('');
     setActiveMode('camera');
   };
 
   if (!isOpen) return null;
-
-  // Gather list of confirmed bookings for quick inspection
-  const combinedBookings: Booking[] = (recentBookings.length > 0 ? recentBookings : getCustomBookings())
-    .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
-    .slice(0, 8);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
@@ -536,7 +518,7 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
             /* SCANNER TABS & MODES */
             <div className="space-y-4">
               
-              {/* Scan Mode Tabs */}
+              {/* Scan Mode Tabs (Camera Scanner & Upload QR Image) */}
               <div className="flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
@@ -569,23 +551,6 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Upload QR Image</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveMode('manual');
-                    setVerifyError(null);
-                    stopCamera();
-                  }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                    activeMode === 'manual'
-                      ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>Enter Code / Manifest</span>
                 </button>
               </div>
 
@@ -700,71 +665,7 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
                 </div>
               )}
 
-              {/* MODE 3: MANUAL INPUT & MANIFEST QUICK SELECT */}
-              {activeMode === 'manual' && !isVerifying && (
-                <div className="space-y-4">
-                  {/* Manual Input Form */}
-                  <form onSubmit={handleManualSubmit} className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                      Enter Ticket Code or Booking ID:
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <Ticket className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="e.g. CRS-20261028-1234 or TK-987654"
-                          value={manualCode}
-                          onChange={(e) => setManualCode(e.target.value)}
-                          className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={!manualCode.trim()}
-                        className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 shrink-0"
-                      >
-                        <Search className="w-3.5 h-3.5" />
-                        <span>Verify</span>
-                      </button>
-                    </div>
-                  </form>
 
-                  {/* Quick Select from Confirmed Bookings */}
-                  {combinedBookings.length > 0 && (
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                        Recent Confirmed Bookings (Quick Gate Check):
-                      </span>
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                        {combinedBookings.map((b) => (
-                          <button
-                            key={b.id || b.booking_id}
-                            type="button"
-                            onClick={() => handleProcessCode(b.ticket_code || b.booking_id)}
-                            className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700/60 transition flex items-center justify-between text-left cursor-pointer group"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
-                                {b.customer_name || 'Passenger'}
-                              </p>
-                              <p className="text-[10px] text-slate-500 font-mono truncate">
-                                {b.booking_id} • {b.cruise_name || b.cruise_title || 'Cruise'} • {b.booking_date}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
-                                {b.ticket_status || 'CONFIRMED'}
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600 transition" />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
             </div>
           )}
