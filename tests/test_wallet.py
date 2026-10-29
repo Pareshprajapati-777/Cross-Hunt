@@ -77,3 +77,73 @@ def test_wallet_system_and_cancellation_refund(client):
     assert refund_tx["transaction_type"] == "CREDIT"
     assert refund_tx["source"] == "CANCELLATION_REFUND"
     assert refund_tx["amount"] == total_price
+
+
+def test_wallet_payment_and_flexible_split_payment(client):
+    # 1. Login as user1
+    login_res = client.post("/api/auth/login/", json={"username": "user1", "password": "User@12345"})
+    assert login_res.status_code == 200
+
+    # Ensure wallet has at least 5000 for tests
+    client.post("/api/wallet/topup", json={
+        "amount": 5000.0,
+        "payment_method": "UPI Test",
+        "reference_id": "TEST-TOPUP-SPLIT"
+    })
+
+    bal_start = client.get("/api/wallet/summary").json()["wallet_balance"]
+    assert bal_start >= 5000.0
+
+    # Get a future tour with capacity
+    tours = client.get("/api/tours/").json()["tours"]
+    future_tours = [
+        t for t in tours
+        if t.get("departure_date", "") >= date.today().strftime("%Y-%m-%d")
+        and t.get("status") in ("SCHEDULED", "OPEN")
+        and t.get("remaining_capacity", 0) > 2
+    ]
+    tour = future_tours[0] if future_tours else tours[0]
+
+    # Test A: Split Payment (Use exact ₹350 from wallet, remainder online)
+    split_wallet_use = 350.0
+    booking_payload = {
+        "booking_type": "TOUR",
+        "public_tour_id": tour["id"],
+        "adults_count": 1,
+        "children_count": 0,
+        "cabin_type": "Standard Stateroom",
+        "payment_method": "UPI / QR Code",
+        "payment_status": "PAID",
+        "use_wallet": True,
+        "wallet_amount_to_use": split_wallet_use
+    }
+    split_res = client.post("/api/bookings/create/", json=booking_payload)
+    assert split_res.status_code == 200
+    booking_split = split_res.json()["booking"]
+    assert booking_split["status"] == "CONFIRMED"
+    assert "Wallet" in booking_split["payment_method"]
+
+    bal_after_split = client.get("/api/wallet/summary").json()["wallet_balance"]
+    assert round(bal_after_split, 2) == round(bal_start - split_wallet_use, 2)
+
+    # Test B: 100% Full Wallet Payment (use_wallet=True without cap)
+    full_wallet_payload = {
+        "booking_type": "TOUR",
+        "public_tour_id": tour["id"],
+        "adults_count": 1,
+        "children_count": 0,
+        "cabin_type": "Standard Stateroom",
+        "payment_method": "Cruise-Hunt Wallet",
+        "payment_status": "PAID",
+        "use_wallet": True
+    }
+    full_res = client.post("/api/bookings/create/", json=full_wallet_payload)
+    assert full_res.status_code == 200
+    booking_full = full_res.json()["booking"]
+    assert booking_full["status"] == "CONFIRMED"
+    assert booking_full["payment_method"] == "Cruise-Hunt Wallet"
+    full_cost = float(booking_full["total_price"])
+
+    bal_after_full = client.get("/api/wallet/summary").json()["wallet_balance"]
+    assert round(bal_after_full, 2) == round(bal_after_split - full_cost, 2)
+

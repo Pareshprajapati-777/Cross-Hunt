@@ -140,6 +140,8 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
     payment_method: string;
     payment_gateway_ref: string;
     payment_status: string;
+    use_wallet?: boolean;
+    wallet_amount_to_use?: number;
   }) => {
     setIsPaymentModalOpen(false);
     setLoading(true);
@@ -156,6 +158,8 @@ export const ActivityBookingModal: React.FC<ActivityBookingModalProps> = ({
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_request: specialRequest.trim() || undefined,
         payment_method: paymentDetails.payment_method,
+        use_wallet: paymentDetails.use_wallet,
+        wallet_amount_to_use: paymentDetails.wallet_amount_to_use,
       });
 
       if (res.success && res.booking) {

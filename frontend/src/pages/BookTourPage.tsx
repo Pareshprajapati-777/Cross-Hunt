@@ -310,6 +310,8 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
     payment_method: string;
     payment_gateway_ref: string;
     payment_status: string;
+    use_wallet?: boolean;
+    wallet_amount_to_use?: number;
   }) => {
     if (!cruise) return;
 
@@ -335,6 +337,8 @@ export const BookTourPage: React.FC<BookTourPageProps> = ({
         payment_method: paymentDetails?.payment_method || 'UPI / QR Code',
         payment_gateway_ref: paymentDetails?.payment_gateway_ref,
         payment_status: paymentDetails?.payment_status || 'PAID',
+        use_wallet: paymentDetails?.use_wallet,
+        wallet_amount_to_use: paymentDetails?.wallet_amount_to_use,
       });
 
       setIsPaymentModalOpen(false);

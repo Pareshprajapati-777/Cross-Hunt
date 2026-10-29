@@ -179,6 +179,8 @@ export const ActivityDetailPage: React.FC = () => {
     payment_method: string;
     payment_gateway_ref: string;
     payment_status: string;
+    use_wallet?: boolean;
+    wallet_amount_to_use?: number;
   }) => {
     setIsPaymentModalOpen(false);
     setSubmitting(true);
@@ -195,6 +197,8 @@ export const ActivityDetailPage: React.FC = () => {
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_request: specialRequest.trim() || undefined,
         payment_method: paymentDetails.payment_method,
+        use_wallet: paymentDetails.use_wallet,
+        wallet_amount_to_use: paymentDetails.wallet_amount_to_use,
       });
 
       if (res.success && res.booking) {

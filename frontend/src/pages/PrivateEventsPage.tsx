@@ -270,6 +270,8 @@ Thank you!
     payment_method: string;
     payment_gateway_ref: string;
     payment_status: string;
+    use_wallet?: boolean;
+    wallet_amount_to_use?: number;
   }) => {
     setIsPaymentModalOpen(false);
     setSubmitting(true);
@@ -288,6 +290,10 @@ Thank you!
         promo_code: couponResult?.valid ? couponResult.code : undefined,
         special_requests: specialRequests,
         payment_method: paymentDetails.payment_method,
+        payment_gateway_ref: paymentDetails.payment_gateway_ref,
+        payment_status: paymentDetails.payment_status,
+        use_wallet: paymentDetails.use_wallet,
+        wallet_amount_to_use: paymentDetails.wallet_amount_to_use,
       });
 
       confetti({

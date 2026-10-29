@@ -156,3 +156,5 @@ class ActivityBookingRequest(BaseModel):
     promo_code: Optional[str] = None
     special_request: Optional[str] = None
     payment_method: Optional[str] = "UPI / Razorpay"
+    use_wallet: Optional[bool] = False
+    wallet_amount_to_use: Optional[float] = None

@@ -385,6 +385,10 @@ async def api_create_booking(
                     t_status = "CONFIRMED"
                 else:
                     pay_method = f"Wallet (₹{float(wallet_paid):,.2f}) + {payload.payment_method or 'UPI'}"
+                    if payload.payment_status == "PAID" or payload.payment_gateway_ref:
+                        pay_status = "PAID"
+                        b_status = "CONFIRMED"
+                        t_status = "CONFIRMED"
 
     new_booking = Booking(
         booking_id=booking_id,

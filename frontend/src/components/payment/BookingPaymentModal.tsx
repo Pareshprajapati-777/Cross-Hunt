@@ -16,8 +16,9 @@ import {
   CheckCircle2,
   ExternalLink,
   ChevronRight,
-  Zap,
   Wallet,
+  Sliders,
+  ArrowRight,
 } from 'lucide-react';
 import { formatINR } from '../../utils/currency';
 import { getPaymentConfig, createPaymentOrder, verifyPayment, PaymentConfig } from '../../api/payments';
@@ -45,6 +46,8 @@ interface BookingPaymentModalProps {
     payment_method: string;
     payment_gateway_ref: string;
     payment_status: string;
+    use_wallet?: boolean;
+    wallet_amount_to_use?: number;
   }) => void;
 }
 
@@ -55,8 +58,11 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   customerInfo,
   onPaymentSuccess,
 }) => {
-  const [activeTab, setActiveTab] = useState<'WALLET' | 'UPI_QR' | 'RAZORPAY'>('UPI_QR');
+  const [activeTab, setActiveTab] = useState<'UPI_QR' | 'WALLET' | 'RAZORPAY'>('UPI_QR');
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [useWallet, setUseWallet] = useState<boolean>(false);
+  const [walletAmountInput, setWalletAmountInput] = useState<string>('');
+
   const [config, setConfig] = useState<PaymentConfig>({
     razorpay_key_id: 'rzp_test_CruiseHuntMaritime',
     merchant_name: 'Cruise Hunt Maritime',
@@ -72,23 +78,55 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 10-Minute Countdown Timer for Dynamic QR
-  const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState<number>(600);
+
+  // Usable wallet and split calculations
+  const maxUsableWallet = Math.min(walletBalance, bookingSummary.amount);
+  const parsedWalletInput = parseFloat(walletAmountInput);
+  const effectiveWalletAmount = useWallet
+    ? Math.min(
+        Math.max(0, isNaN(parsedWalletInput) ? 0 : parsedWalletInput),
+        maxUsableWallet
+      )
+    : 0;
+
+  const remainingOnlineAmount = Math.max(
+    0,
+    Math.round((bookingSummary.amount - effectiveWalletAmount) * 100) / 100
+  );
+  const isFullyCoveredByWallet = effectiveWalletAmount >= bookingSummary.amount;
 
   useEffect(() => {
     if (!isOpen) return;
     getPaymentConfig().then(setConfig).catch(() => {});
-    getWalletSummary()
-      .then((res) => {
-        if (res && typeof res.wallet_balance === 'number') {
-          setWalletBalance(res.wallet_balance);
-        }
-      })
-      .catch(() => {});
+
+    const loadWallet = () => {
+      getWalletSummary()
+        .then((res) => {
+          if (res && typeof res.wallet_balance === 'number') {
+            const bal = res.wallet_balance;
+            setWalletBalance(bal);
+            if (bal > 0) {
+              const maxAmt = Math.min(bal, bookingSummary.amount);
+              setWalletAmountInput(maxAmt.toString());
+            }
+          }
+        })
+        .catch(() => {});
+    };
+
+    loadWallet();
+    window.addEventListener('wallet-updated', loadWallet);
+
     setActiveTab('UPI_QR');
     setTimeLeft(600);
     setVerifySuccess(false);
     setVerifying(false);
     setErrorMessage(null);
+
+    return () => {
+      window.removeEventListener('wallet-updated', loadWallet);
+    };
   }, [isOpen, bookingSummary.amount]);
 
   useEffect(() => {
@@ -115,13 +153,14 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
   const seconds = timeLeft % 60;
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Standard NPCI UPI URI string
+  // Amount encoded into Dynamic UPI QR Code
+  const qrPayableAmount = remainingOnlineAmount > 0 ? remainingOnlineAmount : bookingSummary.amount;
   const upiId = config.upi_id || 'cruisehunt@razorpay';
   const merchantName = config.merchant_name || 'Cruise Hunt Maritime';
   const cleanTitle = bookingSummary.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25);
   const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
     merchantName
-  )}&am=${bookingSummary.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('CruiseHunt ' + cleanTitle)}`;
+  )}&am=${qrPayableAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('CruiseHunt ' + cleanTitle)}`;
 
   const handleCopyUPI = () => {
     navigator.clipboard.writeText(upiId);
@@ -129,45 +168,72 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
     setTimeout(() => setCopied(false), 2200);
   };
 
-  // UPI Payment Verification Action
+  // Toggle Wallet Usage Checkbox
+  const handleToggleWallet = (checked: boolean) => {
+    setUseWallet(checked);
+    if (checked && (!walletAmountInput || parseFloat(walletAmountInput) <= 0)) {
+      setWalletAmountInput(maxUsableWallet.toString());
+    }
+  };
+
+  // UPI / QR Payment Verification Action
   const handleVerifyUPIPayment = async () => {
     setVerifying(true);
     setErrorMessage(null);
 
     try {
       const ref = utrNumber.trim() || `UPI${Date.now().toString().slice(-8)}`;
-      const res = await verifyPayment({
-        upi_reference: ref,
-        amount: bookingSummary.amount,
-      });
 
-      if (res.success) {
-        setVerifySuccess(true);
-        setTimeout(() => {
-          onPaymentSuccess({
-            payment_method: 'UPI / QR Code',
-            payment_gateway_ref: res.transaction_id || ref,
-            payment_status: 'PAID',
-          });
-        }, 1200);
-      } else {
-        setErrorMessage(res.message || 'Payment verification failed. Please try again.');
-        setVerifying(false);
+      // If there's an online portion to verify
+      if (remainingOnlineAmount > 0) {
+        const res = await verifyPayment({
+          upi_reference: ref,
+          amount: remainingOnlineAmount,
+        });
+
+        if (!res.success) {
+          setErrorMessage(res.message || 'Payment verification failed. Please try again.');
+          setVerifying(false);
+          return;
+        }
       }
+
+      setVerifySuccess(true);
+      setTimeout(() => {
+        const payMethod =
+          effectiveWalletAmount > 0
+            ? remainingOnlineAmount > 0
+              ? `Wallet (₹${effectiveWalletAmount.toLocaleString('en-IN')}) + UPI QR`
+              : 'Cruise-Hunt Wallet'
+            : 'UPI / QR Code';
+
+        onPaymentSuccess({
+          payment_method: payMethod,
+          payment_gateway_ref: ref,
+          payment_status: 'PAID',
+          use_wallet: effectiveWalletAmount > 0,
+          wallet_amount_to_use: effectiveWalletAmount > 0 ? effectiveWalletAmount : undefined,
+        });
+      }, 1200);
     } catch (err: any) {
       setErrorMessage(err.message || 'Unable to confirm UPI verification. Please check reference.');
       setVerifying(false);
     }
   };
 
-  // Cruise-Hunt Wallet Instant Checkout Action
+  // Cruise-Hunt Wallet 100% or Quick Action
   const handlePayViaWallet = async () => {
     if (walletBalance < bookingSummary.amount) {
-      setErrorMessage(`Insufficient wallet balance. You need ₹${(bookingSummary.amount - walletBalance).toLocaleString('en-IN')} more.`);
+      setErrorMessage(
+        `Insufficient wallet balance for 100% payment. You need ₹${(
+          bookingSummary.amount - walletBalance
+        ).toLocaleString('en-IN')} more. Use Split Payment below to pay remaining via UPI QR!`
+      );
       return;
     }
     setVerifying(true);
     setErrorMessage(null);
+
     try {
       setVerifySuccess(true);
       setTimeout(() => {
@@ -175,6 +241,8 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
           payment_method: 'Cruise-Hunt Wallet',
           payment_gateway_ref: `WLT-${Date.now()}`,
           payment_status: 'PAID',
+          use_wallet: true,
+          wallet_amount_to_use: bookingSummary.amount,
         });
       }, 1200);
     } catch (err: any) {
@@ -185,12 +253,17 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
 
   // Razorpay Gateway Checkout Action
   const handlePayViaRazorpay = async () => {
+    // If entire booking is paid from wallet, directly execute
+    if (remainingOnlineAmount <= 0) {
+      return handlePayViaWallet();
+    }
+
     setVerifying(true);
     setErrorMessage(null);
 
     try {
       const order = await createPaymentOrder(
-        bookingSummary.amount,
+        remainingOnlineAmount,
         `rcpt_${Date.now()}`,
         {
           vessel: bookingSummary.title,
@@ -201,20 +274,27 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
       const RazorpayConstructor = (window as any).Razorpay;
 
       if (!RazorpayConstructor) {
-        // Fallback simulated payment if script is unavailable or blocked by network/ad-blocker
+        // Fallback simulated payment if script is unavailable or blocked
         const fallbackRef = `pay_rzp_sim_${Date.now().toString(36)}`;
         const verifyRes = await verifyPayment({
           razorpay_payment_id: fallbackRef,
           razorpay_order_id: order.order_id,
-          amount: bookingSummary.amount,
+          amount: remainingOnlineAmount,
         });
 
         setVerifySuccess(true);
         setTimeout(() => {
+          const payMethod =
+            effectiveWalletAmount > 0
+              ? `Wallet (₹${effectiveWalletAmount.toLocaleString('en-IN')}) + Razorpay`
+              : 'Razorpay Gateway';
+
           onPaymentSuccess({
-            payment_method: 'Razorpay Gateway',
+            payment_method: payMethod,
             payment_gateway_ref: verifyRes.transaction_id || fallbackRef,
             payment_status: 'PAID',
+            use_wallet: effectiveWalletAmount > 0,
+            wallet_amount_to_use: effectiveWalletAmount > 0 ? effectiveWalletAmount : undefined,
           });
         }, 1200);
         return;
@@ -225,7 +305,11 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
         amount: order.amount,
         currency: order.currency || 'INR',
         name: config.merchant_name,
-        description: `${bookingSummary.title} • ${bookingSummary.cabin}`,
+        description: `${bookingSummary.title} • ${bookingSummary.cabin}${
+          effectiveWalletAmount > 0
+            ? ` (₹${effectiveWalletAmount.toLocaleString('en-IN')} paid via Wallet)`
+            : ''
+        }`,
         image: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=128&q=80',
         order_id: order.order_id,
         prefill: {
@@ -243,19 +327,26 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
         },
         handler: async (response: any) => {
           try {
-            const verifyRes = await verifyPayment({
+            await verifyPayment({
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
-              amount: bookingSummary.amount,
+              amount: remainingOnlineAmount,
             });
 
             setVerifySuccess(true);
             setTimeout(() => {
+              const payMethod =
+                effectiveWalletAmount > 0
+                  ? `Wallet (₹${effectiveWalletAmount.toLocaleString('en-IN')}) + Razorpay`
+                  : 'Razorpay Gateway';
+
               onPaymentSuccess({
-                payment_method: 'Razorpay Gateway',
+                payment_method: payMethod,
                 payment_gateway_ref: response.razorpay_payment_id || `pay_${Date.now()}`,
                 payment_status: 'PAID',
+                use_wallet: effectiveWalletAmount > 0,
+                wallet_amount_to_use: effectiveWalletAmount > 0 ? effectiveWalletAmount : undefined,
               });
             }, 1200);
           } catch (verErr: any) {
@@ -297,7 +388,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                Official NPCI UPI &amp; Razorpay Certified Gateway
+                Official NPCI UPI &amp; Ship Wallet Payment Gateway
               </p>
             </div>
           </div>
@@ -312,7 +403,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
           {/* Reservation Summary Strip */}
           <div className="bg-white rounded-2xl p-4 border border-sky-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -334,9 +425,15 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               </h4>
               <p className="text-xs text-slate-500">
                 {bookingSummary.bookingType === 'ACTIVITY' ? (
-                  <>Slot: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Participants: <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span></>
+                  <>
+                    Slot: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Participants:{' '}
+                    <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span>
+                  </>
                 ) : (
-                  <>Cabin: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Passengers: <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span></>
+                  <>
+                    Cabin: <span className="font-semibold text-slate-700">{bookingSummary.cabin}</span> • Passengers:{' '}
+                    <span className="font-semibold text-slate-700">{bookingSummary.passengers} Guests</span>
+                  </>
                 )}
               </p>
             </div>
@@ -351,21 +448,154 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
             </div>
           </div>
 
+          {/* CRUISE-HUNT SHIP WALLET & SPLIT PAYMENT CONTROLLER CARD */}
+          <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/40 shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs uppercase font-black tracking-wider text-emerald-900">
+                      Cruise-Hunt Ship Wallet
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Available: ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Use your wallet balance to pay fully or split payment with Online UPI QR.
+                  </p>
+                </div>
+              </div>
+
+              {walletBalance > 0 && (
+                <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-xs hover:border-emerald-500 transition select-none self-start sm:self-auto">
+                  <input
+                    type="checkbox"
+                    checked={useWallet}
+                    onChange={(e) => handleToggleWallet(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-emerald-900">
+                    Pay with Wallet
+                  </span>
+                </label>
+              )}
+            </div>
+
+            {/* Split Amount Input & Quick Controls */}
+            {useWallet && walletBalance > 0 && (
+              <div className="pt-2 border-t border-emerald-200/80 space-y-3 animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Amount to deduct from Ship Wallet:</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Max usable: ₹{maxUsableWallet.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-500 text-sm">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={maxUsableWallet}
+                      step="1"
+                      value={walletAmountInput}
+                      onChange={(e) => setWalletAmountInput(e.target.value)}
+                      placeholder="Enter amount to pay from wallet"
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-emerald-300 text-slate-900 text-sm font-bold font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setWalletAmountInput(maxUsableWallet.toString())}
+                      className="px-2.5 py-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs transition cursor-pointer whitespace-nowrap"
+                    >
+                      Max (₹{Math.floor(maxUsableWallet).toLocaleString('en-IN')})
+                    </button>
+                    {maxUsableWallet >= 200 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setWalletAmountInput(Math.round(maxUsableWallet / 2).toString())
+                        }
+                        className="px-2.5 py-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs transition cursor-pointer whitespace-nowrap"
+                      >
+                        50%
+                      </button>
+                    )}
+                    {maxUsableWallet >= 500 && (
+                      <button
+                        type="button"
+                        onClick={() => setWalletAmountInput('500')}
+                        className="px-2.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition cursor-pointer whitespace-nowrap"
+                      >
+                        ₹500
+                      </button>
+                    )}
+                    {maxUsableWallet >= 1000 && (
+                      <button
+                        type="button"
+                        onClick={() => setWalletAmountInput('1000')}
+                        className="px-2.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition cursor-pointer whitespace-nowrap"
+                      >
+                        ₹1,000
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Live Split Breakdown Bar */}
+                <div className="bg-[#051833] text-white p-3 sm:p-3.5 rounded-xl border border-sky-500/30 shadow-md">
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs divide-x divide-white/10">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                        Total Fare
+                      </span>
+                      <span className="font-bold text-sm text-white font-mono">
+                        {formatINR(bookingSummary.amount)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-emerald-400 uppercase tracking-wider block font-semibold">
+                        From Wallet
+                      </span>
+                      <span className="font-bold text-sm text-emerald-300 font-mono">
+                        {effectiveWalletAmount > 0 ? `-${formatINR(effectiveWalletAmount)}` : '₹0'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-sky-400 uppercase tracking-wider block font-semibold">
+                        Pay Online (QR)
+                      </span>
+                      <span className="font-extrabold text-sm text-sky-300 font-mono">
+                        {formatINR(remainingOnlineAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {walletBalance === 0 && (
+              <div className="text-[11px] text-slate-500 italic pt-1">
+                Your wallet balance is currently ₹0. Any ride cancellations or cashbacks are automatically credited here. Pay online using the UPI QR Code below.
+              </div>
+            )}
+          </div>
+
           {/* Payment Method Selector Tabs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setActiveTab('WALLET')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeTab === 'WALLET'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Wallet (₹{Math.floor(walletBalance).toLocaleString('en-IN')})</span>
-            </button>
-
             <button
               type="button"
               onClick={() => setActiveTab('UPI_QR')}
@@ -376,7 +606,26 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-              <span>UPI QR Code</span>
+              <span>
+                {remainingOnlineAmount > 0
+                  ? `UPI QR Code (₹${remainingOnlineAmount.toLocaleString('en-IN')})`
+                  : 'UPI QR Code'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('WALLET')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeTab === 'WALLET'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              <Wallet className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">
+                Wallet (₹{Math.floor(walletBalance).toLocaleString('en-IN')})
+              </span>
             </button>
 
             <button
@@ -415,11 +664,11 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
               </p>
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                 <Lock className="w-3.5 h-3.5" />
-                <span>Anti-Double Booking Lock Finalized</span>
+                <span>Anti-Double Booking Seat Lock Finalized</span>
               </div>
             </div>
           ) : activeTab === 'WALLET' ? (
-            /* TAB: Cruise-Hunt Wallet Payment */
+            /* TAB: Cruise-Hunt Ship Wallet Payment */
             <div className="bg-white rounded-3xl p-5 sm:p-6 border border-emerald-200 shadow-sm space-y-4">
               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shadow-md">
                 <div className="flex items-center gap-3">
@@ -447,12 +696,16 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Deduction from Wallet:</span>
-                  <span className="font-bold text-emerald-700">-{formatINR(Math.min(walletBalance, bookingSummary.amount))}</span>
+                  <span className="font-bold text-emerald-700">
+                    -{formatINR(Math.min(walletBalance, bookingSummary.amount))}
+                  </span>
                 </div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-sm text-slate-900">
                   <span>Balance After Payment:</span>
                   <span className="text-emerald-700 font-mono">
-                    ₹{Math.max(0, walletBalance - bookingSummary.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    ₹{Math.max(0, walletBalance - bookingSummary.amount).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
               </div>
@@ -472,7 +725,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirm &amp; Pay {formatINR(bookingSummary.amount)} from Wallet</span>
+                      <span>Confirm &amp; Pay {formatINR(bookingSummary.amount)} from Wallet • View Pass</span>
                     </>
                   )}
                 </button>
@@ -481,150 +734,217 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>
-                      Insufficient wallet balance (Short by {formatINR(bookingSummary.amount - walletBalance)}). Please use UPI or Cards below.
+                      Short by {formatINR(bookingSummary.amount - walletBalance)}. Use our flexible Split Payment to pay ₹
+                      {walletBalance.toLocaleString('en-IN')} from Wallet and the remainder online via UPI QR!
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('UPI_QR')}
-                    className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                    onClick={() => {
+                      setUseWallet(true);
+                      setWalletAmountInput(walletBalance.toString());
+                      setActiveTab('UPI_QR');
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-700 hover:to-sky-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Pay via UPI QR Instead →
+                    <span>Split Payment: ₹{walletBalance.toLocaleString('en-IN')} Wallet + ₹{(bookingSummary.amount - walletBalance).toLocaleString('en-IN')} UPI QR</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
             </div>
           ) : activeTab === 'UPI_QR' ? (
-            /* TAB 1: Dynamic UPI QR Code */
+            /* TAB 1: Dynamic UPI QR Code / 100% Wallet Cover */
             <div className="space-y-4">
-              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm flex flex-col items-center text-center space-y-4">
-                {/* Timer Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono font-bold">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                  <span>QR Code expires in {formattedTime}</span>
-                </div>
-
-                {/* QR Code Container */}
-                <div className="relative p-4 bg-white rounded-2xl border-2 border-slate-900 shadow-md inline-block group">
-                  <QRCodeSVG
-                    value={upiUri}
-                    size={210}
-                    level="H"
-                    includeMargin={false}
-                    className="mx-auto"
-                  />
-                  {/* Central Maritime Emblem */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-11 h-11 rounded-full bg-white border-2 border-sky-500 shadow-md flex items-center justify-center">
-                      <Anchor className="w-6 h-6 text-sky-600" />
-                    </div>
+              {isFullyCoveredByWallet ? (
+                /* Case A: 100% of Booking is Covered by Wallet */
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500/40 shadow-sm text-center space-y-4 animate-fade-in">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
+                    <CheckCircle2 className="w-9 h-9" />
                   </div>
-                </div>
-
-                {/* Amount to Scan */}
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
-                    Scan with any UPI App to Pay
-                  </span>
-                  <div className="text-2xl font-black text-slate-900 font-serif">
-                    {formatINR(bookingSummary.amount)}
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
+                      100% Covered by Wallet Balance
+                    </span>
+                    <h4 className="text-xl font-black text-slate-900 font-serif">
+                      No Online UPI Transfer Needed!
+                    </h4>
+                    <p className="text-xs text-slate-600 max-w-md mx-auto">
+                      Your selected wallet amount covers the entire booking of{' '}
+                      <span className="font-bold text-slate-900">{formatINR(bookingSummary.amount)}</span>. Click below to confirm and instantly generate your boarding pass.
+                    </p>
                   </div>
-                </div>
 
-                {/* Supported UPI Apps Badges */}
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-[11px] font-bold text-slate-600">
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#0f9d58] flex items-center gap-1">
-                    Google Pay
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#5f259f] flex items-center gap-1">
-                    PhonePe
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#00b9f5] flex items-center gap-1">
-                    Paytm
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#004a80] flex items-center gap-1">
-                    BHIM UPI
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 flex items-center gap-1">
-                    Cred
-                  </span>
-                </div>
-
-                {/* UPI ID Display & Copy Button */}
-                <div className="w-full max-w-md pt-2">
-                  <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <span className="text-slate-400 font-mono font-medium">UPI ID:</span>
-                      <span className="font-mono font-bold text-slate-800 truncate">{upiId}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyUPI}
-                      className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white border border-slate-300 hover:bg-sky-50 hover:border-sky-300 text-slate-700 text-xs font-bold transition cursor-pointer shrink-0"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Intent Link */}
-                <a
-                  href={upiUri}
-                  className="sm:hidden w-full py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Tap to Pay with UPI App</span>
-                </a>
-              </div>
-
-              {/* UPI Verification Section */}
-              <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/30 bg-emerald-50/20 shadow-sm space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                  <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Step 2: Paid via QR? Click below to view pass</span>
-                  </span>
-                  <span className="text-[11px] text-slate-500 font-medium">Instant automated pass unlocking</span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    value={utrNumber}
-                    onChange={(e) => setUtrNumber(e.target.value)}
-                    placeholder="Enter 12-digit UPI UTR / Ref (Optional)"
-                    className="flex-1 px-3.5 py-3 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-xs"
-                  />
                   <button
                     type="button"
-                    onClick={handleVerifyUPIPayment}
+                    onClick={handlePayViaWallet}
                     disabled={verifying}
-                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-md shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 active:scale-98"
+                    className="w-full max-w-md mx-auto py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 active:scale-98"
                   >
                     {verifying ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Verifying &amp; Unlocking Pass...</span>
+                        <span>Confirming &amp; Debiting Wallet...</span>
                       </>
                     ) : (
                       <>
                         <Check className="w-5 h-5 text-white" />
-                        <span>Payment Done • View Pass</span>
+                        <span>Confirm &amp; Pay {formatINR(bookingSummary.amount)} from Wallet • View Pass</span>
                       </>
                     )}
                   </button>
                 </div>
-              </div>
+              ) : (
+                /* Case B: Remaining Online Amount via Dynamic UPI QR */
+                <>
+                  <div className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm flex flex-col items-center text-center space-y-4">
+                    {/* Timer & Split Badge */}
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono font-bold">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        <span>QR Code expires in {formattedTime}</span>
+                      </div>
+                      {effectiveWalletAmount > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold">
+                          <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Split: ₹{effectiveWalletAmount.toLocaleString('en-IN')} Wallet + ₹{remainingOnlineAmount.toLocaleString('en-IN')} QR</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* QR Code Container */}
+                    <div className="relative p-4 bg-white rounded-2xl border-2 border-slate-900 shadow-md inline-block group">
+                      <QRCodeSVG
+                        value={upiUri}
+                        size={210}
+                        level="H"
+                        includeMargin={false}
+                        className="mx-auto"
+                      />
+                      {/* Central Maritime Emblem */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-11 h-11 rounded-full bg-white border-2 border-sky-500 shadow-md flex items-center justify-center">
+                          <Anchor className="w-6 h-6 text-sky-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Amount to Scan */}
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
+                        {effectiveWalletAmount > 0
+                          ? 'Scan to Pay Remaining Balance via UPI'
+                          : 'Scan with any UPI App to Pay'}
+                      </span>
+                      <div className="text-2xl font-black text-slate-900 font-serif">
+                        {formatINR(remainingOnlineAmount)}
+                      </div>
+                    </div>
+
+                    {/* Supported UPI Apps Badges */}
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-[11px] font-bold text-slate-600">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#0f9d58] flex items-center gap-1">
+                        Google Pay
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#5f259f] flex items-center gap-1">
+                        PhonePe
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#00b9f5] flex items-center gap-1">
+                        Paytm
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[#004a80] flex items-center gap-1">
+                        BHIM UPI
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 flex items-center gap-1">
+                        Cred
+                      </span>
+                    </div>
+
+                    {/* UPI ID Display & Copy Button */}
+                    <div className="w-full max-w-md pt-2">
+                      <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <span className="text-slate-400 font-mono font-medium">UPI ID:</span>
+                          <span className="font-mono font-bold text-slate-800 truncate">{upiId}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyUPI}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white border border-slate-300 hover:bg-sky-50 hover:border-sky-300 text-slate-700 text-xs font-bold transition cursor-pointer shrink-0"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mobile Intent Link */}
+                    <a
+                      href={upiUri}
+                      className="sm:hidden w-full py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Tap to Pay with UPI App</span>
+                    </a>
+                  </div>
+
+                  {/* UPI Verification Section */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-emerald-500/30 bg-emerald-50/20 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                      <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>
+                          {effectiveWalletAmount > 0
+                            ? `Step 2: Paid ₹${remainingOnlineAmount.toLocaleString('en-IN')} via QR? Click below to confirm`
+                            : 'Step 2: Paid via QR? Click below to view pass'}
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-medium">Instant automated pass unlocking</span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={utrNumber}
+                        onChange={(e) => setUtrNumber(e.target.value)}
+                        placeholder="Enter 12-digit UPI UTR / Ref (Optional)"
+                        className="flex-1 px-3.5 py-3 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white shadow-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyUPIPayment}
+                        disabled={verifying}
+                        className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-md shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 active:scale-98"
+                      >
+                        {verifying ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Verifying &amp; Unlocking Pass...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-5 h-5 text-white" />
+                            <span>
+                              {effectiveWalletAmount > 0
+                                ? `Payment Done • View Pass`
+                                : 'Payment Done • View Pass'}
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             /* TAB 2: Razorpay Gateway Checkout */
@@ -639,7 +959,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                     Razorpay Secure Checkout
                   </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Pay securely using Credit Card, Debit Card, NetBanking (50+ banks), UPI Intent, or Mobile Wallets with instant automated verification.
+                    Pay securely using Credit Card, Debit Card, NetBanking (50+ banks), UPI Intent, or Mobile Wallets.
                   </p>
                 </div>
 
@@ -678,7 +998,9 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
                     ) : (
                       <>
                         <Lock className="w-4 h-4" />
-                        <span>Pay {formatINR(bookingSummary.amount)} with Razorpay</span>
+                        <span>
+                          Pay {formatINR(remainingOnlineAmount)} with Razorpay
+                        </span>
                         <ChevronRight className="w-4 h-4" />
                       </>
                     )}
@@ -696,7 +1018,7 @@ export const BookingPaymentModal: React.FC<BookingPaymentModalProps> = ({
             <span>Guaranteed Anti-Double Booking Seat Lock Active</span>
           </div>
           <div className="flex items-center gap-3">
-            <span>Powered by NPCI UPI &amp; Razorpay</span>
+            <span>Powered by NPCI UPI &amp; Ship Wallet</span>
             <button
               onClick={onClose}
               disabled={verifying}

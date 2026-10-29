@@ -50,10 +50,14 @@ export async function getActivity(slugOrId: string | number): Promise<ActivityIt
 }
 
 export async function bookActivity(payload: ActivityBookingPayload): Promise<ActivityBookingResponse> {
-  return apiRequest<ActivityBookingResponse>('/api/activities/book', {
+  const res = await apiRequest<ActivityBookingResponse>('/api/activities/book', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  if (typeof window !== 'undefined' && payload.use_wallet) {
+    window.dispatchEvent(new CustomEvent('wallet-updated'));
+  }
+  return res;
 }
 
 export async function getOperatorActivities(): Promise<{ activities: ActivityItem[]; total: number }> {

@@ -601,6 +601,8 @@ export interface ActivityBookingPayload {
   promo_code?: string;
   special_request?: string;
   payment_method?: string;
+  use_wallet?: boolean;
+  wallet_amount_to_use?: number;
 }
 
 export type StaffRole = 'INSTRUCTOR' | 'CAPTAIN' | 'GUIDE' | 'SAFETY_CREW';

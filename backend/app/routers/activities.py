@@ -25,6 +25,7 @@ from backend.app.schemas.activity import (
     ActivityBookingRequest,
 )
 from backend.app.services.availability_engine import check_comprehensive_availability
+from backend.app.services.wallet_service import debit_wallet
 
 router = APIRouter(prefix="/activities", tags=["Activities & Water Sports"])
 
@@ -368,6 +369,32 @@ def book_activity(
 
     cust_whatsapp = (req.customer_whatsapp or current_user.phone or "").strip()
 
+    wallet_txn = None
+    pay_method = req.payment_method or "UPI / Razorpay QR"
+    if getattr(req, "use_wallet", False) and total_price > Decimal("0.00"):
+        user_bal = Decimal(str(round(float(current_user.wallet_balance or 0.0), 2)))
+        if user_bal > Decimal("0.00"):
+            wallet_paid = min(user_bal, total_price)
+            if req.wallet_amount_to_use is not None:
+                req_w = Decimal(str(round(float(req.wallet_amount_to_use), 2)))
+                if req_w > Decimal("0.00"):
+                    wallet_paid = min(wallet_paid, req_w)
+            
+            if wallet_paid > Decimal("0.00"):
+                wallet_txn = debit_wallet(
+                    db=db,
+                    user=current_user,
+                    amount=wallet_paid,
+                    source="ACTIVITY_BOOKING",
+                    description=f"Payment for activity {act.title} (Booking #{booking_id})",
+                    booking=None,
+                    reference_id=f"WLT-{booking_id}"
+                )
+                if wallet_paid >= total_price:
+                    pay_method = "Cruise-Hunt Wallet"
+                else:
+                    pay_method = f"Wallet (₹{float(wallet_paid):,.2f}) + {req.payment_method or 'UPI'}"
+
     target_cross_id = act.host_ship_id
     if not target_cross_id:
         fallback_ship = db.query(Cross).filter(Cross.is_active == True).first()
@@ -410,11 +437,13 @@ def book_activity(
         customer_whatsapp=cust_whatsapp,
         whatsapp_reminder_opt_in=True,
         payment_status="PAID",
-        payment_method=req.payment_method or "UPI / Razorpay QR",
+        payment_method=pay_method,
         payment_gateway_ref=f"PAY-ACT-{random.randint(100000, 999999)}",
     )
 
     db.add(booking)
+    if wallet_txn:
+        wallet_txn.booking_id = booking.id
     # Increment review counter
     act.reviews_count = (act.reviews_count or 0) + 1
     db.commit()
