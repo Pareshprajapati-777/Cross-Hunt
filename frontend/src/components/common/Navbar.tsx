@@ -436,27 +436,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
                   )}
                 </div>
 
-                {/* Wallet Balance Pill - Prominent Top Placement */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWalletModalOpen(true);
-                    setUserDropdownOpen(false);
-                    setNotificationsOpen(false);
-                  }}
-                  title="Cruise-Hunt Wallet - Click to view balance, add funds, or check ride refunds"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100 hover:from-emerald-100 hover:to-teal-200 border border-emerald-300 text-emerald-900 text-sm font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
-                >
-                  <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
-                    <Wallet className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex flex-col text-left leading-tight">
-                    <span className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-700">Wallet</span>
-                    <span className="text-xs font-black text-emerald-950 font-mono">
-                      ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </button>
 
                 <div className="relative">
                   <button
@@ -626,19 +605,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           <div className="md:hidden flex items-center space-x-2">
             {user && (
               <>
-                {/* Mobile Top Wallet Button - Prominent Top Placement */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWalletModalOpen(true);
-                    setNotificationsOpen(false);
-                  }}
-                  title="My Wallet Balance & Instant Refunds"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-900 font-extrabold text-xs shadow-2xs active:scale-95 transition cursor-pointer"
-                >
-                  <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="font-mono font-bold">₹{walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                </button>
 
                 <div className="relative">
                   <button
