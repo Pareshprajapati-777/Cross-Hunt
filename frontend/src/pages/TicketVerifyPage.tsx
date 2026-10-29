@@ -51,19 +51,38 @@ export const TicketVerifyPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [code]);
 
-  const handleMarkUsed = async () => {
+  const handleTransitTicket = async (action: 'board' | 'complete') => {
     if (!code) return;
     setActionLoading(true);
     try {
-      const res = await markTicketUsed(code);
-      setActionSuccessMsg(res.message || 'Passenger successfully marked as BOARDED / Ticket USED.');
-      setTicketData((prev) => (prev ? {
-        ...prev,
-        valid: false,
-        status: 'USED',
-        status_display: 'BOARDING PASS USED',
-        can_mark_used: false
-      } : null));
+      const res = await markTicketUsed(code, action);
+      setActionSuccessMsg(res.message || 'Status successfully updated.');
+      const isActivity = ticketData?.is_activity || ticketData?.booking_type?.includes('Activity');
+      const nextOnState = isActivity ? 'ON_RIDE' : 'ON_TRIP';
+
+      if (action === 'board') {
+        setTicketData((prev) => (prev ? {
+          ...prev,
+          valid: true,
+          status: nextOnState,
+          status_display: `GUEST ADMITTED • CURRENTLY ${nextOnState}`,
+          trip_phase: 'ACTIVE',
+          can_board: false,
+          can_complete: true,
+          can_mark_used: true
+        } : null));
+      } else {
+        setTicketData((prev) => (prev ? {
+          ...prev,
+          valid: false,
+          status: 'USED',
+          status_display: `${isActivity ? 'RIDE' : 'VOYAGE'} COMPLETED • PASS USED`,
+          trip_phase: 'COMPLETED',
+          can_board: false,
+          can_complete: false,
+          can_mark_used: false
+        } : null));
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to update ticket status');
     } finally {
@@ -229,26 +248,53 @@ export const TicketVerifyPage: React.FC = () => {
                     Staff Only
                   </span>
                 </div>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  Verify the passenger&apos;s government-issued photo ID (Aadhaar / Passport) matches <strong>{ticketData.passenger_name}</strong>. Once verified, click below to mark this pass as boarded.
-                </p>
-                <button
-                  onClick={handleMarkUsed}
-                  disabled={actionLoading}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Validating Embarkation...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Confirm ID & Mark Passenger as Boarded / USED</span>
-                    </>
-                  )}
-                </button>
+                {ticketData.status === 'ON_TRIP' || ticketData.status === 'ON_RIDE' || ticketData.trip_phase === 'ACTIVE' ? (
+                  <>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Passenger <strong>{ticketData.passenger_name}</strong> is currently <strong>{ticketData.status === 'ON_RIDE' ? 'On Ride' : 'On Trip'}</strong>. Once the {ticketData.status === 'ON_RIDE' ? 'water sports activity' : 'cruise voyage'} finishes, click below to complete the trip and close out the boarding pass.
+                    </p>
+                    <button
+                      onClick={() => handleTransitTicket('complete')}
+                      disabled={actionLoading}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 hover:from-sky-700 hover:to-indigo-800 text-white font-bold text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {actionLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Closing Voyage...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>{ticketData.is_activity ? 'Finish Ride & Mark COMPLETED' : 'Complete Voyage & Mark COMPLETED / USED'}</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Verify the passenger&apos;s government-issued photo ID (Aadhaar / Passport) matches <strong>{ticketData.passenger_name}</strong>. Once admitted, the reservation status will transition to <strong>{ticketData.is_activity ? 'ON RIDE' : 'ON TRIP'}</strong> and passenger cancellation will be locked.
+                    </p>
+                    <button
+                      onClick={() => handleTransitTicket('board')}
+                      disabled={actionLoading}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {actionLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Admitting Passenger...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>{ticketData.is_activity ? 'Confirm ID & Start Ride (On Ride)' : 'Confirm ID & Admit Passenger (On Trip)'}</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 

@@ -241,37 +241,65 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
     e.target.value = '';
   };
 
-  // Mark ticket as used and admit passenger
-  const handleAdmitPassenger = async () => {
+  // Admit passenger to ON_TRIP / ON_RIDE, or complete ride to COMPLETED
+  const handleTransitPassenger = async (action: 'board' | 'complete') => {
     if (!ticketData) return;
     const codeToUse = ticketData.verification_code || ticketData.ticket_id || ticketData.booking_id;
     if (!codeToUse) return;
 
     setAdmitting(true);
     try {
-      const res = await markTicketUsed(codeToUse);
+      const res = await markTicketUsed(codeToUse, action);
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: action === 'complete' ? 110 : 80,
+          spread: 75,
           origin: { y: 0.6 },
-          colors: ['#059669', '#10b981', '#34d399', '#38bdf8', '#fbbf24'],
+          colors: action === 'complete'
+            ? ['#0284c7', '#38bdf8', '#10b981', '#f59e0b', '#6366f1']
+            : ['#059669', '#10b981', '#34d399', '#38bdf8', '#fbbf24'],
         });
       } catch {}
 
-      setAdmittedSuccess(true);
-      setTicketData((prev: any) =>
-        prev
-          ? {
-              ...prev,
-              valid: false,
-              is_valid: false,
-              status: 'USED',
-              status_display: 'BOARDING PASS USED / PASSENGER BOARDED',
-              can_mark_used: false,
-            }
-          : null
-      );
+      const isActivity = ticketData.is_activity || ticketData.booking_type?.includes('Activity');
+      const nextOnState = isActivity ? 'ON_RIDE' : 'ON_TRIP';
+
+      if (action === 'board') {
+        setTicketData((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                valid: true,
+                is_valid: true,
+                status: nextOnState,
+                status_display: `GUEST ADMITTED • CURRENTLY ${isActivity ? 'ON RIDE' : 'ON TRIP'}`,
+                trip_phase: 'ACTIVE',
+                tracking_status: nextOnState,
+                can_mark_used: true,
+                can_board: false,
+                can_complete: true,
+              }
+            : null
+        );
+      } else {
+        setAdmittedSuccess(true);
+        setTicketData((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                valid: false,
+                is_valid: false,
+                status: 'USED',
+                status_display: `${isActivity ? 'RIDE' : 'VOYAGE'} COMPLETED • PASS USED`,
+                trip_phase: 'COMPLETED',
+                tracking_status: 'COMPLETED',
+                can_mark_used: false,
+                can_board: false,
+                can_complete: false,
+              }
+            : null
+        );
+      }
 
       if (onBoardingSuccess) {
         onBoardingSuccess();
@@ -281,7 +309,7 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
         window.dispatchEvent(new CustomEvent('notification-updated'));
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to record ship boarding.');
+      alert(err.message || 'Failed to update passenger status.');
     } finally {
       setAdmitting(false);
     }
@@ -341,54 +369,96 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
             <div className="space-y-4 animate-in fade-in duration-200">
               
               {/* TICKET STATUS BANNER */}
-              {admittedSuccess || ticketData.status === 'USED' ? (
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-wide">
-                      Passenger Boarded &amp; Admitted
-                    </h4>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
-                      Gate entry confirmed. Boarding pass has been successfully validated and marked USED.
-                    </p>
-                  </div>
-                </div>
-              ) : ticketData.valid ? (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-6 h-6 text-white" />
+              {(() => {
+                const isActivity = ticketData.is_activity || ticketData.booking_type?.includes('Activity');
+                const onLabel = isActivity ? 'ON RIDE' : 'ON TRIP';
+                const isCompleted = ticketData.status === 'USED' || ticketData.status === 'COMPLETED' || ticketData.trip_phase === 'COMPLETED';
+                const isOnTripOrRide = (ticketData.status === 'ON_TRIP' || ticketData.status === 'ON_RIDE' || ticketData.trip_phase === 'ACTIVE' || ticketData.tracking_status === 'ON_TRIP' || ticketData.tracking_status === 'ON_RIDE') && !isCompleted;
+                const isReadyToBoard = (ticketData.valid || ticketData.trip_phase === 'READY_TO_BOARD' || ticketData.status === 'CONFIRMED' || ticketData.status === 'VALID') && !isOnTripOrRide && !isCompleted;
+
+                if (isCompleted) {
+                  return (
+                    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-full bg-slate-700 text-white flex items-center justify-center shrink-0 shadow-md">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+                          {isActivity ? 'Water Sports Ride Finished' : 'Voyage Completed'} • Pass Used
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                          Ride or voyage has concluded. Boarding pass was verified and marked COMPLETED.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (isOnTripOrRide) {
+                  return (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-600 via-teal-600 to-emerald-600 text-white shadow-lg shadow-sky-600/20 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-widest font-black text-sky-200 block">
+                            Passenger Currently Active
+                          </span>
+                          <h4 className="text-base font-black">
+                            PASSENGER {onLabel} • NON-CANCELLABLE
+                          </h4>
+                          <p className="text-xs text-white/90">
+                            {isActivity ? 'Guest is currently enjoying the water sports ride.' : 'Passenger has boarded and vessel is currently on trip.'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-white/25 text-white text-xs font-bold shrink-0 animate-pulse">
+                        ● Live {onLabel}
+                      </span>
+                    </div>
+                  );
+                }
+
+                if (isReadyToBoard) {
+                  return (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-widest font-black text-emerald-100 block">
+                            Verified Valid Pass
+                          </span>
+                          <h4 className="text-base font-black">
+                            READY FOR ENTRY ({onLabel})
+                          </h4>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-white/25 text-white text-xs font-bold shrink-0">
+                        Clearance: OK
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                      <AlertTriangle className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase tracking-widest font-black text-emerald-100 block">
-                        Verified Valid Pass
-                      </span>
-                      <h4 className="text-base font-black">
-                        READY FOR SHIP ENTRY
+                      <h4 className="text-sm font-black text-rose-900 dark:text-rose-100 uppercase tracking-wide">
+                        {ticketData.status_display || 'Invalid Boarding Pass'}
                       </h4>
+                      <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                        Status: {ticketData.status}. Entry cannot proceed.
+                      </p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-white/25 text-white text-xs font-bold shrink-0">
-                    Gate Clearance: OK
-                  </span>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-rose-900 dark:text-rose-100 uppercase tracking-wide">
-                      {ticketData.status_display || 'Invalid Boarding Pass'}
-                    </h4>
-                    <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-                      Status: {ticketData.status}. Do not allow ship entry without authorized gate override.
-                    </p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TICKET DETAILS CARD */}
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4 space-y-4">
@@ -482,37 +552,69 @@ export const BoardingPassScannerModal: React.FC<BoardingPassScannerModalProps> =
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                {ticketData.valid && !admittedSuccess ? (
-                  <button
-                    type="button"
-                    onClick={handleAdmitPassenger}
-                    disabled={admitting}
-                    className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {admitting ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                        <span>Confirming Boarding...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 text-emerald-200" />
-                        <span>Allow Ship Boarding (Mark as Boarded)</span>
-                      </>
-                    )}
-                  </button>
-                ) : null}
+              {(() => {
+                const isActivity = ticketData.is_activity || ticketData.booking_type?.includes('Activity');
+                const isCompleted = ticketData.status === 'USED' || ticketData.status === 'COMPLETED' || ticketData.trip_phase === 'COMPLETED';
+                const isOnTripOrRide = (ticketData.status === 'ON_TRIP' || ticketData.status === 'ON_RIDE' || ticketData.trip_phase === 'ACTIVE' || ticketData.tracking_status === 'ON_TRIP' || ticketData.tracking_status === 'ON_RIDE') && !isCompleted;
+                const isReadyToBoard = (ticketData.valid || ticketData.trip_phase === 'READY_TO_BOARD' || ticketData.status === 'CONFIRMED' || ticketData.status === 'VALID') && !isOnTripOrRide && !isCompleted;
 
-                <button
-                  type="button"
-                  onClick={handleScanNext}
-                  className="w-full sm:w-auto px-5 py-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <QrCode className="w-4 h-4 text-sky-600" />
-                  <span>Scan Next Passenger</span>
-                </button>
-              </div>
+                return (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    {/* Step 1: Admit & Start Trip / Ride */}
+                    {isReadyToBoard && (
+                      <button
+                        type="button"
+                        onClick={() => handleTransitPassenger('board')}
+                        disabled={admitting}
+                        className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {admitting ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                            <span>Admitting Passenger...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+                            <span>{isActivity ? 'Admit Passenger & Start Ride (On Ride)' : 'Admit Passenger & Board Ship (On Trip)'}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Step 2: Complete Voyage / Ride */}
+                    {isOnTripOrRide && (
+                      <button
+                        type="button"
+                        onClick={() => handleTransitPassenger('complete')}
+                        disabled={admitting}
+                        className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 hover:from-sky-700 hover:to-blue-800 text-white font-black text-sm shadow-lg shadow-sky-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {admitting ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                            <span>Marking Completed...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 text-amber-200" />
+                            <span>{isActivity ? 'Finish Ride & Mark Completed' : 'Complete Voyage & Mark Used'}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleScanNext}
+                      className="w-full sm:w-auto px-5 py-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <QrCode className="w-4 h-4 text-sky-600" />
+                      <span>Scan Next Passenger</span>
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             /* SCANNER TABS & MODES */

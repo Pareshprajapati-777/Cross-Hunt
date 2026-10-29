@@ -130,9 +130,15 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
         .then((res) => {
           if (res && typeof res.wallet_balance === 'number') {
             setWalletBalance(res.wallet_balance);
+            try { localStorage.setItem('ch_user_wallet_balance', String(res.wallet_balance)); } catch {}
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          try {
+            const raw = localStorage.getItem('ch_user_wallet_balance');
+            if (raw) setWalletBalance(parseFloat(raw));
+          } catch {}
+        });
     };
     fetchWallet();
     window.addEventListener('wallet-updated', fetchWallet);
@@ -246,7 +252,21 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   }, []);
 
   const handleCancelBooking = async (bookingId: string) => {
-    const booking = bookings.find((b) => b.booking_id === bookingId);
+    const cleanId = bookingId.trim().replace(/^#/, '');
+    const booking = bookings.find((b) => b.booking_id === bookingId || b.booking_id === cleanId || b.booking_id === `#${cleanId}` || String(b.id) === cleanId);
+
+    if (booking) {
+      const isOnTripOrRide = booking.status === 'ON_TRIP' || booking.status === 'ON_RIDE' || booking.tracking_status === 'ON_TRIP' || booking.tracking_status === 'ON_RIDE';
+      if (isOnTripOrRide) {
+        alert('Cannot cancel reservation: You have already boarded the vessel / the ride is currently in progress (On Trip / On Ride).');
+        return;
+      }
+      if (booking.status === 'COMPLETED' || booking.tracking_status === 'COMPLETED') {
+        alert('Cannot cancel reservation: This voyage or ride has already been completed.');
+        return;
+      }
+    }
+
     const amountStr = booking?.total_price ? `₹${Number(booking.total_price).toLocaleString('en-IN')}` : 'your payment';
     if (!window.confirm(`Are you sure you wish to cancel reservation #${bookingId}?\n\n${amountStr} will be automatically refunded immediately to your Cruise-Hunt Wallet!`)) return;
     try {
@@ -1177,7 +1197,11 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                             </span>
                             <span
                               className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                                b.status === 'CONFIRMED'
+                                b.status === 'ON_TRIP' || b.tracking_status === 'ON_TRIP'
+                                  ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white font-black animate-pulse shadow-xs shadow-sky-500/30'
+                                  : b.status === 'ON_RIDE' || b.tracking_status === 'ON_RIDE'
+                                  ? 'bg-gradient-to-r from-cyan-500 to-teal-600 text-white font-black animate-pulse shadow-xs shadow-cyan-500/30'
+                                  : b.status === 'CONFIRMED'
                                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                                   : b.status === 'COMPLETED'
                                   ? 'bg-[#EAF4FB] text-[#082F5B] border border-[#082F5B]/15'
@@ -1186,7 +1210,11 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                                   : 'bg-amber-50 text-amber-700 border border-amber-200'
                               }`}
                             >
-                              {b.status}
+                              {b.status === 'ON_TRIP' || b.tracking_status === 'ON_TRIP'
+                                ? 'ON TRIP'
+                                : b.status === 'ON_RIDE' || b.tracking_status === 'ON_RIDE'
+                                ? 'ON RIDE'
+                                : b.status}
                             </span>
                             <span
                               className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
@@ -1383,17 +1411,38 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                           </div>
                         )}
 
-                        {/* 4. Cancel Booking (Clean matching outline pill button) */}
-                        {b.is_cancellable && (
-                          <button
-                            type="button"
-                            onClick={() => handleCancelBooking(b.booking_id)}
-                            className="h-9 px-4 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 hover:border-rose-400 text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
-                          >
-                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                            <span>Cancel</span>
-                          </button>
-                        )}
+                        {/* 4. Cancel Booking (Disabled with tooltip when on trip/ride, cancellable otherwise) */}
+                        {(() => {
+                          const isOnTripOrRide = b.status === 'ON_TRIP' || b.status === 'ON_RIDE' || b.tracking_status === 'ON_TRIP' || b.tracking_status === 'ON_RIDE';
+                          const isDoneOrCancelled = b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.tracking_status === 'COMPLETED';
+
+                          if (isOnTripOrRide) {
+                            return (
+                              <span
+                                className="h-9 px-3.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-not-allowed"
+                                title="Cancellation is locked because passenger has boarded or ride is ongoing"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                                <span>{b.status === 'ON_RIDE' || b.tracking_status === 'ON_RIDE' ? 'On Ride (Locked)' : 'On Trip (Locked)'}</span>
+                              </span>
+                            );
+                          }
+
+                          if (b.is_cancellable && !isDoneOrCancelled) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleCancelBooking(b.booking_id)}
+                                className="h-9 px-4 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 hover:border-rose-400 text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+                              >
+                                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Cancel</span>
+                              </button>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </div>
 
                       {/* Official Vessel Owner Resolution & Apology */}

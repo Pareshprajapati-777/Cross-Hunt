@@ -113,6 +113,10 @@ class Booking(Base):
 
     @property
     def is_cancellable(self) -> bool:
+        if self.status in ("ON_TRIP", "ON_RIDE", "BOARDED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "REJECTED"):
+            return False
+        if self.tracking_status in ("ON_TRIP", "ON_RIDE", "BOARDED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "REJECTED"):
+            return False
         return self.status in ("PENDING", "CONFIRMED") and self.is_upcoming
 
     @property

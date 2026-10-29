@@ -1306,6 +1306,9 @@ def operator_process_refund(
     booking.refund_reason = req.refund_reason
     booking.refund_date = datetime.utcnow()
 
+    if req.cancel_booking and (booking.status in ('ON_TRIP', 'ON_RIDE') or booking.tracking_status in ('ON_TRIP', 'ON_RIDE')):
+        raise HTTPException(status_code=400, detail="Cannot cancel reservation: Passenger has already boarded the vessel / ride is in progress (On Trip / On Ride).")
+
     if req.cancel_booking or float(new_refund_amount) >= (total_val - 0.01):
         booking.status = "CANCELLED"
         booking.tracking_status = "CANCELLED"
@@ -1426,14 +1429,30 @@ def operator_booking_action(
         booking.status = 'CONFIRMED'
         booking.tracking_status = 'CONFIRMED'
         booking.ticket_status = 'VALID'
-    elif action_lower in ['in_progress', 'start']:
+    elif action_lower in ['on_trip', 'on_ride', 'trip', 'ride', 'start']:
+        is_act = (booking.booking_type == "ACTIVITY" or (booking.cross and getattr(booking.cross, "category", "") == "ACTIVITY"))
+        on_st = 'ON_RIDE' if is_act else 'ON_TRIP'
+        booking.status = on_st
+        booking.tracking_status = on_st
+        booking.ticket_status = 'VALID'
+    elif action_lower in ['in_progress']:
         booking.status = 'IN_PROGRESS'
         booking.tracking_status = 'IN_PROGRESS'
-    elif action_lower == 'complete':
+    elif action_lower in ['complete', 'finish', 'end']:
         booking.status = 'COMPLETED'
         booking.tracking_status = 'COMPLETED'
         booking.ticket_status = 'USED'
     elif action_lower in ['reject', 'cancel']:
+        if booking.status in ('ON_TRIP', 'ON_RIDE') or booking.tracking_status in ('ON_TRIP', 'ON_RIDE'):
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot cancel or reject reservation: Passenger has already boarded the vessel / ride is in progress (On Trip / On Ride)."
+            )
+        if booking.status == 'COMPLETED' or booking.tracking_status == 'COMPLETED':
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot cancel or reject reservation: The voyage or ride has already been completed."
+            )
         booking.status = 'REJECTED' if action_lower == 'reject' else 'CANCELLED'
         booking.tracking_status = booking.status
         booking.ticket_status = 'CANCELLED'
@@ -1447,7 +1466,11 @@ def operator_booking_action(
             source="OPERATOR_REFUND"
         )
     elif action_lower == 'board':
-        booking.tracking_status = 'BOARDING'
+        is_act = (booking.booking_type == "ACTIVITY" or (booking.cross and getattr(booking.cross, "category", "") == "ACTIVITY"))
+        on_st = 'ON_RIDE' if is_act else 'ON_TRIP'
+        booking.status = on_st
+        booking.tracking_status = on_st
+        booking.ticket_status = 'VALID'
     elif action_lower == 'depart':
         booking.tracking_status = 'DEPARTED'
     elif action_lower == 'arrive':

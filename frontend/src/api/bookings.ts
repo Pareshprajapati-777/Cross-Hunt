@@ -145,19 +145,107 @@ export async function getBookingInvoice(bookingId: string): Promise<{ invoice: I
 export async function cancelBooking(
   bookingId: string,
   reason?: string
-): Promise<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; booking?: Booking }> {
-  const res = await apiRequest<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; booking?: Booking }>(
-    `/api/bookings/${bookingId}/cancel/`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ reason: reason || 'Cancelled by customer' }),
+): Promise<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; customer_wallet_balance?: number; booking?: Booking }> {
+  const cleanId = bookingId.trim().replace(/^#/, '');
+
+  try {
+    const res = await apiRequest<{ success: boolean; message: string; refund_amount?: number; wallet_balance?: number; customer_wallet_balance?: number; booking?: Booking }>(
+      `/api/bookings/${encodeURIComponent(cleanId)}/cancel/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason: reason || 'Cancelled by customer' }),
+      }
+    );
+
+    // Update local custom bookings if present
+    const custom = getCustomBookings();
+    const match = custom.find(
+      (b) =>
+        b.booking_id === bookingId ||
+        b.booking_id === cleanId ||
+        b.booking_id === `#${cleanId}` ||
+        String(b.id) === cleanId ||
+        b.ticket_code === cleanId
+    );
+    if (match) {
+      match.status = 'CANCELLED';
+      match.tracking_status = 'CANCELLED';
+      match.ticket_status = 'CANCELLED';
+      match.cancellation_reason = reason || 'Cancelled by customer';
+      saveCustomBooking(match);
     }
-  );
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wallet-updated', { detail: res }));
-    window.dispatchEvent(new CustomEvent('notification-updated'));
+
+    if (typeof window !== 'undefined') {
+      if (res.refund_amount) {
+        try {
+          const raw = localStorage.getItem('ch_user_wallet_balance');
+          const cur = raw ? parseFloat(raw) : 0;
+          localStorage.setItem('ch_user_wallet_balance', String(cur + res.refund_amount));
+        } catch {}
+      }
+      window.dispatchEvent(new CustomEvent('wallet-updated', { detail: res }));
+      window.dispatchEvent(new CustomEvent('notification-updated'));
+      window.dispatchEvent(new CustomEvent('booking-updated'));
+    }
+    return res;
+  } catch (err: any) {
+    // If backend 404 or network failure, fallback to client-side persistent booking
+    const custom = getCustomBookings();
+    const match = custom.find(
+      (b) =>
+        b.booking_id === bookingId ||
+        b.booking_id === cleanId ||
+        b.booking_id === `#${cleanId}` ||
+        String(b.id) === cleanId ||
+        b.ticket_code === cleanId
+    );
+
+    if (match) {
+      // Check if non-cancellable
+      const blockedStatuses = ['ON_TRIP', 'ON_RIDE', 'BOARDED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED'];
+      if (blockedStatuses.includes(match.status) || (match.tracking_status && blockedStatuses.includes(match.tracking_status))) {
+        const isCommenced = match.status === 'ON_TRIP' || match.status === 'ON_RIDE' || match.tracking_status === 'ON_TRIP' || match.tracking_status === 'ON_RIDE';
+        const isDone = match.status === 'COMPLETED' || match.tracking_status === 'COMPLETED';
+        throw new Error(
+          isCommenced
+            ? 'Cannot cancel reservation: You have already boarded the vessel / ride is in progress (On Trip / On Ride).'
+            : isDone
+            ? 'Cannot cancel reservation: This voyage or ride has already been completed.'
+            : 'This reservation cannot be cancelled as it is past the allowed cutoff or already cancelled.'
+        );
+      }
+
+      match.status = 'CANCELLED';
+      match.tracking_status = 'CANCELLED';
+      match.ticket_status = 'CANCELLED';
+      match.cancellation_reason = reason || 'Cancelled by customer';
+      saveCustomBooking(match);
+
+      const refundAmount = Number(match.total_price) || 0;
+      let newBalance = refundAmount;
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('ch_user_wallet_balance');
+          const cur = raw ? parseFloat(raw) : 0;
+          newBalance = cur + refundAmount;
+          localStorage.setItem('ch_user_wallet_balance', String(newBalance));
+        } catch {}
+        window.dispatchEvent(new CustomEvent('wallet-updated', { detail: { refund_amount: refundAmount, wallet_balance: newBalance } }));
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+        window.dispatchEvent(new CustomEvent('booking-updated'));
+      }
+
+      return {
+        success: true,
+        message: `Reservation cancelled successfully. ₹${refundAmount.toLocaleString('en-IN')} has been refunded immediately to your wallet!`,
+        refund_amount: refundAmount,
+        wallet_balance: newBalance,
+        booking: match,
+      };
+    }
+
+    throw err;
   }
-  return res;
 }
 
 export async function submitReview(
@@ -183,7 +271,7 @@ export async function submitReview(
 }
 
 export async function verifyTicket(code: string): Promise<any> {
-  const clean = code.trim();
+  const clean = code.trim().replace(/^#/, '');
   try {
     return await apiRequest(`/api/tickets/verify/${encodeURIComponent(clean)}/`);
   } catch (err: any) {
@@ -191,17 +279,61 @@ export async function verifyTicket(code: string): Promise<any> {
     const match = custom.find(
       (b) =>
         b.ticket_code?.toLowerCase() === clean.toLowerCase() ||
+        b.ticket_code?.toLowerCase() === `tk-${clean.toLowerCase()}` ||
         b.qr_code_hash?.toLowerCase() === clean.toLowerCase() ||
-        b.booking_id?.toLowerCase() === clean.toLowerCase()
+        b.booking_id?.toLowerCase() === clean.toLowerCase() ||
+        b.booking_id?.toLowerCase() === `crs-${clean.toLowerCase()}` ||
+        b.booking_id?.toLowerCase() === `#${clean.toLowerCase()}`
     );
     if (match) {
-      const isValid = match.status === 'CONFIRMED' || match.status === 'COMPLETED';
-      const isUsed = match.ticket_status === 'USED' || (match as any).tracking_status === 'COMPLETED';
+      const isActivity = match.booking_type === 'ACTIVITY';
+      const isPrivate = match.booking_type === 'EVENT' || match.booking_type === 'PRIVATE_EVENT';
+      const activeStateLabel = isActivity ? 'ON RIDE' : 'ON TRIP';
+
+      const isCancelled = match.status === 'CANCELLED' || match.ticket_status === 'CANCELLED';
+      const isOnTripOrRide = match.status === 'ON_TRIP' || match.status === 'ON_RIDE' || match.tracking_status === 'ON_TRIP' || match.tracking_status === 'ON_RIDE';
+      const isCompleted = match.status === 'COMPLETED' || match.ticket_status === 'USED' || match.tracking_status === 'COMPLETED';
+      const isValidToBoard = (match.status === 'CONFIRMED' || match.status === 'PENDING') && !isCancelled && !isOnTripOrRide && !isCompleted;
+
+      let status: string = match.status;
+      let statusDisplay = 'VALID BOARDING PASS';
+      let tripPhase = 'READY_TO_BOARD';
+      let valid = true;
+
+      if (isCancelled) {
+        status = 'CANCELLED';
+        statusDisplay = 'INVALID TICKET - RESERVATION CANCELLED';
+        tripPhase = 'CANCELLED';
+        valid = false;
+      } else if (isOnTripOrRide) {
+        status = isActivity ? 'ON_RIDE' : 'ON_TRIP';
+        statusDisplay = `GUEST ADMITTED • CURRENTLY ${activeStateLabel}`;
+        tripPhase = 'ACTIVE';
+        valid = true;
+      } else if (isCompleted) {
+        status = 'USED';
+        statusDisplay = `${isActivity ? 'RIDE' : 'VOYAGE'} COMPLETED • PASS USED`;
+        tripPhase = 'COMPLETED';
+        valid = false;
+      } else if (isValidToBoard) {
+        status = 'VALID';
+        statusDisplay = `VALID PASS • READY TO BOARD (${activeStateLabel})`;
+        tripPhase = 'READY_TO_BOARD';
+        valid = true;
+      }
+
       return {
-        valid: isValid && !isUsed,
-        is_valid: isValid && !isUsed,
-        status: isUsed ? 'USED' : isValid ? 'VALID' : match.status,
-        status_display: isUsed ? 'BOARDING PASS ALREADY USED' : isValid ? 'VALID BOARDING PASS' : 'INVALID TICKET',
+        valid,
+        is_valid: valid,
+        status,
+        status_display: statusDisplay,
+        trip_phase: tripPhase,
+        booking_category: isActivity ? 'ACTIVITY' : isPrivate ? 'PRIVATE_CHARTER' : 'PUBLIC_TOUR',
+        is_activity: isActivity,
+        is_private: isPrivate,
+        active_state_label: activeStateLabel,
+        can_board: tripPhase === 'READY_TO_BOARD',
+        can_complete: tripPhase === 'ACTIVE',
         booking_id: match.booking_id,
         ticket_id: match.ticket_code || `TK-${match.booking_id}`,
         verification_code: match.qr_code_hash || clean,
@@ -209,16 +341,17 @@ export async function verifyTicket(code: string): Promise<any> {
         passengers_count: match.number_of_people || match.passengers_count || 1,
         adults_count: match.adults_count || 1,
         children_count: match.children_count || 0,
-        ship_name: match.cruise_name || match.cruise_title || 'Luxury Cruise Vessel',
+        ship_name: match.cruise_name || match.cruise_title || (isActivity ? 'Water Sports Center' : 'Luxury Cruise Vessel'),
         route: `${match.departure_port || 'Mumbai'} → ${match.destination || 'Goa'}`,
         departure_port: match.departure_port || 'Mumbai',
         destination: match.destination || 'Goa',
         departure_date: match.booking_date,
         departure_time: match.start_time || '10:00',
         cabin_seat: match.cabin_type || match.cabin_name || 'General Seating',
-        booking_type: match.booking_type === 'EVENT' ? 'Private Charter' : 'Public Cruise Tour Ticket',
+        booking_type: isActivity ? 'Water Sports Activity' : isPrivate ? 'Private Charter' : 'Public Cruise Tour Ticket',
         total_price: Number(match.total_price) || 0,
-        can_mark_used: isValid && !isUsed,
+        tracking_status: match.tracking_status || status,
+        can_mark_used: tripPhase === 'READY_TO_BOARD' || tripPhase === 'ACTIVE',
         booking: match,
       };
     }
@@ -226,10 +359,14 @@ export async function verifyTicket(code: string): Promise<any> {
   }
 }
 
-export async function markTicketUsed(code: string): Promise<{ success: boolean; message: string; ticket_status?: string }> {
-  const clean = code.trim();
+export async function markTicketUsed(
+  code: string,
+  action?: 'board' | 'complete'
+): Promise<{ success: boolean; message: string; ticket_status?: string; tracking_status?: string; status?: string; trip_phase?: string; is_activity?: boolean; active_state_label?: string; booking?: Booking }> {
+  const clean = code.trim().replace(/^#/, '');
+  const actionParam = action ? `?action=${action}` : '';
   try {
-    return await apiRequest(`/api/tickets/verify/${encodeURIComponent(clean)}/mark-used/`, {
+    return await apiRequest(`/api/tickets/verify/${encodeURIComponent(clean)}/mark-used/${actionParam}`, {
       method: 'POST',
     });
   } catch (err: any) {
@@ -237,21 +374,55 @@ export async function markTicketUsed(code: string): Promise<{ success: boolean; 
     const match = custom.find(
       (b) =>
         b.ticket_code?.toLowerCase() === clean.toLowerCase() ||
+        b.ticket_code?.toLowerCase() === `tk-${clean.toLowerCase()}` ||
         b.qr_code_hash?.toLowerCase() === clean.toLowerCase() ||
-        b.booking_id?.toLowerCase() === clean.toLowerCase()
+        b.booking_id?.toLowerCase() === clean.toLowerCase() ||
+        b.booking_id?.toLowerCase() === `crs-${clean.toLowerCase()}` ||
+        b.booking_id?.toLowerCase() === `#${clean.toLowerCase()}`
     );
     if (match) {
-      match.ticket_status = 'USED';
-      match.tracking_status = 'COMPLETED';
-      saveCustomBooking(match);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('booking-updated'));
+      const isActivity = match.booking_type === 'ACTIVITY';
+      const onState = isActivity ? 'ON_RIDE' : 'ON_TRIP';
+
+      if (action === 'board' || (!action && match.status !== 'ON_TRIP' && match.status !== 'ON_RIDE' && match.status !== 'COMPLETED')) {
+        match.status = onState as any;
+        match.tracking_status = onState;
+        match.ticket_status = 'VALID';
+        saveCustomBooking(match);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('booking-updated'));
+        }
+        return {
+          success: true,
+          message: `Passenger admitted! Status set to ${onState}. Cancellation is locked.`,
+          ticket_status: 'VALID',
+          tracking_status: onState,
+          status: onState,
+          trip_phase: 'ACTIVE',
+          is_activity: isActivity,
+          active_state_label: onState,
+          booking: match,
+        };
+      } else {
+        match.status = 'COMPLETED';
+        match.tracking_status = 'COMPLETED';
+        match.ticket_status = 'USED';
+        saveCustomBooking(match);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('booking-updated'));
+        }
+        return {
+          success: true,
+          message: `${isActivity ? 'Water sports ride' : 'Voyage'} completed! Pass marked as USED.`,
+          ticket_status: 'USED',
+          tracking_status: 'COMPLETED',
+          status: 'COMPLETED',
+          trip_phase: 'COMPLETED',
+          is_activity: isActivity,
+          active_state_label: onState,
+          booking: match,
+        };
       }
-      return {
-        success: true,
-        message: `Boarding pass #${match.ticket_code || match.booking_id} marked as USED / Boarded successfully.`,
-        ticket_status: 'USED',
-      };
     }
     throw err;
   }

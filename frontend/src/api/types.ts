@@ -218,8 +218,16 @@ export interface Cruise {
 
 export interface TicketVerification {
   valid: boolean;
-  status: 'VALID' | 'USED' | 'CANCELLED' | 'EXPIRED' | 'PENDING' | 'INVALID';
+  is_valid?: boolean;
+  status: 'VALID' | 'USED' | 'CANCELLED' | 'EXPIRED' | 'PENDING' | 'INVALID' | 'ON_TRIP' | 'ON_RIDE' | string;
   status_display: string;
+  trip_phase?: 'READY_TO_BOARD' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'PENDING';
+  booking_category?: 'ACTIVITY' | 'PRIVATE_CHARTER' | 'PUBLIC_TOUR' | string;
+  is_activity?: boolean;
+  is_private?: boolean;
+  active_state_label?: string;
+  can_board?: boolean;
+  can_complete?: boolean;
   booking_id: string;
   ticket_id: string;
   verification_code: string;
@@ -385,7 +393,7 @@ export interface Booking {
   booking_id: string;
   invoice_number?: string;
   booking_type: 'TOUR' | 'EVENT' | 'CRUISE_TOUR' | 'PRIVATE_EVENT' | 'ACTIVITY';
-  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED' | 'ON_TRIP' | 'ON_RIDE';
   tracking_status?: string;
   activity_id?: number | null;
   activity_title?: string;

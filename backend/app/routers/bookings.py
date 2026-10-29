@@ -531,26 +531,60 @@ async def api_cancel_booking(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+    clean_id = booking_id.strip()
+    clean_no_hash = clean_id.lstrip("#")
+
+    booking = db.query(Booking).filter(
+        or_(
+            Booking.booking_id == clean_id,
+            Booking.booking_id == clean_no_hash,
+            Booking.booking_id == f"#{clean_no_hash}",
+            Booking.ticket_code == clean_id,
+            Booking.ticket_code == clean_no_hash,
+            Booking.qr_code_hash == clean_id,
+            (Booking.id == int(clean_no_hash)) if clean_no_hash.isdigit() else False
+        )
+    ).first()
+
     if not booking:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Booking not found."
         )
 
-    if booking.user_id != user.id and not user.is_admin:
+    is_customer = (booking.user_id == user.id)
+    is_owner = (booking.cross and booking.cross.owner_id == user.id)
+    is_admin = bool(user.is_admin or user.is_superuser)
+
+    if not (is_customer or is_owner or is_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied."
+            detail="Permission denied. Only the customer, ship owner, or administrator can cancel this reservation."
         )
 
-    if not booking.is_cancellable and not user.is_admin:
+    # Strictly block cancellation if passenger has already boarded or ride is ongoing / completed
+    if booking.status in ("ON_TRIP", "ON_RIDE", "BOARDED", "IN_PROGRESS") or booking.tracking_status in ("ON_TRIP", "ON_RIDE", "BOARDED", "IN_PROGRESS"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This reservation cannot be cancelled as it is past the allowed cutoff."
+            detail="This reservation cannot be cancelled as the passenger has already boarded the vessel / the ride is currently in progress (On Trip / On Ride)."
         )
 
-    reason = payload.reason if payload and payload.reason else "Cancelled by guest."
+    if booking.status == "COMPLETED" or booking.tracking_status == "COMPLETED":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reservation cannot be cancelled as the voyage or ride has already been completed."
+        )
+
+    if not booking.is_cancellable and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reservation cannot be cancelled as it is past the allowed cutoff or already cancelled."
+        )
+
+    caller_type = "operator / ship owner" if is_owner else ("administrator" if is_admin and not is_customer else "guest")
+    default_reason = f"Cancelled by {caller_type}."
+    reason = payload.reason if payload and payload.reason else default_reason
+
     booking.status = "CANCELLED"
     booking.tracking_status = "CANCELLED"
     booking.ticket_status = "CANCELLED"
@@ -559,7 +593,7 @@ async def api_cancel_booking(
     if booking.booking_type == "TOUR" and booking.public_tour:
         booking.public_tour.booked_capacity = max(0, booking.public_tour.booked_capacity - booking.number_of_people)
 
-    # Automatically credit refund amount directly into the user's wallet
+    # Automatically credit refund amount directly into the CUSTOMER's wallet (regardless of who cancelled)
     refund_amount, wallet_tx = refund_booking_to_wallet(
         db=db,
         booking=booking,
@@ -569,17 +603,22 @@ async def api_cancel_booking(
 
     db.commit()
     db.refresh(booking)
-    db.refresh(user)
+    if is_customer:
+        db.refresh(user)
     checkpoint_db()
 
-    refund_msg = f" ₹{float(refund_amount):,.2f} has been refunded immediately to your wallet." if refund_amount > Decimal("0.00") else ""
+    customer = booking.user or db.query(User).filter(User.id == booking.user_id).first()
+    customer_balance = float(customer.wallet_balance or 0.0) if customer else 0.0
+
+    refund_msg = f" ₹{float(refund_amount):,.2f} has been refunded immediately to the customer's wallet." if refund_amount > Decimal("0.00") else ""
 
     return {
         "success": True,
         "message": f"Reservation cancelled successfully.{refund_msg}",
         "status": "CANCELLED",
         "refund_amount": float(refund_amount),
-        "wallet_balance": float(user.wallet_balance or 0.0),
+        "wallet_balance": customer_balance,
+        "customer_wallet_balance": customer_balance,
         "booking": serialize_booking(booking)
     }
 
@@ -797,6 +836,7 @@ async def api_ticket_verify(
     db: Session = Depends(get_db)
 ):
     code_clean = code.strip()
+    code_no_hash = code_clean.lstrip("#")
     if not code_clean:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -806,8 +846,12 @@ async def api_ticket_verify(
     booking = db.query(Booking).filter(
         or_(
             Booking.ticket_code.ilike(code_clean),
+            Booking.ticket_code.ilike(code_no_hash),
             Booking.qr_code_hash.ilike(code_clean),
-            Booking.booking_id.ilike(code_clean)
+            Booking.qr_code_hash.ilike(code_no_hash),
+            Booking.booking_id.ilike(code_clean),
+            Booking.booking_id.ilike(code_no_hash),
+            Booking.booking_id.ilike(f"#{code_no_hash}")
         )
     ).first()
 
@@ -820,32 +864,48 @@ async def api_ticket_verify(
     today = date.today()
     ticket_status = booking.ticket_status or "VALID"
     booking_status = booking.status
+    tracking_status = booking.tracking_status or "BOOKED"
+
+    is_activity = (booking.booking_type == "ACTIVITY" or (booking.cross and getattr(booking.cross, "category", "") == "ACTIVITY"))
+    is_private = (booking.booking_type in ("EVENT", "PRIVATE_EVENT", "PRIVATE_CHARTER") or (booking.cross and getattr(booking.cross, "listing_type", "") == "PRIVATE_CHARTER"))
+    active_state_label = "ON RIDE" if is_activity else "ON TRIP"
+    booking_category = "ACTIVITY" if is_activity else ("PRIVATE_CHARTER" if is_private else "PUBLIC_TOUR")
 
     if booking_status == "CANCELLED" or ticket_status == "CANCELLED":
         st = "CANCELLED"
         st_display = "INVALID TICKET - RESERVATION CANCELLED"
         valid = False
-    elif ticket_status == "USED":
+        trip_phase = "CANCELLED"
+    elif booking_status in ("ON_TRIP", "ON_RIDE") or tracking_status in ("ON_TRIP", "ON_RIDE"):
+        st = "ON_RIDE" if is_activity else "ON_TRIP"
+        st_display = f"GUEST ADMITTED • CURRENTLY {active_state_label}"
+        valid = True
+        trip_phase = "ACTIVE"
+    elif ticket_status == "USED" or booking_status == "COMPLETED" or tracking_status == "COMPLETED":
         st = "USED"
-        st_display = "BOARDING PASS ALREADY USED"
+        st_display = f"{'RIDE' if is_activity else 'VOYAGE'} COMPLETED • PASS USED"
         valid = False
+        trip_phase = "COMPLETED"
     elif booking.booking_date < today:
         st = "EXPIRED"
         st_display = "EXPIRED BOARDING PASS"
         valid = False
-    elif booking_status in ("CONFIRMED", "COMPLETED"):
+        trip_phase = "EXPIRED"
+    elif booking_status in ("CONFIRMED", "PENDING"):
         st = "VALID"
-        st_display = "VALID BOARDING PASS"
+        st_display = f"VALID PASS • READY TO BOARD ({active_state_label})"
         valid = True
+        trip_phase = "READY_TO_BOARD"
     else:
         st = "PENDING"
         st_display = "RESERVATION PENDING CONFIRMATION"
         valid = False
+        trip_phase = "PENDING"
 
     can_mark_used = False
     if user:
         if user.is_admin or (booking.cross and booking.cross.owner_id == user.id):
-            can_mark_used = (st == "VALID")
+            can_mark_used = (trip_phase in ("READY_TO_BOARD", "ACTIVE"))
 
     cabin_seat = booking.cabin_type or "General Seating"
     op_name = booking.cross.effective_operator_name if booking.cross else "Official Maritime Carrier"
@@ -863,6 +923,13 @@ async def api_ticket_verify(
         "is_valid": valid,
         "status": st,
         "status_display": st_display,
+        "trip_phase": trip_phase,
+        "booking_category": booking_category,
+        "is_activity": is_activity,
+        "is_private": is_private,
+        "active_state_label": active_state_label,
+        "can_board": (trip_phase == "READY_TO_BOARD"),
+        "can_complete": (trip_phase == "ACTIVE"),
         "booking_id": booking.booking_id,
         "ticket_id": booking.ticket_code or f"TK-{booking.booking_id.replace('CRS-', '')}",
         "verification_code": booking.qr_code_hash or code_clean,
@@ -884,7 +951,7 @@ async def api_ticket_verify(
         "duration_days": serialized_booking.get("duration_days"),
         "duration_display": serialized_booking.get("duration_display"),
         "cabin_seat": cabin_seat,
-        "booking_type": "Private Charter" if booking.booking_type == "EVENT" else "Public Cruise Tour Ticket",
+        "booking_type": "Water Sports Activity" if is_activity else ("Private Charter" if is_private else "Public Cruise Tour Ticket"),
         "total_price": float(booking.total_price),
         "tracking_status": booking.tracking_status,
         "can_mark_used": can_mark_used,
@@ -895,15 +962,21 @@ async def api_ticket_verify(
 @router.post("/tickets/verify/{code}/mark-used/")
 async def api_ticket_mark_used(
     code: str,
+    action: Optional[str] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     code_clean = code.strip()
+    code_no_hash = code_clean.lstrip("#")
     booking = db.query(Booking).filter(
         or_(
             Booking.ticket_code.ilike(code_clean),
+            Booking.ticket_code.ilike(code_no_hash),
             Booking.qr_code_hash.ilike(code_clean),
-            Booking.booking_id.ilike(code_clean)
+            Booking.qr_code_hash.ilike(code_no_hash),
+            Booking.booking_id.ilike(code_clean),
+            Booking.booking_id.ilike(code_no_hash),
+            Booking.booking_id.ilike(f"#{code_no_hash}")
         )
     ).first()
 
@@ -920,16 +993,64 @@ async def api_ticket_mark_used(
             detail="Only the vessel owner or platform admin can validate boarding passes."
         )
 
-    booking.ticket_status = "USED"
-    booking.tracking_status = "COMPLETED"
-    db.commit()
+    is_activity = (booking.booking_type == "ACTIVITY" or (booking.cross and getattr(booking.cross, "category", "") == "ACTIVITY"))
+    on_state = "ON_RIDE" if is_activity else "ON_TRIP"
+    action_lower = (action or "").strip().lower()
 
-    return {
-        "success": True,
-        "message": f"Boarding pass #{booking.ticket_code} marked as USED / Boarded successfully.",
-        "ticket_status": "USED",
-        "tracking_status": "COMPLETED"
-    }
+    if action_lower in ("board", "start", "admit") or (not action_lower and booking.status not in ("ON_TRIP", "ON_RIDE", "COMPLETED")):
+        booking.status = on_state
+        booking.tracking_status = on_state
+        booking.ticket_status = "VALID"
+        db.commit()
+        db.refresh(booking)
+        checkpoint_db()
+        return {
+            "success": True,
+            "message": f"Passenger admitted! Status set to {on_state}. Guest is now active and cancellation is locked.",
+            "ticket_status": "VALID",
+            "tracking_status": on_state,
+            "status": on_state,
+            "trip_phase": "ACTIVE",
+            "is_activity": is_activity,
+            "active_state_label": on_state,
+            "booking": serialize_booking(booking)
+        }
+    elif action_lower in ("complete", "finish", "end") or (not action_lower and booking.status in ("ON_TRIP", "ON_RIDE")):
+        booking.status = "COMPLETED"
+        booking.tracking_status = "COMPLETED"
+        booking.ticket_status = "USED"
+        db.commit()
+        db.refresh(booking)
+        checkpoint_db()
+        return {
+            "success": True,
+            "message": f"{'Water sports ride' if is_activity else 'Voyage'} completed! Pass marked as USED.",
+            "ticket_status": "USED",
+            "tracking_status": "COMPLETED",
+            "status": "COMPLETED",
+            "trip_phase": "COMPLETED",
+            "is_activity": is_activity,
+            "active_state_label": on_state,
+            "booking": serialize_booking(booking)
+        }
+    else:
+        booking.ticket_status = "USED"
+        booking.tracking_status = "COMPLETED"
+        booking.status = "COMPLETED"
+        db.commit()
+        db.refresh(booking)
+        checkpoint_db()
+        return {
+            "success": True,
+            "message": f"Boarding pass #{booking.ticket_code} marked as USED / Completed successfully.",
+            "ticket_status": "USED",
+            "tracking_status": "COMPLETED",
+            "status": "COMPLETED",
+            "trip_phase": "COMPLETED",
+            "is_activity": is_activity,
+            "active_state_label": on_state,
+            "booking": serialize_booking(booking)
+        }
 
 
 @router.get("/system/network-info/")
