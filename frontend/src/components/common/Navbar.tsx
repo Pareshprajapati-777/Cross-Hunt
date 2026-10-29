@@ -647,7 +647,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
           </div>
 
           {/* Mobile controls */}
-          <div className="md:hidden flex items-center space-x-2">
+          <div className="md:hidden flex items-center space-x-1.5 sm:space-x-2">
+            {user && isStaffOrOwner && (
+              <button
+                type="button"
+                onClick={() => setScannerModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-sm flex items-center gap-1 cursor-pointer"
+                title="Scan Customer Boarding Pass for Ship Entry"
+              >
+                <QrCode className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Scan</span>
+              </button>
+            )}
             {user && (
               <>
 
@@ -801,7 +812,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab: propCurrentTab, onNa
 
         {/* Mobile dropdown drawer (Clean White & Navy) */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-2 p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833]">
+          <div className="md:hidden mt-2 p-4 rounded-2xl bg-white border border-[#0284c7]/20 space-y-2 shadow-2xl text-[#051833] max-h-[85dvh] overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
             <button
               onClick={() => {
                 onNavigate('home');

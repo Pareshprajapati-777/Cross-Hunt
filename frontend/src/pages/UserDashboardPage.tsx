@@ -712,7 +712,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       </div>
 
       {/* 2. SUB-NAVIGATION TABS BAR (Clean White Dock & Deep Navy Pill) */}
-      <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full">
+      <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full no-scrollbar">
         {[
           { id: 'home', label: 'Dashboard Home', icon: BarChart3 },
           { id: 'bookings', label: `My Bookings (${bookings.length})`, icon: Calendar },
@@ -1077,7 +1077,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
       {activeSubTab === 'bookings' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
-            <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold pb-1 no-scrollbar max-w-full">
               {[
                 { id: 'ALL', label: `All Bookings (${bookings.length})` },
                 { id: 'UPCOMING', label: `Upcoming (${upcomingBookings.length})` },
@@ -1298,7 +1298,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
                       </div>
 
                       {/* Right: Perfectly Aligned Ordered Buttons */}
-                      <div className="flex flex-wrap items-center gap-2.5 md:justify-end ml-auto">
+                      <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:ml-auto">
                         {/* 1. Boarding Pass (QR) */}
                         <button
                           type="button"

@@ -907,7 +907,7 @@ export const OperatorDashboardPage: React.FC = () => {
       </div>
 
       {/* 2. SUB-NAVIGATION TABS BAR (Clean White Dock & Deep Navy Pill) */}
-      <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full">
+      <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 border border-[#0284c7]/20 shadow-md shadow-[#051833]/5 backdrop-blur-md mb-8 overflow-x-auto text-xs font-bold max-w-full no-scrollbar">
         {[
           { id: 'overview', label: 'Fleet Overview & Earnings', icon: BarChart3 },
           { id: 'ships', label: `My Ships (${data?.my_ships?.length || 0})`, icon: Ship },

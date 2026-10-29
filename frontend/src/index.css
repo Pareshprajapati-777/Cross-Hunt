@@ -39,16 +39,45 @@
     --font-jost: 'Jost', 'Plus Jakarta Sans', sans-serif;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   body {
     background-color: var(--bg-main);
     color: var(--text-navy);
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
+    width: 100%;
+    min-width: 320px;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* No-scrollbar utility for smooth horizontal touch swipe on mobile */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Impeccable Typography System */
