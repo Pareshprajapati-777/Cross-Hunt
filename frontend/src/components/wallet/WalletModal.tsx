@@ -142,34 +142,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          {/* Main Segmented Switcher (Transactions vs Add Funds) */}
-          <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => setViewMode('TRANSACTIONS')}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                viewMode === 'TRANSACTIONS'
-                  ? 'bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>View Transactions ({data?.transactions_count ?? 0})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode('ADD_FUNDS')}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                viewMode === 'ADD_FUNDS'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-emerald-700'
-              }`}
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ Add Funds</span>
-            </button>
-          </div>
 
           {/* Hero Balance Summary Card */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-800 p-5 text-white shadow-lg">

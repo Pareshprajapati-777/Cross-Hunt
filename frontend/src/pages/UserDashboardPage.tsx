@@ -71,8 +71,7 @@ type UserSubTab =
   | 'feedback'
   | 'favorites'
   | 'offers'
-  | 'profile'
-  | 'wallet';
+  | 'profile';
 
 export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
   onExplore,
@@ -703,7 +702,6 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
             hasBadge: hasApologiesReceived,
           },
           { id: 'favorites', label: `Saved Ships (${favorites.length})`, icon: Heart },
-          { id: 'wallet', label: `My Wallet (₹${Math.floor(walletBalance).toLocaleString('en-IN')})`, icon: Wallet },
           { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
           { id: 'profile', label: 'Passenger Profile', icon: UserIcon },
         ].map((tab) => {
@@ -712,13 +710,7 @@ export const UserDashboardPage: React.FC<UserDashboardPageProps> = ({
           return (
             <button
               key={tab.id}
-              onClick={() => {
-                if (tab.id === 'wallet') {
-                  setIsWalletModalOpen(true);
-                } else {
-                  setActiveSubTab(tab.id as UserSubTab);
-                }
-              }}
+              onClick={() => setActiveSubTab(tab.id as UserSubTab)}
               className={`px-5 py-2.5 rounded-full transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap text-xs ${
                 isActive
                   ? 'bg-[#051833] text-[#fff8dc] shadow-md shadow-[#051833]/25 font-black'
