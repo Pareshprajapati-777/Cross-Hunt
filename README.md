@@ -1,6 +1,10 @@
 # 🚢 Cruise Hunt — Luxury Cruise & Maritime Experience Booking Platform
 
 <p align="center">
+  <a href="https://cruise-hunt.vercel.app/"><strong>🚀 View Live Demo</strong></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Python-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
